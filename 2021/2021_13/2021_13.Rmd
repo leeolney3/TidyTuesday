@@ -1,0 +1,272 @@
+---
+title: "UN Votes"
+output: html_notebook
+---
+
+#### Data visualization exercise
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 13/2021: [UN Votes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-23/readme.md), data comes from [Harvard Dataverse](Harvard's Dataverse) by way of [Mine Çetinkaya-Rundel, David Robinson, and Nicholas Goguen-Compagnoni](https://github.com/dgrtwo/unvotes/blob/7eb7034314ff79c49c9e0785fcd9d216fa04cf14/DESCRIPTION#L6).
+
+Original data citation: 
+Erik Voeten "Data and Analyses of Voting in the UN General Assembly" Routledge Handbook of International Organization, edited by Bob Reinalda (published May 27, 2013). Available at SSRN: http://ssrn.com/abstract=2111149
+
+Data:   
+* unvotes:roll call id(rcid) and 3 variables   
+* roll_calls: rcid and 8 variables   
+* issues: rcid and 2 variables   
+
+```{r}
+# load library
+library(tidyverse)
+library(countrycode)
+library(lubridate)
+library(scales)
+library(ggtext)
+library(ggstream)
+library(ggsci)
+library(wesanderson)
+```
+
+```{r}
+# load data 
+unvotes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/unvotes.csv')
+roll_calls <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/roll_calls.csv')
+issues <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/issues.csv')
+```
+
+```{r}
+# get region and sub-region 
+unvotes = as.data.frame(unvotes)
+unvotes$region <- countrycode(sourcevar = unvotes[, "country"],
+                            origin = "country.name",
+                            destination = "un.region.name")
+unvotes$sub_region <- countrycode(sourcevar = unvotes[, "country"],
+                            origin = "country.name",
+                            destination = "un.regionsub.name")
+  
+```
+
+```{r}
+# join unvotes and roll_calls for year 
+data = unvotes %>%
+  left_join(roll_calls) %>%
+  mutate(date2 = ymd(date)) %>%
+  mutate(year = year(date2))
+head(data)
+```
+
+#### Belgium: Percentage of UN Yes Votes
+* shared on [Twitter](https://twitter.com/leeolney3/status/1374153486942793731/photo/1)
+
+```{r}
+# percentage of yes votes: Belgium compared to the rest of Western Europe
+# Belgium/Western Europe
+data1 = data %>%
+  filter(sub_region=="Western Europe") %>%
+  group_by(year, country, vote) %>%
+  tally() %>% 
+  mutate(pct = round(n/sum(n),3)) %>% 
+  filter(vote=="yes") %>%
+  drop_na() 
+
+bel = data1 %>% filter(country=="Belgium") %>% ungroup()
+belother = data1 %>% filter(country!="Belgium") %>% ungroup()
+
+ggplot() + 
+  geom_line(data= belother, aes(x=year, y=pct, group = country), colour = alpha("grey", 0.7)) + 
+  geom_line(data=bel, aes(x=year, y=pct), color="#5e60ce") +
+  theme_minimal(base_size = 10) + 
+  theme(plot.margin=unit(c(1,2,1,1),"cm"),
+        panel.grid.minor.x=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_markdown(face="bold"),
+        axis.title=element_text(face="bold"),
+        plot.subtitle=element_text(color="#495057")) + 
+  scale_y_continuous(label=scales::percent) + 
+  scale_x_continuous(breaks=seq(1950,2020,10)) + 
+  labs(x="Year",y="Percent",
+       caption="TidyTuesday Week 13 | Data from Harvard Dataverse",
+       title="<span style = 'color:#5e60ce'><b>Belgium</b></span>: Percentage of UN Yes Votes",
+       subtitle= "Compared to other countries in Western Europe, from 1946 to 2019")
+```
+
+#### Nuclear Disarmament UN Votes
+* shared on [Twitter](https://twitter.com/leeolney3/status/1374153486942793731/photo/2)
+
+```{r}
+# map data 
+world <- map_data("world") %>%   filter(region != "Antarctica") 
+# join unvotes with map data
+unvotes1 <- unvotes %>%
+  filter(rcid==9110) %>%
+  left_join(world, by = c('country'='region')) %>%
+  rename("Vote"="vote") %>% 
+  mutate(Vote= str_to_title(Vote))
+```
+
+
+```{r, warning=FALSE, message=FALSE, fig.width=4.5, fig.height=2.5}
+# inspired by Juanma_MN (https://twitter.com/Juanma_MN/status/1374125991732334592/photo/1)
+
+p2 <- ggplot() + 
+  geom_map(data = world, map = world,
+           aes(long, lat, group = group,  map_id = region),
+           fill = "white", color = "#889696") +
+  geom_map(data =unvotes1, map = world,
+           aes(fill = Vote, map_id = country),
+           color = "#889696", size = 0.1, alpha = .9) +
+  scale_fill_manual(values = c( "No" = "#119da4",
+                                "Yes" = "#ffc857",
+                                "Abstain"= "#eb6424")) +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "",y = "",
+       title = "Nuclear Disarmament UN Votes on 2019-12-12",
+       caption = "TidyTuesday Week 13 | Data from data from Harvard Dataverse") + 
+  theme(legend.position="top", legend.box = "horizontal",
+        legend.background = element_rect(fill="white"),
+        panel.background=element_rect(fill="white"),
+        plot.background=element_rect(fill="white"),
+        legend.title = element_text(size=9, face="bold"),
+        plot.title=element_text(face="bold"),
+        plot.caption=element_text(color="#343a40", size=8),
+        legend.justification = "left",
+        plot.margin=unit(c(1,1.7,1,1.7),"cm"))
+
+p2 
+```
+
+#### Issues 
+```{r}
+# unique issues
+unique(issues$issue)
+```
+
+```{r}
+head(issues)
+head(roll_calls)
+```
+
+
+```{r}
+# get dates of issues
+issues1 = issues %>% left_join(roll_calls)
+# get year 
+issues1 %>%
+  mutate(date2 = ymd(date)) %>%
+  mutate(year = year(date2)) -> issues1
+head(issues1)
+```
+
+#### Number of UN Issues  
+```{r}
+# issues by year
+pal <- wes_palette("Zissou1", 100, type = "continuous")
+
+issues1 %>% 
+  group_by(year) %>%
+  tally() %>%
+  ggplot(aes(x=year, y=n, fill=n)) + 
+  #ggbump::geom_bump(aes(x=year, y=n)) + 
+  geom_bar(stat="identity") + 
+  scale_fill_gradientn(colours = pal) +
+  theme_light(base_size=10) + 
+  theme(plot.margin=unit(c(1,2,1,1),"cm"), 
+        legend.position="none") + 
+  labs(x= "Year", y="Count of Issues", 
+       title= "Number of UN Issues",
+       subtitle="1946 to 2019")
+
+```
+
+#### UN Issues Categories Over The Years
+```{r}
+issues1 %>% 
+  group_by(year, issue) %>% 
+  tally() %>% 
+  rename("Issue"="issue") %>%
+  ggplot(aes(year, n, fill=Issue)) + 
+  geom_stream(bw=0.5) + 
+  #geom_stream_label(aes(label = issue), size=3) +
+  scale_fill_manual(values=c("#0091ad","#586ba4","#324376","#f5dd90","#f68e5f","#f65646")) +
+  theme_minimal(base_size=10) +
+  theme(legend.position="top",
+        axis.text.y=element_blank(),
+        axis.title=element_blank(),
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor.y=element_blank(), 
+        plot.title=element_text(hjust=0.5),
+        plot.margin=unit(c(1,1,1,1),"cm")
+        ) + 
+  labs(title= "UN Issues Categories Over The Years")
+
+  
+```
+
+#### Percentage of UN Issue Category by Year
+```{r}
+# percentage
+issues1 %>% 
+  group_by(year, issue) %>% 
+  tally() %>%
+  mutate(pct = n/sum(n)) %>%
+  rename("Issue"="issue") %>%
+  ggplot(aes(x=year, y=pct, fill=Issue)) + 
+  geom_bar(stat="identity", width=1, alpha=0.93) + 
+  scale_fill_manual(values=c("#0091ad","#586ba4","#324376","#f5dd90","#f68e5f","#f65646")) +
+  scale_y_continuous(labels=scales::percent) +
+  theme_minimal(base_size=10) +
+  theme(legend.position="top",
+        plot.margin=unit(c(1,1,1,1),"cm"),
+        #legend.title=element_blank(),
+        plot.title=element_text(hjust=0.5),
+        plot.title.position = "plot",
+        panel.grid=element_blank()
+        ) + 
+  coord_cartesian(expand=FALSE, clip="off") + 
+  labs(y="Percentage", x="Year", title="Percentage of UN Issue Category by Year")
+```
+
+# Count of Votes from Belgium by Issue
+
+```{r, warning=FALSE, message=FALSE}
+# merge data 
+bdata = unvotes %>%
+ semi_join(roll_calls, by = "rcid") %>% 
+ left_join(roll_calls, by = "rcid") %>%
+  left_join(issues, by="rcid") %>%
+  filter(country=="Belgium") %>%
+  drop_na()
+
+# plot
+bdata %>% 
+  mutate(issue = fct_lump_n(f = issue, n = 50)) %>% 
+  filter(issue != "Other") %>% 
+  count(issue, vote) %>%
+  #mutate(vote = factor(vote, levels = c("yes", "abstain", "no"), ordered = TRUE)) %>%
+  rename("Vote"="vote") %>% 
+  mutate(Vote= str_to_title(Vote)) %>%
+  ggplot(aes(y=fct_rev(issue), x=n)) + 
+  geom_line(aes(group=issue), color="#393E41", alpha=0.9) +
+  geom_point(aes(color=factor(Vote, levels = c("No", "Abstain", "Yes"), ordered = TRUE)), size=3) + 
+  scale_color_manual(values = c( "Yes" = "#3F88C5",
+                                "Abstain" = "#ff7d00",
+                                "No"= "#44BBA4")) + 
+  scale_x_continuous(breaks=c(75,100,125,150,175)) +
+  scale_y_discrete(labels=function(x) str_wrap(x,19)) +
+  theme_minimal(base_size=10) + 
+  theme(legend.position="none",
+        panel.grid.minor.x=element_blank(), 
+        plot.margin=unit(c(1,1,1,1),"cm"),
+        plot.title.position="plot",
+        plot.title=element_text(hjust=0.5),
+        plot.subtitle=element_markdown(hjust=0.5),
+        axis.text=element_text(size=8.6)
+        ) + 
+  labs(color="Vote", y=NULL, x=NULL, title="Count of Votes from Belgium by Issue",
+       subtitle="<span style = 'color:#44BBA4'><b>No</b></span> | 
+       <span style = 'color:#ff7d00'><b>Abstain</b></span> | 
+       <span style = 'color:#3F88C5'><b>Yes</b></span>") 
+
+  
+```

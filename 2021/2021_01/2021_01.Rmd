@@ -1,0 +1,263 @@
+---
+title: "Tidy Tuesday Week 1/2021"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 1 Bring your own data. This exercises uses content update data of Simpsons Tapped Out mobile game from [wikisimpsons](https://simpsonswiki.com/wiki/The_Simpsons:_Tapped_Out_content_updates_and_gameplays). 
+
+
+```{r}
+# Load libraries 
+library(tidyverse)
+library(ggtext)
+library(colorspace)
+```
+
+
+```{r}
+# Import data
+tsto= read.csv("tsto_events.csv",header=T, stringsAsFactors = T)
+str(tsto)
+```
+
+#### Sum of new buildings and decorations, by event
+
+```{r, fig.height=3, fig.width=4}
+# wrangle 
+tsto$year_up = substring(tsto$updateyn,3)
+tsto$year_update2 = paste(tsto$year_up,tsto$update_name, sep="_")
+
+p1= tsto %>% filter(year<2021) %>% group_by(year_update2) %>% tally()       
+max_val = max(p1$n)
+p1 = p1 %>% mutate(tohighlight = ifelse(n==max_val, "yes","no")) 
+
+# plot
+p1 %>% 
+    ggplot(aes(x=n, y=fct_rev(year_update2), fill=tohighlight)) +
+    geom_col(alpha=0.8) + 
+    geom_text(aes(label=n), size=3.3, color="white", vjust=0.5,hjust=2) + 
+    scale_fill_manual(values=c("#457b9d","#e63946",guide=FALSE)) +
+    scale_x_continuous(expand=c(0,0), limits=c(0,26)) + 
+    theme_minimal() +
+    theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major=element_blank(),
+        axis.title=element_text(size=10, color="grey"),
+        axis.text.x=element_blank(),
+        plot.title = element_text(color="#a8dadc"),
+        plot.subtitle= element_text(color="#f1faee"),
+        plot.background = element_rect(fill="#1d3557"),
+        plot.caption = element_text(color="grey"),
+        axis.text.y=element_text(color="#f1faee"),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm")) + 
+    labs(x= "",
+        y= "Event (release year, event of year, event name)",
+        title= "The Simpsons: Tapped Out Content Updates (2019 to 2020)",
+        subtitle= "Total number of new buildings and decorations introduced by event",
+        caption="Data from simpsonswiki")
+```
+
+#### Treehouse of horror events 
+
+```{r, message=F, warning=F}
+# thoh df 
+year=c(2013, 2014, 2015, 2016, 2017, 2018,2019, 2020)
+building = c(5,5,5,14,13,17,6,6)
+decoration= c(6,10,18,26,38,26,7,13)
+thoh = data.frame(year,building,decoration)
+thoh
+
+# wide to long
+thoh2 = thoh %>% pivot_longer(cols = 2:3)
+
+# labels 
+right_label <- thoh2 %>%
+        group_by(year) %>%
+        arrange(desc(value)) %>%
+        top_n(1)
+
+left_label <- thoh2 %>%
+        group_by(year) %>%
+        arrange(desc(value)) %>%
+        slice(2)
+
+# year summary
+thoh3 = thoh2 %>% group_by(year) %>% tally(value) %>% rename(total=n)
+```
+
+```{r}
+# plot
+ggplot(thoh2, aes(y=fct_rev(as.factor(year)), x=value)) + 
+  geom_line(aes(group=year), color="#606c38") +
+  geom_point(aes(color=name), size=2.5) +
+  geom_text(data = right_label, aes(color = name, label = value),
+                  size = 3.5, family = "Courier", hjust = -1) +
+  geom_text(data = left_label, aes(color = name, label = value),
+                  size = 3.5, family = "Courier", hjust = 2) +
+  scale_x_continuous(expand=c(0,0), limits=c(1,45)) +
+  labs(title="The Simpsons Tapped Out: THOH Events",
+       subtitle= "Number of new <span style = 'color:#457b9d'><b>Buildings</b></span> and <span style = 'color:#e63946'><b>Decorations</b></span> introduced by <br> Treehouse of Horror events from 2013 to 2020",
+       caption="Data from simpsonswiki") +
+  scale_color_manual(values=c("#457b9d","#e63946")) + 
+  theme_minimal() + 
+  theme(axis.title=element_blank(),
+        axis.text = element_text(size=10),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        legend.justification = c(0, 1), 
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.direction="horizontal",
+        text = element_text(family = "Courier"),
+        plot.title = element_text(size = 14, margin = margin(b = 10), hjust=0, face="bold"),
+        plot.subtitle = element_markdown(),
+        plot.caption = element_text(size = 8, margin = margin(t = 10), color = "slategrey", hjust = 0),
+        plot.background = element_rect(fill="white"),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm")) + 
+   geom_rect(data = thoh2, aes(xmin = max(value) * 1.1, xmax = max(value) * 1.18, ymin = -Inf, ymax = Inf), fill = "#e9ecef") + 
+  geom_text(data=thoh3, aes(label=total, y=as.factor(year), x = 38*1.14 ), fontface = "bold", size = 3.6, color = "#F18F01",family = "Courier") +
+  geom_text(data=thoh3, aes(x= 38*1.14, y= 8.5, label="Total"), size = 3, color = "#F18F01",family = "Courier")
+```
+
+#### Distribution of building and decoration
+```{r}
+# mean building and decoration
+mean_val = tsto %>% 
+  group_by(year_update2, type) %>%
+  tally() %>%
+  group_by(type) %>%
+  summarise(grp_mean= round(mean(n),2))
+
+# histogram
+hist = tsto %>% 
+  group_by(year_update2, type) %>% 
+  tally() %>%
+  ggplot(aes(x=n)) + 
+  geom_histogram(aes(fill=type),binwidth = 1, alpha=0.8) + 
+  facet_wrap(~type) + 
+  theme_light(base_size = 10) + 
+  theme(legend.position="none",
+        panel.grid.minor = element_blank(),
+        strip.background = element_rect(fill="slategrey"),
+        plot.margin=ggplot2::margin(1,1,1,1,"cm"),
+        strip.text = element_text(size=9),
+        axis.title = element_text(size=9),
+        plot.title.position = "plot"
+        ) +
+  scale_fill_manual(values=c("#013a63","#6a040f")) + 
+  geom_vline(data=mean_val, aes(xintercept=grp_mean),linetype="dotted", color="#F18F01", size=1) + 
+  geom_text(data=mean_val, aes(x=grp_mean*1.5, y=4.5, label=paste("Mean =",grp_mean)), size=3, color="black") + 
+  labs(subtitle="Histogram of building and decoration count (per content update)\n", y="Frequency",
+       x="Count of event ploppables")
+hist
+```
+
+```{r}
+# boxplot
+tsto %>% group_by(year_update2, type) %>% tally() %>%
+  ggplot(aes(type, n, color= type)) + 
+  geom_boxplot(outlier.size = -1, width=0.5, fill=NA) + 
+  geom_bar(aes(fill=type),stat="summary",fun="mean", 
+           alpha=0.3, color="#e9ecef", show.legend = FALSE, width=0.7) +
+  geom_point(aes(color=type), position=position_jitterdodge(), size=2, alpha=0.8) +
+  scale_color_manual(values=c("#013a63","#6a040f")) +
+  scale_fill_manual(values=c("#013a63","#6a040f")) + 
+  scale_y_continuous(breaks=seq(0,16,4)) +
+  theme(legend.position="none",
+        plot.margin=ggplot2::margin(1,1,1,1,"cm"),
+        axis.title = element_text(size=9),
+        plot.title.position = "plot") + 
+  labs(y="Count per update", x="", subtitle= "Boxplot of building and decoration count (per content update)") + 
+  coord_flip()
+```
+
+
+
+### Building and decorations count by event
+
+```{r, fig.width=4.5, fig.height=3.5}
+d1 = tsto %>% 
+    group_by(year_update2, type) %>% 
+    tally() %>%
+    mutate(value= ifelse(type=="Decoration", n, -1*n))
+break_values= pretty(d1$value)
+
+d1 %>% ggplot(aes(x=value, y=fct_rev(year_update2), fill=type)) +
+    geom_bar(stat="identity", alpha=0.8) + 
+  geom_text(aes(x=2.5, y=31.5, label="Decoration"), color="#588157",size=3.5, family="Courier") + 
+  geom_text(aes(x=-2.5, y=31.5, label="Building"), color="#344e41",size=3.5, family="Courier") + 
+    scale_x_continuous(limits=c(-16,16), breaks=seq(-16,16,by=4)) + 
+    theme_minimal() +
+    theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.background = element_rect(fill="#e9ecef"),
+        axis.title = element_text(color="#6c757d"),
+        panel.grid.major.x=element_line(color="white"),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        plot.title.position = "plot") +
+  expand_limits(y=c(0,32))+
+    scale_fill_manual(values=c("#344e41","#588157")) + 
+    labs(x="", 
+        y="Event (release year, event of year, event name)",
+        fill="",
+        title="Building and decoration count by event") + 
+  coord_cartesian(expand=FALSE) 
+```
+
+
+
+#### Event ploppables sum (from Jan 2019 to May 2021)
+```{r}
+# count of ploppables by year
+tsto %>% group_by(year) %>% tally() 
+
+# distribution 
+tsto %>% group_by(year,update_of_year,updateyn) %>% tally(sort=T) -> tablex
+summary(tablex$n)
+```
+
+
+```{r,fig.height=3.5, fig.width=4}
+tsto %>% group_by(year,update_of_year,updateyn) %>% tally() %>%
+  ggplot(aes(x=updateyn,y=n)) +
+  geom_segment(aes(x=updateyn,xend=updateyn,y=0,yend=n),color="grey70") +
+  geom_point(aes(color=n,size=n), alpha=1) + 
+  scale_size_continuous(limits=c(3,24),breaks=c(3,10,17,24), range=c(3,10)) + 
+  scale_color_continuous_sequential(limits=c(3,24),breaks=c(3,10,17,24),palette = "batlow") + 
+  guides(color= guide_legend(), size=guide_legend()) + 
+  scale_x_discrete(breaks=c("2019_01","2020_01","2021_01"), labels=c(2019,2020,2021)) +
+  guides(x.sec = guide_axis_label_trans(~paste(.x))) + #duplicate x axis
+  scale_y_continuous(limits=c(0,30)) +
+  expand_limits(x = c(0,32.5)) + 
+  theme(panel.grid.minor=element_blank(),
+        axis.title.x.bottom=element_markdown(size=9),
+        axis.title.y=element_markdown(size=9),
+        axis.text.x.bottom=element_blank(),
+        plot.title.position = "plot",
+        plot.subtitle=element_markdown(color="#012a4a",size=11.45),
+        plot.title=element_markdown(color="#012a4a", size=20),
+        plot.caption=element_text(size=8, color="grey50"),
+        legend.title = element_text(size=9),
+        legend.position="top",
+        plot.margin=ggplot2::margin(1,1.5,0.5,1,"cm")) + 
+  
+  annotate(geom = "curve", x = 4.5, y = 27, xend = 2.8, yend = 25, 
+    curvature = 0.3, arrow = arrow(length = unit(2, "mm"))) +
+  geom_text(aes(x=2,y=24,label="24"),color="white",size=3.2) + 
+  geom_text(aes(x=8, y=27, label="Love, Springfieldian Style"),size=3) +
+  
+  annotate(geom = "curve", x = 27.6, y = 25, xend = 25.8, yend = 23, 
+    curvature = 0.3, arrow = arrow(length = unit(2, "mm"))) +
+  geom_text(aes(x=25,y=22,label="22"),color="white",size=3) +
+  geom_text(aes(x=30, y=24.7, label="Clash of Creeds:\nChristmas Royale"),size=3) + 
+  
+  labs(x="**Event** (in release order)", y="**Count**",
+       title="<span style = 'color:#012a4a'><b>Simpsons Tapped Out Game Content Updates</b></span>",
+       subtitle="Count of event ploppables (*buildings and decorations*) from January 2019 to May 2021",
+       caption="Data from wikisimpsons",color="Count",size="Count") + 
+  coord_cartesian(expand=FALSE)
+
+```
+

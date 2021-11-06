@@ -1,0 +1,297 @@
+---
+title: "Tidy Tuesday Week 26/2021"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 26 [Public Park Access](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-22/readme.md), data from [The Trust for Public Land](https://www.tpl.org/parks-and-an-equitable-recovery-parkscore-report).
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(ggtext)
+library(ggbump)
+library(fmsb) 
+library(ggsankey)
+library(colorspace)
+```
+
+```{r}
+# Import data
+parks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-22/parks.csv')
+glimpse(parks)
+```
+
+```{r}
+# Summary
+summary(parks$year)
+summary(parks$rank)
+n_distinct(parks$city)
+```
+
+
+#### Normalised values (points)
+* shared on [Twitter](https://twitter.com/leeolney3/status/1407205328249311235/photo/1)
+
+```{r, warning=F}
+# points
+parks %>% select(year,
+                 med_park_size_points,
+                 park_pct_city_points,
+                 pct_near_park_points,
+                 basketball_points,
+                 dogpark_points,
+                 playground_points,
+                 rec_sr_points,
+                 restroom_points,
+                 splashground_points,
+                 amenities_points) %>%
+  rename(`recreation_&_senior_center` = rec_sr_points,
+         `median_park_size` = med_park_size_points,
+         `parkland_of_city_area`=park_pct_city_points,
+         `within_10_min_walk_to_park`=pct_near_park_points,
+         `basketball_hoop`=basketball_points,
+         `splashground_&_splashpad`=splashground_points) %>%
+  pivot_longer(!year) %>%
+  filter(year>=2018) %>%
+  mutate(name2=str_remove(name,"points")) %>%
+  mutate(name2=str_replace_all(name2,"_"," ")) %>%
+  mutate(name2=str_to_sentence(name2))  -> p1data
+```
+
+
+```{r, fig.height=3.75, fig.width=3.75}
+p1data %>%
+  ggplot(aes(x=name2, y=value)) + 
+  geom_point(aes(x=reorder(name2, value, median), y=value, color=factor(year)),position=position_jitter(0.15),size=1.5, alpha=0.5,shape=as.numeric(16)) +
+  geom_boxplot(position=position_nudge(x=0.25, y=0),
+               width=0.2, outlier.shape = NA, varwidth=FALSE, color="grey30", alpha=0.3)+
+  coord_flip() + 
+  theme_minimal(base_size=10) + 
+  scale_color_manual(values=c("#ffcb69","#66c4b9","#392f5a")) + 
+  scale_y_continuous(limits=c(-3,103),expand = c(0,0)) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 13))+
+  theme(axis.title = element_text(size=9, face="bold"),
+        plot.margin = margin(15, 15, 10, 15),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        legend.position="none",
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold",size=24),
+        plot.subtitle = element_markdown(size=13.1)) + 
+  labs(y="Points",x="Measure",
+       caption="\nTidyTuesday 26/2021 | Data from The Trust for Public Land",
+       title="Public Parks in U.S. Cities",
+       subtitle="Normalised values (points) of <span style = 'color:#ffcb69'><b>2018</b></span>, <span style = 'color:#66c4b9'><b>2019</b></span> and <span style = 'color:#392f5a'><b>2020</b></span><br>") 
+  
+```
+ALT text: Dotted box plot showing the yearly normalized values (points) of public parks features in U.S cities for ten measures, where 2019 and 2020 have better points than 2018 across the measures. 
+
+
+#### Ranking from 2012 to 2020 by city
+
+```{r, fig.height=3, fig.width=3.75}
+# bump chart
+# reference: https://twitter.com/kierisi/status/1407171923633651717
+parks2 = parks %>%
+  mutate(park_pct_city_data=parse_number(park_pct_city_data),
+         pct_near_park_data=parse_number(pct_near_park_data),
+         spend_per_resident_data=parse_number(spend_per_resident_data),
+         mean_spend_per_resident_data = mean(spend_per_resident_data),
+         mean_diff= spend_per_resident_data-mean_spend_per_resident_data) %>%
+  select(-city_dup)
+
+# 7 most populous cities in United States
+cities = c("New York","Los Angeles","Chicago","Houston","Phoenix",
+           "Philadelphia","San Antonio")
+parks2a= parks2 %>% filter(city %in% cities)
+
+parks2a %>% 
+  ggplot(aes(x=year,y=rank,color=city)) + 
+  geom_point(size=2) + 
+  geom_bump() +
+  geom_text(data=parks3%>% filter(year==2020), aes(x=2020.2, y=rank, label=city, color=city),size=3, hjust=0) + 
+  geom_text(data=parks3%>% filter(year==2012), aes(x=2010.8, y=rank, label=city, color=city),size=3, hjust=0) + 
+  scale_y_reverse(breaks=c(1,21,41,61,81)) + 
+  scale_x_continuous(limits=c(2010.8,2021),breaks=c(2012,2016,2020), position="top") +
+  theme_minimal() + 
+  theme(panel.grid.minor=element_blank(),
+        legend.position="none") + 
+  scale_color_d3() + 
+  labs(x="",y="Rank")
+```
+
+```{r}
+parks2c = parks2b %>% filter(year==2020) %>% arrange(-spend_per_resident_data) %>%
+  mutate(city=fct_inorder(city))
+levels(parks2c$city)
+```
+
+```{r}
+parks2c %>% select(city,spend_per_resident_data)
+```
+
+#### Park spending by city
+
+```{r}
+# bump sankey hybrid using {ggsankey}
+# reference:https://twitter.com/CedScherer/status/1384420013533241351/photo/1
+# df with 10 most populous cities 
+city10 = c("New York","Los Angeles","Chicago","Houston","Phoenix",
+           "Philadelphia","San Antonio","San Diego","Dallas","San Jose")
+parks2b= parks2 %>% filter(city %in% city10)
+
+# colors
+cols <- c("#c1121f", "#3C5488FF", "#e85d04","#e09f3e","#003b4c",
+          "#778e99","#b2967d", "grey78","grey71","#343a40") 
+
+# labels
+df_labs <- tibble(
+    city = factor(levels(parks2c$city), levels = levels(parks2c$city)),
+    spend_per_resident_data =  c(600, 400, 200, 50, -100, 
+                  -240, -360, -475, -580,-680)
+  )
+
+# plot
+parks2b %>%
+  ggplot(aes(x=year, value=spend_per_resident_data, node=city, fill=factor(city,levels=parks2c$city))) + 
+  geom_sankey_bump(space=15, smooth=12) + 
+  scale_fill_manual(values=cols) + 
+  geom_text(data=df_labs, aes(x=2020.1, y=spend_per_resident_data, label=city),
+            hjust=0,size=3,lineheight = .75, color=after_scale(cols), fontface="bold") +
+  scale_x_continuous(limits=c(2012,2021)) +
+  theme_void() + 
+  theme(panel.grid.major.x = element_line(color = "#E8E1DB"),
+        legend.position="none",
+        axis.text.x=element_text(color="grey50",size=8)) 
+```
+
+#### Mean difference in park spending 
+* Chicago, Houston, Los Angeles and New York
+
+```{r}
+# bar plot (mean difference)
+# reference: https://twitter.com/jrosecalabrese/status/1407373878133936128/photo/1
+parks2 %>% filter(city %in% c("New York","Los Angeles","Chicago","Houston")) %>%
+  ggplot(aes(x=factor(year), y=mean_diff, group=city, fill=city)) + 
+  geom_col(position="dodge") + 
+  scale_fill_manual(values=c("#f6bd60","#f5cac3","#84a59d","#f28482")) +
+  theme_classic(base_size=10) + 
+  theme(panel.grid=element_blank(),
+        legend.position="top")
+```
+
+#### Points by amenity type and city 
+* Cities: Chicago, Houston, Los Angeles and New York
+* Amenities: Basketball, Splashpads, Restrooms, Rec/Sr Centers, Playgrounds, Dog Parks
+
+```{r}
+# radar plot version 1
+# reference: https://twitter.com/Juanma_MN/status/1407386167176220682/photo/1
+dd= parks %>%
+  filter(year == 2020) %>% 
+  filter(city %in% c("New York","Los Angeles","Chicago","Houston")) %>%
+  select(c('city', features[5:10])) %>% as.data.frame()
+
+rownames(dd)<-dd$city #set facet title
+data$city <- NULL
+colors= c("#f6bd60","#f5cac3","#84a59d","#f28482")
+
+par(mar=c(1, 2, 2, 1)) #decrease default margin
+layout(matrix(1:4, ncol=2)) #draw 4 plots to device
+#loop 
+lapply(1:4, function(i) { 
+    radarchart(rbind(rep(100,6), rep(0,6), dd[i,-1]),pty=32,
+               pcol = '#89b0ae', pfcol = '#89b0ae',
+             cglwd = .12, plwd = .001, title = row.names(dd[i,]), vlcex=.8,
+             vlabels = c('Basketball', 'Splashpads', 'Restrooms', 'Rec/Sr Centers', 'Playgrounds', 'Dog Parks'))
+})
+
+```
+```{r}
+dd %>% rename_at(vars(matches("_points")), ~ str_remove(., "_points"))
+```
+
+
+```{r}
+# radar plot v2
+# function reference: https://www.datanovia.com/en/blog/beautiful-radar-chart-in-r-using-fmsb-and-ggplot-packages/
+
+dd= dd %>% rename_at(vars(matches("_points")), ~ str_remove(., "_points")) 
+
+create_beautiful_radarchart <- function(data, color = "#00AFBB", 
+                                        vlabels = colnames(data), vlcex = 0.8,
+                                        caxislabels = NULL, title = NULL, ...){
+  radarchart(
+    data, axistype = 1,
+    # Customize the polygon
+    pcol = color, pfcol = scales::alpha(color, 0.7), plwd = .001, plty = 1, pty=32,
+    # Customize the grid
+    cglcol = "black",  cglwd = .2,
+    # Customize the axis
+    axislabcol = "white", 
+    # Variable labels
+    vlcex = vlcex, vlabels = vlabels,
+    caxislabels = caxislabels, title = title, ...
+  )
+}
+
+# Define colors and titles
+colors <- c("#E64B35FF","#4DBBD5FF","#00A087FF","#3C5488FF")
+titles <- c("Chicago","New York","Los Angeles","Houston")
+
+# Reduce plot margin using par()
+# Split the screen in 3 parts
+op <- par(mar = c(1, 1, 1, 1))
+par(mfrow = c(2,2))
+
+# Create the radar chart
+lapply(1:4, function(i) { 
+    create_beautiful_radarchart(
+      data= rbind(rep(100,6), rep(0,6), dd[i,-1]),
+      color = colors[i], title=titles[i], 
+      )
+})
+par(op)
+```
+
+### Resident park spending in 2019 and 2020
+
+```{r}
+# resident park spending in 2019 and 2020
+# prepare data
+spend1= parks %>% 
+  filter(year>=2019) %>%
+  mutate(spend_per_resident_data=parse_number(spend_per_resident_data)) %>%
+  select(year, city, spend_per_resident_data) %>%
+  group_by(city) %>%
+  filter(n() > 1) %>%
+  arrange(city,year) %>%
+  dplyr::mutate(diff = spend_per_resident_data- lag(spend_per_resident_data),
+                col=ifelse(diff>0,"increase","decrease"),
+                diff2 = abs(diff)) 
+# get 10 cities with the most difference from 2019
+spend_city = spend1 %>% arrange(-diff2) %>% ungroup() %>% slice(1:10)
+spend2 = spend1 %>% filter(city %in% spend_city$city) %>% arrange(city,year)
+# data for geom_text
+spend3 = spend2 %>% group_by(city) %>% dplyr::mutate(mea = median(spend_per_resident_data)) %>%
+  ungroup() %>% mutate(diff3=if_else(diff>0,paste0("+",diff), paste0(diff))) %>% filter(year==2020)
+# city levels order by difference
+s4 = spend3 %>% arrange(diff2) %>% mutate(city=fct_inorder(city)) 
+
+# plot
+spend2 %>% ggplot() + 
+  geom_point(aes(x=spend_per_resident_data,y=factor(city,s4$city),
+                 shape=factor(year)),size=2.5) + 
+  geom_line(aes(group=city, x=spend_per_resident_data, y=city, color=col),show.legend = F) +
+  scale_color_manual(values=c("#a4243b","grey"),na.value="#2b9348") + 
+  theme_minimal(base_size=10) + 
+  scale_shape_manual(values=c(1,19)) +
+  geom_text(data=spend3,aes(x=mea, y=city, label=diff3),size=2.7, vjust=-0.7) + 
+  theme(panel.grid.minor=element_blank(),
+        plot.title.position = "plot") + 
+  labs(x="Spend per resident (in USD)", y= "City", shape="Year",
+       title="Park spending per resident in 2019 and 2020")
+```
+
+
+

@@ -1,0 +1,399 @@
+---
+title: "Tidy Tuesday Week 30/2021"
+output: html_notebook
+---
+
+**Data wrangling and visualization exercise**
+
+This notebook uses [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 30 [US Droughts](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-20/readme.md), data from [U.S. Drought Monitor](https://droughtmonitor.unl.edu/DmData/DataDownload.aspx)
+
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(geofacet)
+library(scales)
+library(ggtext)
+library(usmap)
+library(urbnmapr)
+library(patchwork)
+```
+
+```{r}
+# Import data
+drought <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-20/drought.csv')
+```
+
+### Category D0, area_pct, pop_pct
+* shared on [Twitter](https://twitter.com/leeolney3/status/1417345280907911168)
+
+```{r}
+df1 = drought %>% 
+  filter(valid_end=="2021-07-19") %>%
+  filter(drought_lvl=="D0") %>%
+  select(state_abb,  area_pct,  pop_pct) %>%
+  rename("land area"=area_pct, population=pop_pct) %>%
+  pivot_longer(!state_abb) %>%
+  mutate(value=value/100)
+df1 
+```
+```{r, warning=F, message=F, fig.width=5, fig.height=3.75}
+ggplot(df1, aes(fct_rev(name), value, fill = fct_rev(name))) +
+  geom_col(width=0.8, alpha=0.9) +
+  coord_flip() +
+  facet_geo(~ state_abb, grid = "us_state_grid2") + 
+  scale_y_continuous(breaks=c(0,0.5,1), labels=c(0,0.5,1), expand=c(0,0)) +
+  scale_fill_manual(values=c("#f28f3b","#588b8b")) +
+  theme(legend.position="none",
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor=element_blank(),
+        axis.text.x=element_text(size=8),
+        axis.title=element_blank(),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        plot.title=element_markdown(size=18, margin=margin(b=10)),
+        plot.subtitle=element_markdown(size=13, lineheight = 1.35),
+        axis.ticks.y = element_blank()) + 
+  labs(caption="#TidyTuesday week 30 | Data from U.S. Drought Monitor",
+       title="<b>U.S. Drought Level D0</b> (July 13, 2021 to July 19, 2021)",
+       subtitle="Proportion of <span style = 'color:#588b8b'><b>land area (sq miles)</b></span> and <span style = 'color:#f28f3b'><b>population</b></span> of state in drought level D0<br>(*Drought level D0 corresponds to short-term dryness that is typical with the onset of drought*)<br>")
+```
+
+### Category D4, area_pct
+
+```{r}
+df2 = drought %>% filter(drought_lvl=="D4") %>%
+  select(state_abb, drought_lvl, valid_start, area_pct) %>%
+  mutate(area_pct=area_pct/100)
+
+summary(df2$valid_start)
+```
+
+```{r, warning=F, message=F, fig.width=5, fig.height=3.75}
+ggplot(df2, aes(valid_start, area_pct)) + 
+  geom_line(color="red",size=0.5) + 
+  facet_geo(~ state_abb, grid = "us_state_grid2") + 
+  theme_minimal() +
+  scale_x_date(expand=c(0,0), breaks=c(min(df2$valid_start),max(df2$valid_start))) +
+  scale_y_continuous(expand=c(0,0), breaks=seq(0,0.8,0.4)) +
+  theme(legend.position="none",
+        panel.grid=element_blank(),
+        axis.text.x=element_text(angle=90,size=6),
+        axis.text.y=element_text(size=7),
+        plot.background=element_rect(fill="#f8f9fa", color=NA),
+        panel.background = element_rect(fill="white", color=NA),
+        strip.background=element_rect(fill="#eff1f3", color=NA),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        axis.title=element_blank(),
+        plot.title=element_markdown(size=18, margin=margin(b=10)),
+        plot.subtitle=element_markdown(size=10.3,lineheight = 1.35)) + 
+  labs(title="<b>U.S. Drought Level D4 over 20 years</b>",
+       subtitle="Proportion of land area (in sq miles) by state in drought category D4 from July 17, 2001 to July 19, 2021. Drought level D4 corresponds to<br>an area experiencing exceptional and widespread crop and pasture losses, fire risk, and water shortages that result in water emergencies. <br>")
+```
+
+
+### All states, maximum drought level
+
+```{r}
+df3 = drought %>% 
+  filter(drought_lvl!="None") %>%
+  filter(valid_end=="2021-07-19") %>%
+  select(drought_lvl, state_abb, area_pct) %>%
+  filter(area_pct!=0) %>%
+  group_by(state_abb) %>%
+  mutate(min_ap = min(area_pct)) %>%
+  ungroup() %>%
+  mutate(cond = ifelse(min_ap==area_pct,1,0)) %>%
+  filter(cond!=0) %>%
+  select(-min_ap,-cond) %>%
+  rename(state_abbv=state_abb) %>%
+  mutate(drought_lvl= recode(drought_lvl, 
+                             D0="D0 (Abnormally Dry)",
+                             D1="D1 (Moderate Drought)",
+                             D2="D2 (Severe Drought)",
+                             D3="D3 (Extreme Drought)",
+                             D4="D4 (Exceptional Drought)")) 
+
+states_sf = get_urbn_map("states",sf=TRUE)
+df3b = states_sf %>% 
+  left_join(df3, by="state_abbv") %>% 
+  mutate(drought_lvl=replace_na(drought_lvl,"None"))
+```
+
+
+```{r}
+df3b %>%
+  ggplot() + 
+  geom_sf(aes(fill=drought_lvl),color="#ffffff",size=0.25) + 
+  geom_sf_text(data = df3b %>% filter(state_abbv %in% df3$state_abbv), 
+                aes(label = state_abbv), size = 2) + 
+  coord_sf(datum = NA) + 
+  #scale_fill_manual(values = wes_palette("Zissou1"), na.value="#e8e8e8") + 
+  scale_fill_manual(values=c("#f1dca7","#ffcb69","#e8ac65","#d08c60","#997b66","#e9ecef")) +
+  theme_void() + 
+  theme(legend.text=element_text(size=7.5),
+        legend.title=element_text(size=8.5),
+        plot.subtitle=element_text(size=10, face="bold"),
+        plot.margin=unit(c(0.5,1,0.5,1),"cm")) + 
+  labs(fill="Drought Level", subtitle="U.S. States and their maximum drought level for the week July 13, 2021 to July 19, 2021\n") 
+```
+
+
+
+### Nevada, area_pct
+* x-axis labels and ticks reference: [@vamos_alcazar](https://twitter.com/vamos_alcazar/status/1417530461107236866)  
+* inset_element reference: [@maxwelco](https://twitter.com/maxwelco/status/1417454551423193091)
+
+```{r}
+# tibble for x-axis text using with annotations()
+x_axis = tibble(
+  x = c(
+        lubridate::ym("2002/07"),
+        lubridate::ym("2006/07"),
+        lubridate::ym("2010/07"),
+        lubridate::ym("2014/07"),
+        lubridate::ym("2018/07"),
+        lubridate::ym("2021/01")),
+  y = -7,
+  label = c("2002", "06", "10", "14", "18", "21")
+)
+# tibble for xticks using with geom_linerange()
+x_ticks = tibble(
+            x = c(seq.Date(lubridate::ym("2002/01"), 
+                           lubridate::ym("2021/01"), 
+                                     by = "1 year"),
+                            max(drought$valid_start)),
+            ymax = 0,
+            ymin = c(rep(c(4, 4, 2.3, 2.3), 4),  4, 4, 2.3, 4, 2.3) * -1)
+```
+
+```{r}
+pal = c("#ffebc6","#ffb100","#f194b4","#d90368","#003844")
+
+plotdata = drought %>% 
+  filter(drought_lvl!="None",
+         area_pct!=0, 
+         state_abb=="NV",
+         lubridate::year(valid_start) > 2001) %>%
+  mutate(drought_lvl= recode(drought_lvl, 
+                             D0="D0 Abnormally Dry",
+                             D1="D1 Moderate Drought",
+                             D2="D2 Severe Drought",
+                             D3="D3 Extreme Drought",
+                             D4="D4 Exceptional Drought"))  %>%
+  mutate(date = lubridate::ym(
+                            paste(lubridate::year(valid_start),
+                                  lubridate::month(valid_start),
+                                                   sep = "/"))) 
+```
+
+```{r}
+# main plot
+p4 = plotdata %>%
+  ggplot() + 
+  geom_col(aes(x=valid_start, y=area_pct, color=drought_lvl, fill=drought_lvl), position = "dodge") + 
+  geom_hline(color="black", yintercept=0, size=0.3) +
+  coord_cartesian(clip = "off") +
+  # x-axis
+  annotate(geom = "text", x = x_axis$x, y = x_axis$y,
+           label = x_axis$label, size = 2.7, color="grey30") +
+  geom_linerange(data = x_ticks,
+                 aes(x = x, ymin = ymin, ymax = ymax),color="grey30") +
+  # annotate
+  #geom_curve(aes(x = lubridate::ym("2015/01"), y = 85,
+                 #xend = lubridate::ym("2020/11"), yend = 20),
+             #curvature = 0.20,
+            # arrow = arrow(length = unit(0.03, "npc"))) +
+  #geom_text(aes(x = lubridate::ym("2015/01"), y = 95,
+                #label = "The effect of\nrecord-low precipitation and higher temperatures"),
+            #fontface="italic", size = 2.5) +
+  # customize 
+  scale_fill_manual(values=pal, guide='none')+
+  scale_color_manual(values=pal)+
+  scale_y_continuous(limits = c(-10, 100), expand = c(0, 0),
+                     position = "right") + 
+  theme_minimal(base_size=10) +
+  theme(legend.position = "top",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x=element_blank(),
+        axis.title=element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y.right =element_text(color="grey20", margin=margin(l=-15),size=8,vjust=-.7),
+        plot.title=element_text(face="bold", size=11),
+        plot.subtitle=element_markdown(color="grey20",lineheight = 1.3),
+        legend.margin=margin(5, .2, .2,-5),
+        legend.key.width = unit(0.3, "cm"),
+        legend.key.height = unit(0.18, "cm"),
+        legend.text = element_text(size=7.5),
+        legend.justification = "left",
+        legend.spacing.x = unit(0.2, "cm"),
+        panel.grid.major=element_line(size=.5),
+        plot.margin=unit(c(0.5,1.5,0.5,1),"cm")) + 
+  guides(fill=guide_legend(ncol=3, byrow=T)) + 
+  labs(color="", fill="",
+       title="Proportion of Nevada in drought", 
+       subtitle="<span style = 'font-size:10pt'>By intensity category, % of total area</span><br>
+    <span style = 'font-size:9pt'>July 17, 2001 to July 19, 2021</span>")
+```
+
+
+```{r}
+# map insert 
+state_nv = statepop %>% mutate(col=ifelse(abbr=="NV","1","0"))
+
+map_nv = plot_usmap(data = state_nv, values = "col", color = "#495057",size=0.3) + 
+  theme(legend.position="none",plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm")) + 
+  scale_fill_manual(values=c("white","#2ec4b6"))
+```
+
+
+```{r}
+p4 |inset_element(map_nv,
+                    align_to = "full",
+                    clip = FALSE,
+                    on_top = TRUE,
+                    ignore_tag = TRUE,
+                    left = 0.55, 
+                    bottom = 0.7, 
+                    right = 1, 
+                    top = 1)
+```
+
+### Pacific division, area_pct
+
+* area plot annotation reference: [@MeghanMhall](https://twitter.com/MeghanMHall/status/1417553668535107587) 
+
+```{r}
+# states in pacific division
+.pacific
+```
+
+```{r, warning=F, message=F}
+# pacific division
+p5 = drought %>% 
+  filter(state_abb %in% .pacific) %>%
+  filter(lubridate::year(valid_start) == 2021) %>% 
+  mutate(drought_lvl = fct_relevel(drought_lvl, 
+                                   levels = c("D4","D3","D2","D1","D0","None"))) %>% 
+  group_by(map_date, valid_start, drought_lvl) %>%
+  summarise(area_pct=mean(area_pct)) %>%
+  ungroup() %>%
+  arrange(map_date, drought_lvl) %>% 
+  mutate(test = lag(area_pct),
+         value = ifelse(drought_lvl %in% c("D4","None"), 
+                        area_pct, area_pct - test)) %>% 
+  ggplot(aes(x = valid_start, y = value, fill = drought_lvl)) +
+  geom_area(color = "white") +
+  scale_fill_viridis_d(option = "A") +
+  scale_y_continuous(labels = label_number(suffix = "%"),
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_date(date_labels = '%b',
+               breaks = as.Date(c('2021/1/10','2021/2/10','2021/3/10',
+                                  '2021/4/10', '2021/5/10','2021/6/10','2021/7/10')),
+               expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values=c("#540804", "#81171b", "#ad2e24", "#c75146","#ea8c55","#ccd7e4")) +
+  labs(x = NULL,
+       y = "Percent of state (by area)",
+       title = "\nUS, proportion of Pacific division in drought",
+       subtitle = "By intensity category, % of total area, 2021-01-05 to 2021-07-13\n\n") +
+  annotate("text", x = as.Date('2021/6/20'), y = 96.5, label = "Exceptional drought", 
+           size = 3, color="white") +
+  annotate("text", x = as.Date('2021/6/20'), y = 85, label = "Extreme drought",
+           size = 3, color="white") +
+  annotate("text", x = as.Date('2021/6/20'), y = 62, label = "Severe drought",
+           size = 3, color="white") +
+  annotate("text", x = as.Date('2021/6/20'), y = 48, label = "Moderate drought",
+           size = 3, color="white") +
+  annotate("text", x = as.Date('2021/6/20'), y = 31, label = "Abnormally dry",
+           size = 3,color="white") +
+  annotate("text", x = as.Date('2021/6/20'), y = 12, label = "None",
+           size = 3) +
+  theme(panel.grid.major = element_blank(),
+        legend.position = "none",
+        plot.title=element_text(face="bold",size=14),
+        plot.subtitle=element_text(size=10, color="grey30"),
+        axis.title=element_blank(),
+        plot.margin=unit(c(0.5,1.5,0.5,1),"cm"))
+
+map_pacific= usmap::plot_usmap(include = .pacific)
+```
+
+```{r}
+p5 |inset_element(map_pacific,
+                    align_to = "full",
+                    clip = FALSE,
+                    on_top = TRUE,
+                    ignore_tag = TRUE,
+                    left = 0.67, 
+                    bottom = 0.72, 
+                    right = 1, 
+                    top = 1)
+```
+
+### Western US, pop_pct
+
+```{r}
+drought1 <- drought %>% 
+  mutate(pop_pct= ifelse(pop_pct>100,100,pop_pct)) %>%
+  group_by(state_abb, valid_start) %>% 
+  arrange(desc(drought_lvl)) %>% 
+  # decumulate pop_pct and area_pct 
+  mutate(area_pct1 = case_when(drought_lvl == "D4" ~ area_pct,
+                                  drought_lvl != "None" ~ 
+                                             area_pct - lag(area_pct),
+                                  TRUE ~ area_pct),
+         pop_pct1 = case_when(drought_lvl == "D4" ~ pop_pct,
+                                  drought_lvl != "None" ~ 
+                                             pop_pct - lag(pop_pct),
+                                  TRUE ~ pop_pct),
+         ) %>% 
+  ungroup() %>%
+  mutate(state_name = abbr2state(state_abb))
+```
+
+
+```{r}
+p6 = drought1 %>% filter(valid_end=="2021-07-19") %>%
+  mutate(drought_lvl=factor(drought_lvl, levels=c("None","D0","D1","D2","D3","D4"))) %>%
+  mutate(drought_lvl= recode(drought_lvl, 
+                             D0="D0\nAbnormally Dry",
+                             D1="D1\nModerate Drought",
+                             D2="D2\nSevere Drought",
+                             D3="D3\nExtreme Drought",
+                             D4="D4\nExceptional Drought")) %>%
+  filter(state_abb %in% .west_region) %>%
+  filter(area_pct1>0) %>%
+  ggplot(aes(y=fct_rev(state_name), x=pop_pct1, fill=fct_rev(drought_lvl))) + 
+  geom_col(width=0.8) + 
+  scale_fill_manual(values=c("#332a24","#997b66","#d08c60","#ffcb69","#f1dca7","grey")) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme(axis.text.y=element_text(margin=margin(r=10)),
+        plot.margin=unit(c(0.5,1,0.5,1),"cm"),
+        axis.title=element_blank(),
+        legend.position="top",
+        legend.title=element_blank(),
+        legend.justification = "left",
+        legend.margin=margin(5, .2, .2,-60),
+        legend.key.width = unit(0.3, "cm"),
+        legend.text=element_text(size=7),
+        legend.spacing = unit(0.2, "cm"),
+        plot.title.position = "plot",
+        plot.title=element_markdown(lineheight = 1.3)) +
+  guides(fill=guide_legend(ncol=6, byrow=T, reverse=T)) + 
+  labs(title="<span style = 'font-size:11pt'><b>Western US, Proportion of population affected by drought<b></span><br><span style = 'font-size:10pt'>By intensity category, % of total population</span><br>
+    <span style = 'font-size:9pt'>(July 13, 2021 to July 19, 2021)</span>")
+  
+map_west = plot_usmap(include = .west_region, size=0.3) 
+```
+
+```{r}
+p6 |inset_element(map_west ,
+                    align_to = "full",
+                    clip = FALSE,
+                    on_top = TRUE,
+                    ignore_tag = TRUE,
+                    left = 0.75, 
+                    bottom = 0.7, 
+                    right = 1, 
+                    top = 1)
+```
+

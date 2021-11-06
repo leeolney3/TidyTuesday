@@ -1,0 +1,559 @@
+---
+title: "Tidy Tuesday 27/2021"
+date: "2021/06/29"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 27 [Animal Rescues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-29/readme.md), data from [London.gov](https://data.london.gov.uk/dataset/animal-rescue-incidents-attended-by-lfb) by way of [Data is Plural](https://www.data-is-plural.com/archive/2021-06-16-edition/) and [Georgios Karamanis](https://twitter.com/geokaramanis).
+
+```{r}
+# load libraries
+library(tidyverse)
+library(ggtext)
+library(scales)
+library(lubridate)
+library(hms)
+library(ggsankey)
+library(gggrid) 
+library(packcircles)
+library(cowplot)
+library(ggpubr)
+library(ggbump)
+library(gghalves)
+library(colorspace)
+library(wesanderson)
+```
+
+
+```{r}
+# import data
+animal_rescues <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-29/animal_rescues.csv')
+```
+
+```{r}
+summary(animal_rescues$cal_year)
+```
+
+### Animal type and Service type
+```{r}
+# prepare data
+data =animal_rescues %>% 
+  group_by(cal_year,special_service_type_category, special_service_type) %>% tally() %>% 
+  mutate(special_service_type=tolower(special_service_type)) %>%
+  mutate(special_service_type=str_replace_all(special_service_type,
+                                            c("animal rescue"="",
+                                              "-"="",
+                                              "from below ground"="",
+                                              "from height"="",
+                                              "from water"="",
+                                              "or mud"="",
+                                              "animal assistance"="",
+                                              "involving "="",
+                                              "assist "="",
+                                              "animal"=""))) %>%
+  mutate(special_service_type= str_squish(special_service_type)) %>%
+  mutate(SubCat= case_when(grepl("trapped", special_service_type) ~ "trapped",
+                        grepl("harm", special_service_type) ~"harm",
+                        grepl("lift heavy", special_service_type) ~"lift heavy",
+                        grepl("other action", special_service_type) ~"other action",
+                        grepl("from below ground", special_service_type_category) ~"from below ground",
+                        grepl("from height", special_service_type_category) ~"from height",
+                        grepl("from water", special_service_type_category) ~"from water"
+                        )) %>%
+  mutate(Cat= case_when(grepl("rescue", special_service_type_category) ~ "animal rescue",
+                        TRUE ~ "other animal assistance")) %>%
+  mutate(AnimalType=str_replace_all(special_service_type,c("lift heavy "="",
+                                                   " other action"="",
+                                                   "harm "="",
+                                                   "trapped "=""))) %>%
+  mutate(new_categories = ifelse(special_service_type_category=="Other animal assistance",paste0("Other animal assistance",":"," ",SubCat),special_service_type_category))
+data
+```
+
+```{r, warning=F, message=F}
+data %>% filter(cal_year<=2020) %>%
+  group_by(new_categories, AnimalType) %>% summarise(total=sum(n)) %>%
+  ggplot(aes(y=fct_rev(AnimalType), x=total, fill=total)) + 
+  geom_col() + 
+  facet_wrap(~new_categories, ncol=3, scales="free",labeller = labeller(new_categories = label_wrap_gen(28))) + 
+  theme_minimal(base_size = 10) + 
+  theme(panel.grid.minor=element_blank(),
+        legend.position="none",
+        panel.grid.major.y=element_blank(),
+        axis.title=element_text(face="bold",size=8),
+        plot.title.position = "plot",
+        ) + 
+  scale_fill_continuous_sequential(palette="Batlow") + 
+  labs(y="Animal Type", x="Rescue Count",
+       subtitle="LFB Animal Rescues Count by Animal and Service Type, from 2009 to 2020\n")
+```
+
+### Special service type categories (2009 - 2020)
+
+```{r}
+theme_set(theme_minimal(base_size=10))
+theme_update(panel.grid.minor=element_blank(),
+             plot.title.position="plot",
+             plot.margin = unit(c(1, 1, 1, 0.25), "cm"),
+             axis.title=element_text(size=8.5, face="bold"),
+             legend.position="none")
+```
+
+```{r}
+animal_rescues %>% filter(cal_year<=2020) %>%
+  group_by(cal_year, special_service_type_category) %>% tally() -> linedata
+
+linedata %>%
+  ggplot(aes(x=cal_year, y=n, color=reorder(special_service_type_category,-n))) +
+  geom_bump(size=0.8) + 
+  geom_point(size=1.5) + 
+  geom_text(data= linedata %>% filter(cal_year==2020),
+            aes(x=2020.2,label=special_service_type_category),hjust=0,size=2.5, fontface="bold") + 
+  scale_x_continuous(limits=c(2009,2024), breaks=seq(2010,2020,5)) + 
+  scale_y_continuous(limits=c(0,400)) +
+  scale_color_manual(values = c("#0a2463","#dd1c1a","#3c6e71","#f26419","#247ba0")) +
+  labs(x="Year", y="Count", subtitle="LFB special service type category from 2009 to 2020\n")
+```
+
+
+### Special Service Type 
+* shared on [Twitter](https://twitter.com/leeolney3/status/1409741792279416833/photo/1)
+* sankey bump chart reference: https://twitter.com/CedScherer/status/1384420013533241351/photo/1
+* packing circles chart reference: https://twitter.com/issa_madjid/status/1402671245758455809/photo/1
+* packing circles chart reference: https://twitter.com/kustav_sen/status/1403612738249662464
+
+```{r}
+# sankey bump chart 
+
+# freq table
+plotdata = data %>%filter(cal_year<=2020) %>% group_by(cal_year, new_categories) %>% summarise(count=sum(n)) 
+
+# create labels with order
+plotdata2 = plotdata %>% filter(cal_year==2020) %>% arrange(-count) %>%
+  mutate(new_categories=fct_inorder(new_categories))
+
+labs <- tibble(
+    new_categories = factor(levels(plotdata2$new_categories), levels = levels(plotdata2$new_categories)),
+    count =  c(275, 0, -225, -310, -380, -400, -420))
+
+# colors
+cols <- c("#28666e", "#c8553d", "#780000","#b5b682","#dda15e",
+          "#7c9885","#033f63")
+
+# plot
+plot1 = plotdata %>%
+  ggplot(aes(x=cal_year, value=count, node=new_categories, fill=factor(new_categories,levels=plotdata2$new_categories))) + 
+  geom_sankey_bump(space=15, smooth=12) + 
+  scale_fill_manual(values=cols) +
+  scale_y_continuous(limits=c(-430,430), breaks=seq(-400,500,100)) +
+  geom_text(data=labs, aes(x=2020.1, y=count, label=new_categories),
+            hjust=0,size=2.2,lineheight = .75, color=after_scale(cols), fontface="bold") +
+  scale_x_continuous(limits=c(2009,2022.5),breaks=c(2010,2015,2020)) + 
+  theme_void() + 
+  theme(panel.grid.major.x = element_line(color = "#E8E1DB"),
+        legend.position="none",
+        axis.text.x=element_text(color="grey50",size=8),
+        plot.margin=ggplot2::margin(0.5,0,0.5,0,"cm"),
+        plot.title=element_text(face="bold",size=12, hjust=0.5)) + 
+  labs(title="Animal Rescues by London Fire Brigade (2009 to 2020)\n")
+```
+
+
+
+
+```{r}
+# packing circles chart
+
+data2a = animal_rescues %>% filter(cal_year==2009 | cal_year==2015 | cal_year==2020) %>%
+  group_by(cal_year,special_service_type_category) %>% tally() %>% 
+  mutate(prop=n/sum(n),prop = round(prop*100)) %>% ungroup()
+
+data2b = data2a %>% group_by(cal_year) %>% count(wt=prop) %>% ungroup()
+
+data2c = data2b %>% 
+  pmap_df(
+  .f = ~circleProgressiveLayout(rep(0.5, ..2))) %>% 
+  mutate(cal_year = rep(data2a$cal_year, data2a$prop),
+         special_service_type_category = rep(data2a$special_service_type_category, data2a$prop)
+  )
+
+# graphic params
+my_gpar <- gpar(
+  col = "black",
+  fontsize = 7
+)
+
+# plot
+(plot2 = data2c%>% 
+    ggplot(aes(x, y, fill = special_service_type_category)) + 
+    geom_point(size = 4,pch = 21, color="white") + 
+    grid_panel(
+      grob = function(data, coords) {
+        if (data$PANEL[1] == 1) {
+          .x <- min(coords$x) + 0.085
+          .y <- min(coords$y) + 0.085
+          gList(
+            textGrob(
+              label = "Each circle represents\n1% of animal incidents",
+              x = unit(.x/2.5, "npc"),
+              y = unit(.y/2.5, "npc"),
+              just = c("left", "top"),
+              gp = my_gpar
+            )
+          )
+        } else {
+          nullGrob()
+        }
+      }
+    )+
+  facet_wrap(~cal_year) + 
+  scale_fill_manual(values=c("#780000","#dda15e","#c8553d","#0a9396")) +
+  scale_x_continuous(limits=c(-5,5)) + scale_y_continuous(limits=c(-6,6)) +
+  theme_void() +
+  theme(legend.position="bottom",
+        plot.margin=ggplot2::margin(0.5,1,0.5,1,"cm"),
+        plot.title=element_text(hjust=0.5, size=10,face="bold"),
+        strip.text=element_text(size=10,face="bold", color="#343a40"),
+        plot.caption=element_text(size=8),
+        legend.text = element_text(size=8)) +
+  guides(fill=guide_legend(ncol=2,title.position = "top", title.hjust = .5)) + 
+  labs(title="\n\nProportion of Special Service Type Category\n\n", fill="",
+       caption="\n\nTidy Tuesday Week 27 | Data from London.gov")
+)
+```
+
+
+```{r, fig.height=5, fig.width=4}
+# combine plot1 and plot2
+ggarrange(plot1, plot2, ncol=1)
+```
+
+
+### Animal group parent
+
+```{r}
+# animal_group_parent freq table
+animal_rescues %>% 
+  mutate(animal_group_parent = tolower(animal_group_parent)) %>%
+  group_by(animal_group_parent) %>% tally(sort=T)
+```
+
+### Clean data
+```{r}
+ar_cln = animal_rescues %>%
+  mutate(animal_group_parent = tolower(animal_group_parent),
+         final_description=tolower(final_description)) %>% 
+  mutate(datetime= dmy_hm(date_time_of_call), #parse datetime
+         date = date(datetime), #date
+         time=as_hms(dmy_hm(date_time_of_call)), #time
+         week_day=wday(date, abbr=F, label=T, week_start = 1), #day of week label
+         week_day_n=wday(date, week_start = 1), #day of week 
+         hour= hour(datetime), #hour 
+         year_day=yday(date), #day of year
+         week_n = lubridate::isoweek(date)) #week number
+ar_cln
+```
+
+
+### Animal rescue count by week number
+```{r}
+table_s1 = ar_cln %>% filter(cal_year<=2020) %>% 
+  group_by(cal_year, week_n) %>% tally() 
+
+  
+table_s2 = table_s1 %>%
+  group_by(week_n) %>% summarise(n=mean(n))
+
+
+ar_cln %>% filter(cal_year<=2020) %>% 
+  group_by(cal_year, week_n) %>% tally() %>%
+  ggplot(aes(x=week_n, y=n)) + 
+  geom_point(aes(color=cal_year),alpha=0.7, shape=21) +
+  geom_step(data = (table_s1 %>%
+  group_by(week_n)) %>% summarise(n=mean(n)), aes(y=n, x=week_n-0.5)) + 
+  #scale_color_continuous_sequential(palette="Peach") + 
+  scale_x_continuous(breaks=seq(1,53,13)) + 
+  scale_color_gradientn(colours = wes_palette("Zissou1", type = "continuous"),
+                        breaks=c(2010,2015,2020)) +
+  theme(legend.position = "right",
+        legend.title = element_text(size=8.5),
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(-5,-10,-5,-10),
+        axis.title.y=element_text(margin=margin(r=10)),
+        axis.title.x=element_text(margin=margin(t=10))) +
+  guides(color = guide_colorbar(reverse=T,
+                                title.position = "top", 
+                                barheight = unit(8, "lines"), 
+                                barwidth = unit(.5, "lines"))) +
+  labs(color="Year", x="Week of year", y="Count of animal rescues",
+       subtitle="Average number of LFB animal rescues by week")
+
+
+  
+```
+
+```{r}
+# day of week
+ar_cln %>% filter(cal_year<=2020) %>%
+  group_by(week_n, week_day, week_day_n) %>% tally() %>% ungroup() %>% 
+  mutate(group=ifelse(week_day_n>=6,"weekend","weekday")) %>%
+  ggplot(aes(x=week_day, y=n, color=group)) + 
+  geom_half_boxplot() + 
+  geom_half_point(alpha=0.6) + 
+  scale_color_manual(values=c("#005f73","#ca6702")) +
+  theme(axis.title.y=element_text(margin=margin(r=10)),
+        axis.title.x=element_text(margin=margin(t=10)),
+        axis.text.x=element_text(margin=margin(t=-5)),
+        plot.margin = unit(c(1, 1.5, 1, 0.25), "cm")) +
+  labs(x="Day of week", y="Count of animal rescues",
+       subtitle= "LFB animal recues by day of week")  +
+  scale_x_discrete(expand=c(0,1)) + 
+  scale_y_continuous(expand=c(0.1,0))
+```
+
+### Property category
+```{r}
+animal_rescues %>% 
+  mutate(group = fct_lump(animal_group_parent, 10)) %>%
+  filter(group!="Unknown - Domestic Animal Or Pet") %>%
+  filter(property_category!="Boat") %>%
+  mutate(prop_cat = fct_lump(property_category, 3)) %>%
+  group_by(group,prop_cat) %>% tally() %>%
+  mutate(prop=round(n/sum(n),4)) %>%
+  mutate(prop_cat=factor(prop_cat, 
+                         levels=c("Outdoor","Other","Non Residential","Dwelling",order=T))) %>%
+  ggplot(aes(y=fct_rev(group), x=prop, fill=prop_cat)) +
+  geom_col(width=0.7, alpha=0.8, color="white",size=0.5) + 
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20)) + 
+  scale_x_continuous(expand=c(0,0), labels=percent_format()) +
+  theme(legend.position="top",
+        legend.justification = "left",
+        plot.margin = unit(c(1, 2, 1, 0.25), "cm"),
+        legend.margin = margin(l=-5, t=10,b=0),
+        legend.title=element_blank(),
+        axis.title=element_blank(),
+        panel.grid.major.y=element_blank()
+        ) + 
+  scale_fill_npg() + 
+  guides(fill=guide_legend(keywidth = 0.5, nrow=1, reverse = T)) + 
+  labs(subtitle="Proportion of LFB animal rescues by animal group and property category")
+
+```
+
+### Recreating Guardian graphic part 1
+
+* original guardian graphic: https://www.theguardian.com/world/2021/jan/08/animal-rescues-london-fire-brigade-rise-2020-pandemic-year)   
+ 
+```{r}
+# data preparation
+# reference: https://twitter.com/thomas_mock/status/1409893668375478275/photo/1 
+ct = animal_rescues %>% 
+  filter(cal_year >= 2019, cal_year != 2021) %>%
+  mutate(group = fct_lump(animal_group_parent, 7)) %>%
+  group_by(cal_year, group) %>% tally() %>%
+  arrange(group) %>%
+  filter(group!="Unknown - Domestic Animal Or Pet") %>%
+  mutate(group=factor(group, 
+                      levels=c("Cat","Bird","Dog","Fox","Horse","Deer","Other",ordered=T))) %>%
+  ungroup() %>% group_by(group) %>%
+  mutate(prop=percent((n-lag(n))/lag(n))) %>%
+  mutate(lab = glue::glue("{group} <b>{unique(na.omit(prop))}</b>"))
+
+# plot
+ct %>%
+  ggplot(aes(y=fct_rev(lab), x=n, fill=factor(cal_year))) + 
+  geom_col(position=position_dodge(width=0.8), width=0.7) + 
+  geom_vline(color="white",xintercept=c(seq(0,300,50)), size=0.4) +
+  scale_x_continuous(breaks=seq(0,300,50),position="top",expand=c(0,0)) +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_fill_manual(values=c("grey75","#ba181b")) + 
+  theme_light() +
+  theme(axis.title=element_blank(),
+        plot.title=element_text(face="bold", size=13.5),
+        axis.text.y=ggtext::element_markdown(size=10, color="black", hjust=0),
+        axis.ticks.y=element_blank(),
+        axis.ticks.length = unit(0.14,"cm"),
+        plot.title.position = "plot",
+        legend.position = "top",
+        legend.justification = "left",
+        legend.margin = margin(l=-8, t=3.5,b=0),
+        legend.text = element_text(size=9.5),
+        panel.border = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.margin = unit(c(1.5, 1, 1.5, 1), "cm"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=9, color="grey50",hjust=0, margin=margin(t=18)),
+        axis.ticks.x.top = element_line(color = "grey75", size=0.4),
+        axis.text.x.top = element_text(color="grey70",face="bold",size=10,
+                                       margin=margin(b=7,t=-8), vjust=-1)
+        ) +
+  guides(fill=guide_legend(keyheight=0.8,keywidth=0.4, reverse=T)) +
+  labs(title= "Cats accounted for 45% of London fire brigade animal rescues, but the\nbiggest proportional increases were among birds and foxes", fill="",
+       caption="Source: London fire brigade") 
+```
+
+
+### Recreating Guardian graphic part 2
+* original gardian graphic: https://www.theguardian.com/world/2021/jan/08/animal-rescues-london-fire-brigade-rise-2020-pandemic-year  
+
+```{r}
+animal_rescues %>% filter(cal_year!=2021) %>%
+  group_by(cal_year) %>% tally() %>%
+  ggplot(aes(x=factor(cal_year), y=n, 
+             fill=I(if_else(cal_year==2020,"#d90429","grey84")))) + 
+  geom_col() + 
+  geom_hline(color="black",yintercept=0, size=0.3) +
+  scale_x_discrete(expand=c(0,1.4)) +
+  scale_y_continuous(limits=c(0,850),breaks=seq(0,800,200)) +
+  theme_minimal() +
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_line(color="grey90",size=0.25),
+        plot.title=element_text(face="bold", size=12),
+        plot.caption=element_text(hjust=0, size=8, color="grey50"),
+        plot.margin = unit(c(1, 2, 1, 2), "cm"),
+        axis.title=element_blank(),
+        axis.text.x=element_text(color="grey70",size=9, vjust=5),
+        axis.text.y=element_text(color="grey70",size=9, vjust=-0.7,
+                                 margin=margin(l=20,r=-20))) + 
+  labs(title="London firefighters attended 755 animal rescues across the\ncapital in 2020",
+       caption="Source: London fire brigade") + 
+  coord_cartesian(xlim = c(1,11.5)) 
+```
+
+
+### Dwelling Animal Rescues in 2020 (percent change from 2019)
+* reference: [Juanma](https://twitter.com/Juanma_MN/status/1409936785044656139/photo/1)
+
+```{r}
+library(openintro)
+data(london_boroughs) 
+
+animal_rescues_c<-animal_rescues%>%mutate(borough = str_to_title(borough)) %>% group_by(borough,property_category) %>% summarize (n=n())
+
+
+animal_rescues_c$borough<- fct_recode(animal_rescues_c$borough, 
+                                      "Barking & Dagenham" = "Barking And Dagenham",
+                                       "Hammersmith & Fulham" = "Hammersmith And Fulham",
+                                      "Kensington & Chelsea" = "Kensington And Chelsea",
+                                      "Kingston" = "Kingston Upon Thames",
+                                      "Richmond" = "Richmond Upon Thames")
+
+london_boroughs<-london_boroughs %>% na.omit()
+borough_join<- animal_rescues_c%>% left_join(london_boroughs, by= "borough") 
+
+borough_join_c <- borough_join %>% mutate(
+  color = case_when(
+    n < 70  ~ "< 70",
+    n >= 70 & n < 100  ~ "70 to 100",
+    n >= 100 & n < 150  ~ "100 to 150",
+    n >= 150   ~ "> 150",
+    TRUE ~ "Others"
+  ))
+
+
+borough_join_c$color <- fct_relevel(borough_join_c$color, c("> 150",
+                                                                  "100 to 150","70 to 100","< 70"))
+
+```
+
+```{r}
+bdata<-animal_rescues%>%mutate(borough = str_to_title(borough)) %>%
+  filter(cal_year==2019 | cal_year==2020) %>% 
+  filter(property_category== "Dwelling") %>%
+  group_by(borough,cal_year) %>% summarize (n=n()) %>%
+  mutate(diff = n-lag(n), pctdiff = round(diff/lag(n),3)) %>% #pct diff from 2019
+  filter(cal_year== 2020)
+summary(bdata$pctdiff) 
+
+bdata$borough<- fct_recode(bdata$borough, 
+                                      "Barking & Dagenham" = "Barking And Dagenham",
+                                      "Hammersmith & Fulham" = "Hammersmith And Fulham",
+                                      "Kensington & Chelsea" = "Kensington And Chelsea",
+                                      "Kingston" = "Kingston Upon Thames",
+                                      "Richmond" = "Richmond Upon Thames")
+
+london_boroughs<-london_boroughs %>% na.omit()
+borough_join<- bdata%>% left_join(london_boroughs, by= "borough")  
+
+borough_join_c <- borough_join %>% mutate(
+  color = case_when(
+    pctdiff <= 0  ~ "-50% to 0%",
+    pctdiff > 0 & pctdiff <= 0.5  ~ "+1% to +50%",
+    pctdiff > 0.5 & pctdiff <= 1  ~ "+50% to +100%",
+    pctdiff > 1   ~ "+100% to +280%",
+    TRUE ~ "Others"
+  ))
+
+borough_join_c$color <- fct_relevel(borough_join_c$color, 
+                                    c("-50% to 0%","+1% to +50%","+50% to +100%","+100% to +280%"))
+```
+
+
+```{r}
+ggplot() +
+  geom_polygon(data=borough_join_c, aes(x=x, y=y, group = borough, fill = color),
+               colour="white",size=0.15) + 
+  scale_fill_manual(values=c("-50% to 0%" = "#ffa62b",
+                             "+1% to +50%" = "#82c0cc",
+                             "+50% to +100%" = "#489fb5",
+                             "+100% to +280%" ="#16697a")) + 
+  coord_fixed() + # lock aspect ratio
+  theme_void(base_size=8.5) + 
+  theme(plot.margin = unit(c(1, 3, 1, 3), "cm"),
+        legend.position="bottom", 
+        plot.title=element_text(face="bold",size=10, hjust=0.5),
+        plot.subtitle = element_text(size=8, hjust=0.5)) +
+  guides(fill = guide_legend(
+    label.position = "bottom",
+    color = "#808080",
+    keywidth = 4, keyheight = 0.3)) + 
+  labs(fill="",
+       title="Dwelling Animal Rescues by LBF in 2020",
+       subtitle="Animal rescue count in 2020 expressed as a percentage of 2019 animal rescue count\n")
+```
+
+### Information retrieval
+```{r}
+library(tidytext)
+library(SnowballC)
+```
+
+```{r}
+dim(animal_rescues)
+n_distinct(animal_rescues$incident_number)
+animal_rescues %>% drop_na(incident_number) %>% count() %>% flatten()
+```
+
+```{r, warning=F, message=F}
+# 10 most common nouns (animal_group_parent == "cat")
+ ar_cln %>% drop_na(incident_number) %>%
+  filter(animal_group_parent=="cat") %>%
+  select(incident_number, final_description) %>%
+  unnest_tokens(word,final_description) %>% #token
+  filter(word!="redacted") %>% 
+  anti_join(get_stopwords()) %>% #remove stop words
+  inner_join(parts_of_speech) %>% #pos
+  mutate(stem=wordStem(word)) %>% #stem
+  filter(pos=="Noun") %>% count(stem,sort=T) %>%
+  slice(1:10)
+```
+
+```{r}
+# 10 most common nouns (animal_group_parent == "dog")
+ ar_cln %>% drop_na(incident_number) %>%
+  filter(animal_group_parent=="dog") %>%
+  select(incident_number, final_description) %>%
+  unnest_tokens(word,final_description) %>% #token
+  filter(word!="redacted") %>% 
+  anti_join(get_stopwords()) %>% #remove stop words
+  inner_join(parts_of_speech) %>% #pos
+  mutate(stem=wordStem(word)) %>% #stem
+  filter(pos=="Noun") %>% count(stem,sort=T) %>%
+  slice(1:10)
+```
+
+
+
+

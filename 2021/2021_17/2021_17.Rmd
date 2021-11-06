@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Tidy Tuesday week 17 | Data from Kaggle
+
+[Netflix Titles](), data from [Kaggle](https://www.kaggle.com/shivamb/netflix-shows). 
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggtext)
+```
+
+
+```{r}
+data = read.csv("netflix_titles.csv", header=TRUE)
+dim(data)
+str(data)
+```
+
+```{r}
+view(data)
+```
+
+```{r}
+data %>% filter(country=="") %>% count()
+```
+
+
+```{r}
+data %>%
+  filter(country!="") %>%
+  mutate(us = ifelse(country=="United States","1","0")) %>%
+  count(us)
+```
+```{r}
+# get year of date_added
+data$added = mdy(data$date_added)
+data$added_year= year(data$added)
+```
+
+```{r}
+data %>%
+  filter(country!="") %>%
+  filter(date_added!="") %>%
+  mutate(us = ifelse(country=="United States","1","0")) %>% 
+  group_by(type,added_year, us) %>%
+  tally() %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(between(added_year, 2015,2020))
+```
+
+```{r}
+data %>%
+  filter(country!="") %>%
+  filter(date_added!="") %>%
+  mutate(us = ifelse(country=="United States","1","0")) %>% 
+  group_by(type,added_year, us) %>%
+  tally() %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(between(added_year, 2015,2020)) %>%
+  ggplot(aes(x=added_year, y=n, color=us)) + 
+  geom_line(aes(group=added_year), color="#bdbbb6", size=2, alpha=0.7) +
+  geom_point(size=3, alpha=0.8) + 
+  facet_wrap(~type) + 
+  scale_color_manual(values=c("#ffa62b","#489fb5")) +
+  theme_light() + 
+  theme(panel.grid.minor=element_blank(),
+        #panel.background = element_rect(fill="#ede7e3",color=NA),
+        #plot.background = element_rect(fill="#ede7e3",color=NA)
+        ) + 
+  scale_y_continuous(expand=c(0,15))
+  
+  
+```
+
+```{r, fig.height=3, fig.width=4}
+data %>%
+  filter(country!="") %>%
+  filter(date_added!="") %>%
+  mutate(us = ifelse(country=="United States","1","0")) %>% 
+  group_by(type,added_year, us) %>%
+  tally() %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(between(added_year, 2015,2020)) %>%
+  ggplot(aes(y=type, x=prop, fill=us)) + 
+  geom_col(alpha=0.7) + 
+  scale_fill_manual(values=c("#a01a58","#0091ad")) + 
+  scale_x_continuous(labels=scales::percent_format()) +
+  facet_grid(added_year~., switch = 'y') +
+  theme_minimal() + 
+  theme(
+        plot.margin=margin(1,2,1,1,"cm"),
+        strip.placement = "outside",
+        strip.text.y.left = element_text(angle = 0),
+        plot.title=element_markdown(face="bold", size=20),
+        plot.title.position = "plot",
+        legend.position = "none",
+        axis.title = element_text(face="bold",size=10),
+        #panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank()
+        ) + 
+  coord_cartesian(expand=FALSE, clip="off") +
+  labs(y="Year and Type", x="Percent",
+       title= "Percentage of <span style = 'color:#0091ad'><b>US</b></span> and <span style = 'color:#a01a58'><b>Non-US</b></span> produced content<br>added to Netflix, from 2015 to 2020<br>",
+       caption="\nTidy Tuesday Week 17 | Data from Kaggle") 
+```
+
+alt text: Bar plot showing the percentage of US and non-US produced content added to Netflix from 2015 to 2020, where 2015 has the highest percentage of US-produced content (in both TV show and movie category) compared to other years. 

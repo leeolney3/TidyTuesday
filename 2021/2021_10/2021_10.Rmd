@@ -1,0 +1,165 @@
+---
+title: "Superbowl Ads"
+date: "2021/03/07"
+output: html_notebook
+---
+
+## Data Visualization Exercise 
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 10: [Superbowl Ads](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-02/readme.md), data from [FiveThirtyEight](https://github.com/fivethirtyeight/superbowl-ads).
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggsci)
+library(ggtext)
+library(colorspace)
+```
+
+```{r}
+# import data
+youtube <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-02/youtube.csv')
+dim(youtube)
+```
+
+
+### Ad characteristics over the Years
+* shared on [twitter](https://twitter.com/leeolney3/status/1366678172650078210/photo/1), on Mar 2,2021
+
+```{r}
+youtube %>% select(5:11) %>% pivot_longer(1:7, names_to="cat") %>% group_by(cat, value) %>% tally() %>% 
+  mutate(prop=round(n/247,3)) %>% filter(value!=FALSE)
+```
+
+```{r, fig.height=4, fig.width=4}
+youtube %>% 
+  rename(Funny= funny,
+         `Show product quickly` = show_product_quickly,
+         Patriotic= patriotic,
+         Celebrity= celebrity,
+         Danger = danger,
+         Animals = animals,
+         `Use Sex` = use_sex) %>%
+  select(youtube_url, year, Funny,`Show product quickly`, Patriotic,Celebrity,Danger,Animals,`Use Sex`) %>% 
+  pivot_longer(!1:2, names_to="cat") %>% 
+  filter(value!="FALSE") %>% 
+  group_by(year, cat) %>% 
+  tally() %>% 
+  mutate(prop=round(n/sum(n),3)) %>%
+  # plot
+  ggplot(aes(x=year, y= prop, fill=cat)) + 
+  geom_col(alpha=0.8) + facet_wrap(~cat) + 
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_futurama() + 
+  theme_minimal() + 
+  theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        strip.text=element_text(face="bold", size=12),
+        plot.title=element_text(face="bold",size=23, hjust=0.5, color="slategrey"),
+        plot.title.position="plot",
+        plot.caption=element_text(color="slategrey", size=9)) + 
+  labs(y="Percentage", x="Year",
+       title="Characteristics of Superbowl Ads Over the Years",
+       subtitle="",
+       caption="TidyTuesday week 10 | Data from FiveThirtyEight")
+```
+
+
+```{r}
+# count of YT videos by brand
+youtube %>% group_by(brand) %>% tally() %>%
+  mutate(brand=fct_recode(brand, "Hyundai" = "Hynudai")) 
+```
+
+### YT view count by year (2016 to 2020)
+* shared on [twitter](https://twitter.com/leeolney3/status/1366820114125963267/photo/1), on Mar 2, 2021. 
+
+```{r}
+labeldf = youtube %>% select(year, brand, view_count) %>%
+  filter(!is.na(view_count)) %>% filter(year>2015) %>% 
+  group_by(year) %>% top_n(1) %>% arrange(year) %>%
+  mutate(brand_vc = paste(brand,":",scales::comma(view_count),"views"))
+labeldf
+```
+
+
+```{r, fig.height=4, fig.width=4}
+youtube %>% filter(!is.na(view_count)) %>% filter(year>2015) %>%
+  ggplot(aes(x=factor(year), y= (view_count))) + 
+  geom_jitter(aes(color=factor(year)), show.legend = FALSE, alpha=0.7, width=0.35, size=2.5) + 
+  geom_text(data=labeldf, aes(x=factor(year), y=view_count, label=brand_vc, color=factor(year)), size=3.2, vjust=-1.5, show.legend = FALSE) + 
+  scale_y_continuous(labels=scales::comma_format()) + 
+  scale_color_futurama() + 
+  theme_minimal() + 
+  theme(plot.title=element_text(face="bold",size=32, hjust=0.5, color="slategrey"),
+        plot.title.position="plot",
+        plot.caption=element_text(color="slategrey", size=9)) +
+  labs(x="Year",
+       y="View Count",
+       title="Superbowl Ads Youtube View Count",
+       subtitle="",
+       caption="TidyTuesday week 10 | Data from FiveThirtyEight")
+
+```
+
+### YT view count by brand
+```{r}
+ylab = c(50,100,150)
+youtube %>% 
+  filter(!is.na(view_count)) %>%
+  ggplot(aes(x=brand, y=view_count)) + 
+  geom_jitter(alpha=0.6, size=1.7, show.legend=FALSE) + 
+  scale_y_continuous(labels = paste(ylab, "M"), breaks=10^6*ylab) +
+  theme_light() + 
+  labs(x="Brand",y="View Count", subtitle= "Superbowl Ads 2000 to 2020", title= "Youtube View Count by Brand")
+```
+
+
+### YT views, likes and comments 
+```{r, warning=FALSE, fig.width=5, fig.height=4}
+# youtube views, likes and comments count 
+# reference: Jenn Schilling (https://twitter.com/datasciencejenn/status/1367180974312751104/photo/1)
+
+youtube %>% mutate(brand = ifelse(brand == "Hynudai", "Hyundai", brand)) %>%
+ggplot(aes(x = view_count, 
+                     y = like_count,
+                     size = comment_count)) +
+  geom_point(alpha = 0.7) +
+  facet_wrap(~ brand,
+             ncol = 2,
+             strip.position = "left",
+             scales = "free") + 
+  theme_minimal() + 
+  theme(strip.text.y.left = element_text(size = 10,angle = 0,vjust = 1,hjust = 1,face = "bold"),
+        strip.placement = "outside", 
+        plot.title.position="plot",
+        panel.spacing.y = unit(0.5, "cm"),
+        panel.spacing.x = unit(0.5, "cm")) + 
+  labs(title = "Superbowl Ads 2000 to 2020",
+       subtitle="Youtube videos view, like and comment count",
+       y= "Like count",
+       x= "View count",
+       size="Comment count")
+```
+
+
+### Youtube views by brand and year (2000 to 2020)
+
+```{r, warning=FALSE}
+youtube %>%
+  filter(!is.na(view_count)) %>%
+  #filter(year>=2010) %>%
+  ggplot(aes(x=factor(year),y=brand)) + 
+  geom_tile(aes(fill=view_count)) + 
+  theme_minimal() + 
+  scale_fill_continuous_sequential(palette="heat", na.value="black", trans="log10", labels=scales::comma) +
+  theme(legend.position="top",
+        panel.grid=element_blank(),
+        plot.title=element_text(face="bold"),
+        axis.text.x=element_text(angle=45),
+        legend.title = element_text(size=9)) +
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                barwidth = unit(20, "lines"), 
+                                barheight = unit(.5, "lines"))) +
+  labs(y="Brand",x="Year", subtitle="Superbowl Ads 2000 to 2020", title = "Youtube views by brand and year", fill="View Count")
+```

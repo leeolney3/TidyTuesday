@@ -1,0 +1,439 @@
+---
+title: "Tidy Tuesday Week 35/2021"
+date: "2021/08/24"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 35
+[Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md), data from [Duke Lemur Center](https://lemur.duke.edu/) and was cleaned by [Jesse Mostipak](https://github.com/rfordatascience/tidytuesday/issues/204).
+
+```{r}
+# Load libraries
+library(tidytuesdayR)
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(gghalves)
+library(DT)
+library(rcartocolor)
+library(lubridate)
+
+options(dplyr.summarise.inform = FALSE)
+theme_set(theme_minimal(base_size = 10))
+```
+
+```{r}
+# import data
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+tax <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/taxonomy.csv')
+```
+```{r}
+head(lemurs)
+```
+```{r}
+# proportion missing data by variable
+lemurs %>% summarise(across(everything(), ~mean(is.na(.)))) %>% 
+  gather() %>%
+  mutate(value=round(value,3)) %>%
+  arrange(desc(value))
+
+# unique values by variable
+lemurs %>% summarise_all(n_distinct)
+```
+
+```{r}
+# summary of record count per animal
+lemurs %>% 
+  count(dlc_id) %>% 
+  summary()
+```
+
+### Weight by age category and gender group    
+* shared on [Twitter](https://twitter.com/leeolney3/status/1430083827540578308)
+
+```{r}
+# Latest recorded weight by specimen ID
+weight = lemurs %>% 
+  mutate(age_cat = case_when(age_category=="young_adult" ~ "Young-Adult",
+                             age_category=="IJ" ~ "Infant/Juvenile",
+                             age_category=="adult" ~ "Adult"),
+         gender= case_when(sex=="F"~ "Female",
+                           sex=="M" ~ "Male")
+         ) %>%
+  mutate(group=paste(age_cat,gender)) %>%
+  mutate(group=factor(group,levels=c("Adult Female","Adult Male",
+                      "Young-Adult Female","Young-Adult Male",
+                      "Infant/Juvenile Female","Infant/Juvenile Male","Infant/Juvenile NA"),
+                      ordered=T))  %>% 
+  group_by(dlc_id) %>%
+  slice(which.max(weight_date)) 
+
+# median
+weight %>%
+  group_by(group) %>%
+  summarise(med=median(weight_g)) %>%
+  arrange(desc(med))
+
+# boxplot with barcode strips 
+weight %>%
+	ggplot(aes(y=weight_g, x=group, color=group)) + 
+   geom_boxplot(
+    width = .2, 
+    outlier.shape = NA,
+    fill="#f4f4f2",
+    position=position_nudge(x=0.2,y=0)
+  ) + 
+  geom_point(
+    shape = 95,
+    size = 6,
+    alpha = .2,
+    position=position_nudge(x=-0.1,y=0)
+  ) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 15)) +
+  scale_color_manual(values=c("#003049","#003049",
+                              "#f77f00","#003049",
+                              "#003049","#003049","#003049")) + 
+  theme(legend.position="none",
+        panel.grid=element_line(size=.2, color="#ced4da"),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x=element_blank(),
+        axis.title.x=element_markdown(size=8.2, margin=margin(t=8)),
+        axis.title.y=element_markdown(size=8.2, margin=margin(r=8)),
+        axis.text.x=element_text(size=7.5, margin=margin(t=-5)),
+        plot.caption=element_text(size=7, color="#495057"),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", size=13),
+        plot.subtitle = element_text(size=8),
+        plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+        plot.background = element_rect(fill="#f4f4f2", color=NA)
+        ) + 
+  labs(x="**Age and gender group**", y="**Latest weight recorded** (in grams)",
+       caption="#TidyTuesday Week 35 | Data from Duke Lemur Center",
+       title="Weight of lemurs",
+       subtitle="by age category and gender (latest date by specimen ID), where Young Adult Females have the highest median weight at 2155 grams.")
+
+```
+
+### Adult male weight by month of weigh-in
+```{r}
+# adult male: summary of record count
+lemurs %>% 
+  filter(sex=="M") %>%
+  filter(age_category=="adult") %>%
+  count(dlc_id) %>% summary(n)
+
+# adult male weight by month of weigh-in
+pal = colorRampPalette(rcartocolor::carto_pal(n=12,name="Prism")[1:10])
+ 
+lemurs %>% 
+  filter(sex=="M") %>%
+  filter(age_category=="adult") %>%
+  group_by(dlc_id) %>%
+  mutate(n=n()) %>%
+  filter(n>40) %>% 
+  ggplot(aes(x=factor(birth_month), y=weight_g, color=factor(birth_month))) + 
+  geom_half_boxplot(outlier.size = -1) + 
+  geom_half_point(shape=21, alpha=0.4,size=1) +
+  scale_color_manual(values=pal(n_distinct(lemurs$month_of_weight))) + 
+  scale_y_continuous(breaks=seq(0,5000,1000)) +
+  theme(legend.position="none",
+        panel.grid=element_line(size=.3),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x=element_blank(),
+        plot.title.position = "plot",
+        axis.title.x=element_markdown(size=8.5),
+        axis.title.y=element_markdown(size=8.5),
+        plot.title=element_text(face="bold", size=13),
+        plot.subtitle = element_text(size=8),
+        plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+        axis.text.x=element_text(margin=margin(t=-7, b=5))) + 
+  labs(y="**Weight** (in grams)", x="**Month** (of the year the animal was weighed)",
+       title="Weight of adult male lemurs",
+       subtitle="by month of the year the animal was weighed, for adult male lemurs that have more than 40 total records")
+```
+
+### Lemur count by species
+```{r}
+tax = tax %>% 
+  mutate(common_name= ifelse(common_name=="hybrid",
+                            paste0(common_name," ","(",latin_name,")"),common_name),
+         taxon= ifelse(taxon=="CMEAD","CMED", taxon))
+```
+
+```{r}
+# join
+common_name = lemurs %>% left_join(tax, by="taxon") %>%
+  group_by(dlc_id) %>%
+  slice(which.max(weight_date)) %>%
+  ungroup() %>%
+  mutate(common_name_group = fct_lump(common_name,20)) %>%
+  count(common_name_group,sort=T) %>%
+  mutate(common_name_group = forcats::fct_rev(forcats::fct_inorder(common_name_group)),
+    common_name_group = forcats::fct_relevel(common_name_group, "Other", after = 0),
+    perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"),
+    perc = if_else(row_number() == 1, paste(perc, "of all lemurs species"), perc),
+    place = if_else(row_number() == 1, 1, 0.2),
+    perc = paste(" ", perc, " ")
+         )
+
+pal <- c(
+  "#cdd2d7",
+  rep("#adb5bd", length(common_name$common_name_group) - 4), 
+  "#b7094c", "#0091ad", "#f9c74f"
+)
+
+common_name %>%
+  ggplot(aes(x=n, y=common_name_group, fill=common_name_group)) +
+  geom_col() + 
+  geom_text(aes(label=perc, hjust = place), size=2.8, fontface = "bold") + 
+  scale_fill_manual(values = pal, guide = "none") + 
+  scale_x_continuous(expand = c(.01, .01)) +
+  theme_void(base_size = 10) + 
+  theme(axis.text.y=element_text(hjust=1, size=8),
+        plot.margin = margin(15, 30, 15, 15),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", size=13,margin=margin(b=10))) +
+  labs(title ="Lemur count by species")
+```
+
+
+### Weight of female lemurs compared to mal
+```{r}
+female = lemurs %>% left_join(tax, by="taxon") %>%
+  filter(preg_status!="P") %>%
+  filter(age_category!="IJ") %>%
+  drop_na(common_name, sex, dlc_id, weight_g) %>%
+  group_by(common_name, sex, dlc_id) %>%
+  summarise(weight=mean(weight_g)) %>%
+  ungroup() %>%
+  group_by(common_name, sex) %>%
+  summarise(weight2=mean(weight)) %>%
+  mutate(diff=weight2-lag(weight2),
+         col=ifelse(diff<0,"Female>Male","Male>Female")) %>%
+  filter(sex=="M") %>%
+  mutate(diff=-(diff),
+         pct_diff=round(diff/weight2,4)) %>%
+  ungroup()%>%
+  mutate(al= ifelse(pct_diff==max(pct_diff)|pct_diff==min(pct_diff), 1,0.7))
+
+
+ggplot(female,aes(y=reorder(common_name, pct_diff), x=pct_diff, fill=col)) + 
+  geom_col(aes(alpha=al),show.legend=F) +
+  geom_text(data=female %>% filter(col=="Female>Male"), aes(x=-0.003, y=reorder(common_name, pct_diff), label=common_name,alpha=al), hjust=1, size=2.6, color="#023e8a") +
+  geom_text(data=female %>% filter(col=="Male>Female"), aes(x=0.003, y=reorder(common_name, pct_diff), label=common_name, alpha=al), hjust=0, size=2.6, color="#e85d04") +
+  geom_vline(xintercept = 0, size=0.7) +
+  scale_fill_manual(values=c("#023e8a","#e85d04")) +
+  scale_x_continuous(limits=c(-.15,.15), breaks=seq(-.15,.15,.05), 
+                     labels=scales::percent_format(accuracy = 1)) +
+  scale_alpha_identity() +
+  theme(panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        panel.grid=element_line(size=.3),
+        axis.text.y=element_blank(),
+        axis.text.x=element_text(size=8),
+        axis.title=element_blank(),
+        plot.margin = margin(15, 25, 15, 25),
+        plot.title=element_text(size=10, face="bold"),
+        plot.subtitle = element_text(size=8.7, margin=margin(b=10))
+        ) + 
+  labs(title="Weight of female lemurs compared to male",
+       subtitle="Average non-pregnant female (adult and young adult) lemurs' weight expressed as a percentage difference to male")
+```
+
+### Age category, hybrid, birth type
+
+```{r}
+lemurs2 = lemurs %>% 
+  mutate(age_category = case_when(age_category=="young_adult" ~ "Young-Adult",
+                             age_category=="IJ" ~ "Infant/Juvenile",
+                             age_category=="adult" ~ "Adult"),
+         hybrid= case_when(hybrid=="N"~"Not hybrid",
+                           hybrid=="Sp"~"Hybrid"),
+         birth_type= case_when(birth_type=="CB"~'Captive-born',
+                               birth_type=="WB"~'Wild-born',
+                               birth_type=="Unk"~'Unknown'),
+         gender= case_when(sex=="F"~ "Female",
+                           sex=="M" ~ "Male")
+         )
+
+# age category
+lemurs2 %>% 
+  group_by(age_category) %>%
+  summarise(n=n_distinct(dlc_id)) %>%
+  arrange(desc(n)) 
+
+# hybrid 
+lemurs2 %>%
+  group_by(hybrid) %>%
+  summarise(n=n_distinct(dlc_id)) %>%
+  arrange(desc(n))
+
+# birth type
+lemurs2 %>% 
+  group_by(birth_type) %>%
+  summarise(n=n_distinct(dlc_id)) %>%
+  arrange(desc(n))
+
+# birth type, age category of animals that are dead 
+lemurs2 %>%
+  filter(!is.na(dod)) %>%
+  group_by(birth_type, age_category) %>%
+  summarise(n=n_distinct(dlc_id)) %>%
+  mutate(percentage=scales::percent(n / sum(n), accuracy = .1, trim = FALSE))
+```
+
+### Average weight of male captive-born lemurs
+```{r}
+# average weight of male captive born lemurs, by species and age category
+lemurs %>% left_join(taxon_df, by="taxon") %>%
+  filter(birth_type=="CB") %>%
+  filter(sex=="M") %>%
+  group_by(dlc_id, common_name, age_category) %>%
+  summarise(weight=mean(weight_g)) %>%
+  ungroup() %>%
+  mutate(age_category = case_when(age_category=="young_adult" ~ "Young-Adult",
+                             age_category=="IJ" ~ "Infant/Juvenile",
+                             age_category=="adult" ~ "Adult")) %>%
+  group_by(common_name, age_category) %>%
+  summarise("average weight"= round(mean(weight),2)) %>%
+  pivot_wider(names_from=age_category, values_from="average weight") %>%
+  rename("Species"=common_name) %>%
+  ungroup() %>%
+  select("Species","Adult", "Young-Adult", "Infant/Juvenile") %>%
+  DT::datatable(rownames=FALSE,options = list(order = list(list(1, 'desc'))),
+                caption = htmltools::tags$caption( style = 'caption-side: top; text-align: center; color:black; font-size:130% ;','Average weight of male captive-born lemurs (in grams)'))
+```
+
+### Age category count by year
+* reference: https://twitter.com/alyssastweeting/status/1430363273401044999
+```{r}
+age_year = lemurs2 %>% 
+  mutate(age_category=factor(age_category,
+                             levels=c("Infant/Juvenile","Young-Adult","Adult"), ordered=T)) %>%
+  group_by(dlc_id) %>%
+  mutate(weight_date = min(ymd(weight_date))) %>%
+  mutate(year_joined=year(weight_date)) %>%
+  summarise(name, taxon, year_joined, age_category) %>%
+  unique() %>%
+  group_by(year_joined, age_category) %>%
+  mutate(n=length(year_joined)) %>%
+  unique() 
+```
+
+```{r}
+ggplot(age_year, aes(x=year_joined, fill=age_category)) + 
+  geom_bar(stat="count", alpha=0.9) + 
+  scale_fill_manual(values=c("#6699cc","#ff8c42","#a23e48"), guide="none") +
+  scale_x_continuous(expand=c(0,0)) +
+  theme(plot.title.position = "plot",
+        panel.grid=element_line(size=.3),
+        plot.subtitle=element_markdown(size=9.5),
+        plot.title=element_text(face="bold", size=13),
+        axis.title = element_text(size=8.5, face="bold"),
+        plot.margin = margin(15, 25, 15, 25),
+        ) + 
+  labs(subtitle="Count of age categories by first record year <span style = 'color:#6699cc'><b>Infant/Juvenile</b></span>, <span style = 'color:#ff8c42'><b>Young-Adult</b></span> and <span style = 'color:#a23e48'><b>Adult</b></span>",
+       title="Lemur age categories by year",
+       x="Count", y="Year joined")
+```
+
+### Life span by species 
+* reference: https://github.com/BlakeRMills/TidyTuesday/blob/main/Lemurs%20(24%20Aug%202021)/TidyTuesday%2024%20Aug%202021%20Lemurs.R
+
+```{r, fig.width=3.5, fig.height=3.3}
+life = lemurs %>% left_join(tax, by="taxon") %>%
+  mutate(common_name = str_to_title(common_name) %>% str_remove(" Lemur"),
+         birth_type= case_when(birth_type=="CB"~'Captive-born',
+                               birth_type=="WB"~'Wild-born',
+                               birth_type=="Unk"~'Unknown')) %>%
+  group_by(dlc_id) %>%
+  slice(which.max(weight_date)) %>%
+  ungroup() %>%
+  filter(!is.na(age_at_death_y)) %>%
+  filter(birth_type!="Unknown")
+
+life %>%
+  group_by(common_name) %>%
+  summarise(mean=mean(age_at_death_y)) %>%
+  left_join(., life, by="common_name") %>%
+  mutate(mean = round(mean, 1),
+         label = sprintf('%.1f', mean)) %>%
+  ggplot(aes(y=fct_rev(fct_reorder(common_name, desc(mean))), x=mean)) + 
+  geom_point(aes(x= age_at_death_y, color=birth_type), shape=21) +
+  geom_point(size=6, color="#5c4d7d") +
+  geom_text(aes(label=mean),size=2, color="white") +
+  scale_color_manual(values=c("#dda15e","#0077b6"), guide="none") +
+  #coord_cartesian(expand=F, clip="off") +
+  theme(panel.grid=element_line(size=.3),
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor=element_blank(),
+        plot.title.position = "plot",
+        plot.margin = margin(15, 25, 15, 25),
+        axis.title=element_text(size=8.5),
+        axis.text.y=element_text(size=7.5,margin=margin(r=-10)),
+        plot.title=element_text(size=10, face="bold"),
+        plot.subtitle=element_markdown(size=8.5)
+        ) +
+  labs(x="Lifespan (in years)", y="Lemur species",
+       title="Lemur lifespan by taxonomy",
+       subtitle="<span style = 'color:#5c4d7d'><b>Average</b></span> lifespan of <span style = 'color:#dda15e'><b>Captive-born</b></span> and <span style = 'color:#0077b6'><b>Wild-born</b></span> lemurs by taxonomy")
+```
+
+### Number of offspring by year 
+* reference: https://twitter.com/tacheboutit/status/1430257413307916293/photo/1
+
+```{r, warning=F}
+offspring = lemurs %>% 
+  drop_na(dob,n_known_offspring) %>%
+  mutate(year=year(dob)) %>%
+  filter(between(year, 1958,2015)) %>%
+  group_by(dlc_id) %>%
+  slice(which.max(weight_date)) %>%
+  ungroup() %>%
+  group_by(year) %>% arrange(year) %>%
+  mutate(sh = ifelse(n_known_offspring==max(n_known_offspring)|n_known_offspring==min(n_known_offspring)
+                       ,19,1),
+         al = ifelse(n_known_offspring==max(n_known_offspring)|n_known_offspring==min(n_known_offspring)
+                       ,1,0.5)) %>%
+  mutate(col= case_when(n_known_offspring==min(n_known_offspring)~"#4DBBD5FF",
+                        n_known_offspring==max(n_known_offspring)~"#00A087FF",
+                        TRUE~"grey50"))
+
+summary = offspring %>% group_by(year) %>% summarise(med=median(n_known_offspring))
+spline_df <- as.data.frame(spline(summary$year, summary$med))
+```
+
+```{r}
+offspring %>%
+  ggplot(aes(x=year, y= n_known_offspring)) +
+  geom_rect(aes(xmin=1960, xmax=1970, ymin=0, ymax=Inf), fill="#f8f9fa", alpha=0.1, inherit.aes = F) +
+  geom_rect(aes(xmin=1980, xmax=1990, ymin=0, ymax=Inf), fill="#f8f9fa", alpha=0.1, inherit.aes = F) +
+  geom_rect(aes(xmin=2000, xmax=2010, ymin=0, ymax=Inf), fill="#f8f9fa", alpha=0.1, inherit.aes = F) +
+  geom_point(aes(shape=sh, alpha=al, color=col)) +
+  #geom_segment(data=summary, aes(x=year-0.5,xend=year+0.5, y=med, yend=med),size=1.5, color="red")
+  #geom_step(data=summary, aes(x=year-0.5, y=med), color="red")
+  geom_point(data=summary, aes(x=year, y=med), color="#E64B35FF") +
+  geom_line(data=spline_df, aes(x=x,y=y), color="#E64B35FF") +
+  scale_shape_identity() +
+  scale_alpha_identity() +
+  scale_color_identity() + 
+  scale_x_continuous(breaks=seq(1960,2020,10), expand = c(.01, .01)) + 
+  theme(panel.grid.minor.x=element_blank(),
+        plot.title.position = "plot",
+        axis.title = element_text(size=8.5, face="bold"),
+        plot.title=element_text(size=12, face="bold"),
+        plot.subtitle=element_markdown(size=8.5, margin=margin(b=10)),
+        plot.margin = margin(15, 25, 15, 25),
+        axis.text.x=element_text(margin=margin(t=-7))
+        ) + 
+  labs(x="Year",y="Number of offspring",
+       title="Lemur offspring by year",
+       subtitle="<span style = 'color:#E64B35FF'><b>Median</b></span>, <span style = 'color:#4DBBD5FF'><b>minimum</b></span> and <span style = 'color:#00A087FF'><b>maximum</b></span> count of offspring of individual is known to have produced (latest record date by specimen ID)")
+```
+
+
+
+
+
+
+

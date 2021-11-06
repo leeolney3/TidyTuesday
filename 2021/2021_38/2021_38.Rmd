@@ -1,0 +1,443 @@
+---
+title: "Tidy Tuesday Week 38"
+date: "2021/09/14"
+output: html_notebook
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 37 [Billboard Top 100](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-14/readme.md) data from [Data.World](https://data.world/kcmillersean/billboard-hot-100-1958-2017#) by way of Sean Miller, [Billboard.com](http://billboard.com/) and Spotify.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(ggtext)
+library(hrbrthemes)
+library(ggsci)
+library(ggnewscale)
+```
+
+```{r}
+billboard <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-14/billboard.csv',show_col_types = FALSE)
+glimpse(billboard)
+
+features <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-14/audio_features.csv',show_col_types = FALSE)
+glimpse(features)
+```
+
+
+### Changes in loudness by year 
+* shared on [Twitter](https://twitter.com/leeolney3/status/1437583615764881409)
+```{r}
+b1 = billboard %>% mutate(date=mdy(week_id),year=year(date)) %>% select(-url)
+range(b1$date)
+```
+
+
+```{r}
+f1 = features %>% select(song_id, loudness)
+joined = b1 %>% left_join(f1, by="song_id")
+
+loudness = joined %>% distinct(song_id, year, loudness) %>% drop_na(loudness) %>%
+  select(song_id, year, loudness) %>%
+  group_by(song_id, loudness) %>%
+  filter(row_number()==1) %>% #first record of song
+  filter(loudness<0) 
+```
+
+```{r}
+loudness %>%
+  ggplot(aes(x=factor(year), y=loudness)) +
+  geom_vline(xintercept=c("1960","1970","1980","1990","2000","2010","2020"), 
+             color="#495057", size=.3, linetype="dotted") +
+  geom_boxplot(outlier.size = 1, outlier.shape=21, color="#a53860", size=0.3, outlier.alpha=0.7) +
+  scale_x_discrete(expand = expansion(mult = c(.06, .02))) +
+  scale_y_continuous(breaks=c(-20,-10,0), expand=c(0.02,0.02)) +
+  theme_minimal(base_size=9) +
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor=element_blank(),
+        axis.text.x=element_blank(),
+        panel.grid=element_line(size=.3, color="#adb5bd"),
+        axis.text.y=element_text(margin=margin(r=-15), vjust=1.5),
+        axis.title.x=element_blank(),
+        axis.title.y=element_markdown(face="bold", color="#343a40", size=7.5),
+        plot.margin = unit(c(.5, .7, .5, .5), "cm"),
+        plot.title=element_markdown(size=15, face="bold",margin=margin(b=7)),
+        plot.caption=element_text(hjust=0, size=6.5,margin=margin(t=8), color="#6c757d"),
+        plot.subtitle=element_text(size=7.5, margin=margin(b=9))
+        ) +
+  annotate("richtext", x=c("1960","1970","1980","1990","2000","2010","2020"), y=rep(-29), 
+           label=c("1960","1970","1980","1990","2000","2010","2020"), size=2.4, color="#343a40",
+           fill = "white", label.color = NA) +
+  labs(y="**Loudness** (in dB)", x="Year",
+       title="<span style = 'color:#a53860;'>Loudness</span> of Billboard Top 100 Songs",
+       subtitle="Changes in music track loudness (in decibels) by year. Includes songs listed on Billboard Top 100 from Aug 02, 1958 to May 29, 2021.",
+       caption="#TidyTuesday Week 38 | Data from Data.World by way of Sean Miller, Billboard.com and Spotify")
+  
+```
+ALT Text: Grouped boxplot showing the track loudness (in decibels) of Billboard Top 100 songs by year. The chart includes songs listed on Billboard Top 100 from Aug 02, 1958 to May 29, 2021, with loudness measurements. The chart shows that from around 1990 to 2010, the median loudness have increased consistently. 
+
+### Genres
+```{r}
+b2 =billboard%>%
+  filter((weeks_on_chart==1)&(instance==1))%>%
+  mutate(date=mdy(week_id),year=year(date))%>%
+  filter(between(year,1959,2020))
+
+f2 = features %>% select(song_id, spotify_genre) 
+
+joined2 = b2 %>% left_join(f2, by="song_id")
+```
+
+
+```{r}
+joined2 %>% 
+  select(year, spotify_genre, song_id) %>%
+  drop_na(spotify_genre) %>%
+  mutate(main_genre= case_when(
+    str_detect(spotify_genre,"rock")~"Rock",
+    str_detect(spotify_genre,"rap")~"Rap" ,
+    str_detect(spotify_genre,"pop")~"Pop",
+    str_detect(spotify_genre,"country")~"Country",
+    str_detect(spotify_genre,"r&b")~"R&B",
+    str_detect(spotify_genre,"hiphop")~"hiphop",
+    TRUE~"Other"
+    )) %>%
+  count(year, main_genre) %>%
+  group_by(year) %>%
+  mutate(pct =n/sum(n)) %>%
+  mutate(
+    main_genre = factor(main_genre),
+    main_genre = forcats::fct_relevel(main_genre, "Other", after = 5)
+  ) %>%
+  ggplot(aes(x=year, y=pct, fill=main_genre)) +
+  geom_col(width=1) +
+  #geom_area(position="fill") +
+  scale_fill_npg() +
+  scale_x_continuous(expand=c(0.01,0.01)) +
+  scale_y_continuous(expand=c(0.01,0.01), labels=scales::percent_format()) +
+  theme_ipsum(base_size = 10) +
+  guides(fill = guide_legend(override.aes = list(size = 1.5))) +
+  theme(plot.title=element_text(size=13, margin=margin(b=3)),
+        plot.subtitle=element_text(size=10, margin=margin(b=7)),
+        axis.text.x=element_text(size=7),
+        axis.text.y=element_text(size=7)
+        ) +
+  labs(y="Percent", y="Year", fill="Genre",
+       title="Genres of Billboard Top 100 Songs",
+       subtitle="1959 to 2020") 
+```
+
+### Track duration and explicit flag
+* inspired by: https://twitter.com/GrabowMarius/status/1438081023863107584/photo/1
+
+```{r, message=F}
+b3 =billboard%>%
+  filter((weeks_on_chart==1)&(instance==1))%>%
+  mutate(date=mdy(week_id),year=year(date))%>%
+  filter(between(year,1959,2020))
+
+joined3 = b3 %>% left_join(features, by="song_id") %>%
+  select(year, date, song_id, explicit=spotify_track_explicit, duration=spotify_track_duration_ms) %>%
+  drop_na() %>%
+  filter(duration>quantile(duration,0.025,na.rm=T),
+         duration<quantile(duration,0.975,na.rm=T))%>%
+  mutate(duration=duration/1000)%>%
+  mutate(explicit= as.factor(recode(as.character(explicit),"FALSE"="Not explicit", "TRUE"="Explicit"))) %>%
+  group_by(year) %>%
+  mutate(med_duration=median(duration))
+
+ggplot(joined3) +
+  geom_line(aes(x=date, y=duration, color=explicit),size=0.1, alpha=0.9, show.legend = F) +
+  scale_color_manual(values=c("#4d194d","#006466")) +
+  new_scale_color() +
+  geom_smooth(aes(x=date, y=med_duration, color=explicit),size=1, show.legend=F) +
+  scale_color_manual(values=c("#f15bb5", "#d9ed92")) +
+  facet_wrap(~explicit, ncol=1, scales="free") +
+  theme_ipsum(base_size = 9) +
+  theme(plot.title=element_markdown(size=13, margin=margin(b=3)),
+        plot.subtitle=element_text(size=10, margin=margin(b=10), face="italic", color="#6c757d"),
+        plot.title.position = "plot",
+        axis.text.x=element_text(size=7.5),
+        axis.text.y=element_text(size=7.5),
+        panel.spacing.y = unit(1, "lines"),
+        strip.text=element_text(face="bold", size=10)
+        ) +
+  scale_y_continuous(breaks=seq(150,350,100), limits=c(120,370)) +
+  scale_x_date(expand=c(0.01,0.01), limits = as.Date(c('1959-01-03','2020-12-26'))) +
+  labs(y="Duration (in seconds)", x="Date", 
+       title="<span style = 'color:black;'>Billboard Top 100:</span> <span style = 'color:#6c757d;'>Median Track Duration</span>",
+       subtitle="by chart date and Spotify explicit flag")
+```
+
+
+### PCA (year)
+* reference: Benjamin Nowak, *PCA with tidyverse*, https://bjnnowak.netlify.app/2021/09/15/r-pca-with-tidyverse/
+
+```{r}
+library(broom)
+library(ggrepel)
+```
+
+
+```{r}
+bill_prep<-billboard%>%
+  filter((weeks_on_chart==1)&(instance==1))%>%
+  mutate(date=mdy(week_id),year=year(date))
+
+joined4<-features%>%
+  left_join(bill_prep,by="song_id")
+
+pca_data = joined4 %>%
+  select(
+    c(danceability,energy,instrumentalness,
+      key,acousticness,mode,valence,tempo,
+      time_signature,speechiness,loudness,liveness,
+      year)
+  )%>%
+  drop_na()
+```
+
+```{r}
+pca <-pca_data %>%
+  select(-year)%>%
+  prcomp(scale = TRUE)
+
+pca %>%
+  tidy(matrix = "eigenvalues")
+```
+```{r}
+# plot variables
+pca_var = pca %>%
+  tidy(matrix = "rotation") %>% # Extract variable coordinates
+  pivot_wider(names_from = "PC", names_prefix = "PC", values_from = "value")%>% # Format table form long to wide
+  rename(Variable=column)%>% 
+  mutate(Variable=stringr::str_to_title(Variable))%>%
+  mutate(Variable=stringr::str_replace_all(Variable,"_"," ")) # Change '_' for space
+
+# base plot
+plt_var<-ggplot(data=pca_var,aes(PC1, PC2)) +
+  geom_segment(
+    xend = 0, yend = 0, 
+    arrow = arrow(
+      length = unit(0.03, "npc"),
+      ends = "first"
+    )
+  )+
+  geom_text_repel(
+    aes(label = Variable),
+    hjust = 1,size=3,
+    min.segment.length = Inf,
+    nudge_x=0.01,nudge_y=0.01
+  ) +
+  coord_fixed()+
+  labs(
+    title = 'Plot of variables',
+    x='PC1 (22%)',
+    y='PC2 (11%)',
+    color='Year'
+  )+
+  theme_minimal()
+```
+
+```{r}
+# year: get axes coordinates
+year_coord<-as.data.frame(
+  cor(pca_data$year,pca$x) #corr: year with PCA axis
+  )%>%
+  mutate(Variable="Year")
+
+# add year to base plot
+plt_var +
+  geom_segment(
+    data=year_coord,
+    color="red",
+    xend = 0, yend = 0, 
+    arrow = arrow(
+      length = unit(0.03, "npc"),
+      ends = "first"
+    )
+  )+
+  geom_text_repel(
+    data=as.data.frame(year_coord),
+    aes(label = Variable),
+    color="red",hjust = 1,size=3,
+    min.segment.length = Inf,
+    nudge_x=0.02,nudge_y=-0.02
+  )+
+  labs(
+    subtitle="Year as additional variable"
+  )
+```
+
+### Dimensionality reduction 
+* reference: Juila Silge, *PCA with tidyverse, Dimensionality reduction for #TidyTuesday Billboard Top 100 songs*, https://www.r-bloggers.com/2021/09/dimensionality-reduction-for-tidytuesday-billboard-top-100-songs/
+
+```{r}
+library(corrr)
+library(tidymodels)
+library(ggforce) #geom_autopoint(), geom_autodensity()
+library(embed) #umap
+```
+
+
+```{r, message=F}
+# find longest streak of each song
+max_weeks <-
+  billboard %>%
+  group_by(song_id) %>%
+  summarise(weeks_on_chart = max(weeks_on_chart), .groups = "drop")
+
+# join with features
+billboard_joined <-
+  features %>%
+  filter(!is.na(spotify_track_popularity)) %>%
+  inner_join(max_weeks)
+```
+
+```{r}
+# correlation
+billboard_joined %>%
+  select(danceability:weeks_on_chart) %>%
+  na.omit() %>%
+  correlate() %>%
+  rearrange() %>%
+  network_plot(colours = c("orange", "white", "midnightblue"))
+```
+
+```{r}
+# partition data
+set.seed(123)
+billboard_split <- billboard_joined %>%
+  dplyr::select(danceability:weeks_on_chart) %>%
+  mutate(weeks_on_chart = log(weeks_on_chart)) %>%
+  na.omit() %>%
+  initial_split(strata = weeks_on_chart)
+
+billboard_split
+
+billboard_train <- training(billboard_split)
+billboard_test <- testing(billboard_split)
+```
+
+
+```{r}
+# basic starter recipe
+billboard_rec <-
+  recipe(weeks_on_chart ~ ., data = billboard_train) %>%
+  step_zv(all_numeric_predictors()) %>%
+  step_normalize(all_numeric_predictors())
+rec_trained <- prep(billboard_rec)
+rec_trained 
+```
+
+```{r}
+# prep, bake and visualize function
+plot_test_results <- function(recipe, dat = billboard_test) {
+  recipe %>%
+    prep() %>%
+    bake(new_data = dat) %>%
+    ggplot() +
+    geom_autopoint(aes(color = weeks_on_chart), alpha = 0.4, size = 0.5) +
+    geom_autodensity(alpha = .3) +
+    facet_matrix(vars(-weeks_on_chart), layer.diag = 2) +
+    scale_color_distiller(palette = "BuPu", direction = 1) +
+    labs(color = "weeks (log)")
+}
+```
+
+#### PCA
+```{r}
+# Principal Component Analysis (PCA)
+rec_trained %>%
+  step_pca(all_numeric_predictors(), num_comp = 4) %>%
+  plot_test_results() +
+  ggtitle("Principal Component Analysis") +
+  theme_light(base_size = 9) +
+  theme(panel.grid.minor=element_blank(),
+        strip.background = element_rect(fill=NA, color=NA),
+        strip.text=element_text(color="black", size=10, face="bold"),
+        plot.title = element_text(face="bold"))
+```
+
+```{r}
+rec_trained %>%
+  step_pca(all_numeric_predictors(), num_comp = 4) %>%
+  prep() %>%
+  tidy(number = 3) %>%
+  filter(component %in% paste0("PC", 1:4)) %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 5) %>%
+  ungroup() %>%
+  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  geom_col(alpha = 0.8, width=0.7) +
+  scale_fill_manual(values=c("#ee9b00","#005f73")) +
+  facet_wrap(vars(component), scales = "free_y") +
+  labs(x = "Contribution to principal component", y = NULL, fill = "Positive?") +
+  theme_ipsum(base_size = 9) + 
+  theme(plot.title.position = "plot",
+        panel.spacing = unit(1, "lines")) +
+  labs(subtitle="Principal component analysis (PCA)") +
+  guides(fill = guide_legend(override.aes = list(size = 1.5)))
+  
+```
+#### PLS
+
+```{r}
+# PLS (Partial least squares)
+rec_trained %>%
+  step_pls(all_numeric_predictors(), outcome = "weeks_on_chart", num_comp = 4) %>%
+  plot_test_results() +
+  ggtitle("Partial Least Squares") +
+  theme_light(base_size = 9) +
+  theme(panel.grid.minor=element_blank(),
+        strip.background = element_rect(fill=NA, color=NA),
+        strip.text=element_text(color="black", size=10, face="bold"),
+        plot.title = element_text(face="bold"))
+```
+
+```{r}
+rec_trained %>%
+  step_pls(all_numeric_predictors(), outcome = "weeks_on_chart", num_comp = 4) %>%
+  prep() %>%
+  tidy(number = 3) %>%
+  filter(component %in% paste0("PLS", 1:4)) %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 5) %>%
+  ungroup() %>%
+  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  geom_col(alpha = 0.8, width=0.7) +
+  scale_fill_manual(values=c("#ee9b00","#005f73")) +
+  facet_wrap(vars(component), scales = "free_y") +
+  labs(x = "Contribution to PLS component", y = NULL, fill = "Positive?") +
+  theme_ipsum(base_size = 9) +
+  theme(plot.title.position = "plot",
+        panel.spacing = unit(1, "lines")) +
+  labs(subtitle="Partial least squares (PLS)") +
+  guides(fill = guide_legend(override.aes = list(size = 1.5)))
+```
+
+#### UMAP
+```{r}
+# Uniform manifold approximation and projection (UMAP)
+rec_trained %>%
+  step_umap(all_numeric_predictors(), num_comp = 4) %>%
+  plot_test_results() +
+  ggtitle("UMAP") +
+  theme_light(base_size = 9) +
+  theme(panel.grid.minor=element_blank(),
+        strip.background = element_rect(fill=NA, color=NA),
+        strip.text=element_text(color="black", size=10, face="bold"),
+        plot.title = element_text(face="bold"))
+```
+
+
+
+
+
+
+
+
+
+
+
+

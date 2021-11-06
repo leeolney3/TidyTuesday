@@ -1,0 +1,444 @@
+---
+title: "Video Games And Sliced"
+date: "2021/03/16"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 12 [Video Games And Sliced](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-16/readme.md),data from [Steam](https://www.kaggle.com/michau96/popularity-of-games-on-steam) by way of Kaggle and originally from [SteamCharts](https://steamcharts.com/). 
+
+
+```{r, warning=FALSE, message=FALSE}
+# load libaries 
+library(tidyverse)
+library(ggtext)
+library(colorspace)
+library(ggbump)
+library(lubridate)
+```
+
+
+```{r}
+# import data
+games <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-16/games.csv')
+```
+
+```{r}
+view(games)
+```
+
+```{r}
+games %>% 
+  filter(year==2021) %>% 
+  filter(month=="February") %>% 
+  arrange(desc(avg)) 
+```
+
+
+### Cities Skylines game 
+* shared on [twitter](https://twitter.com/leeolney3/status/1371729694446526464/photo/1)
+```{r}
+p1 = games %>% 
+  filter(gamename=="Cities: Skylines") %>%
+  mutate(app = parse_number(avg_peak_perc)) %>%
+  pivot_longer(cols=c(avg, peak)) %>%
+  filter(between(year, 2015,2020)) %>%
+  mutate(month2 = match(month, month.name)) %>%
+  ggplot(aes(x=month2, y=value, fill=fct_rev(name))) + 
+  geom_area(position="identity") + 
+  facet_wrap(~year, ncol=6) + 
+  scale_x_continuous(breaks=c(6)) +
+  scale_y_continuous(labels=scales::comma) +
+  scale_fill_manual(values=c("#48A9A6","#4357AD")) + 
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.text.x=element_blank(),
+        legend.position="none",
+        plot.title.position = "plot",
+        axis.ticks.x=element_blank(),
+        plot.title=element_markdown(face="bold"),
+        axis.title = element_text(size=9.5, face="bold"),
+        strip.text=element_text(face="bold"),
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        plot.caption=element_text(size=8, color="slategrey"))  + 
+  labs(x="Month (Jan to Dec)",
+       y="Number of Players",
+       title="Cities Skylines: <span style = 'color:#4357AD'><b>Average</b></span> and <span style = 'color:#48A9A6'><b>Peak</b></span> Player Count",
+       subtitle="",
+       caption="Tidy Tuesday week 12 | Data from Steam")
+```
+
+```{r}
+p2 = games %>% 
+  filter(gamename=="Cities: Skylines") %>%
+  mutate(app = parse_number(avg_peak_perc)) %>%
+  mutate(month2 = match(month, month.name)) %>% 
+  filter(year>=2015) %>%
+  ggplot(aes(x=factor(month2), y=factor(year), fill=app/100)) + 
+  geom_tile() + 
+  theme_minimal() +
+  scale_fill_continuous_sequential(palette="heat", na.value="black", labels=scales::percent) +
+  theme(legend.position="top",
+        panel.grid=element_blank(),
+        plot.title=element_markdown(face="bold"),
+        plot.title.position = "plot",
+        axis.text.x=element_text(),
+        legend.title = element_text(size=9),
+        axis.title = element_text(size=9.5, face="bold"),
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        plot.caption=element_text(size=8, color="slategrey")) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                barwidth = unit(20, "lines"), 
+                                barheight = unit(.5, "lines"))) +
+  labs(y="Year",x="Month", title="Cities Skylines: <span style = 'color:#8C143C'><b>Average/Peak Percent</b></span>", subtitle = "Share of average (number of players) in peak (highest number of players)", fill="Average/Peak Percent", caption="Tidy Tuesday week 12 | Data from Steam")
+```
+
+
+```{r, fig.height=5, fig.width=4}
+library(patchwork)
+
+p1/
+  p2
+```
+
+
+### Measures of top games, by average player count in Feb/2021
+```{r}
+g1 = games %>% 
+  filter(year==2021) %>% 
+  filter(month=="February") %>% 
+  arrange(desc(avg)) %>%
+  slice(1:10)
+
+g1 %>%
+  mutate(avg_peak_perc = parse_number(avg_peak_perc)) %>%
+  mutate(gamename=factor(gamename, order = T)) %>%
+  pivot_longer(cols=avg:avg_peak_perc) %>%
+  ggplot(aes(y=fct_rev(factor(gamename,levels= c("Counter-Strike: Global Offensive","Dota 2","PLAYERUNKNOWN'S BATTLEGROUNDS",
+                                "Apex Legends","Rust","Team Fortress 2", 
+                                "Grand Theft Auto V","Tom Clancy's Rainbow Six Siege","ARK: Survival Evolved",
+                                "Destiny 2"),order=T)), x=value, fill=name)) + 
+  geom_col(alpha=0.9) + 
+  facet_wrap(~name, scales="free_x") +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_fill_manual(values = c("#666A86","#92B6B1","#788AA3","#B2C9AB")) +
+  theme_minimal(base_size = 10) + 
+  theme(legend.position = "none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        panel.background = element_rect(fill="white", color=NA),
+        plot.background = element_rect(fill="white", color=NA),
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        plot.title.position = "plot",
+        #strip.text=element_text(face="bold"),
+        plot.title=element_text(face="bold")) +
+  labs(y="", x="",
+       title= "Steam Games in Feburary 2021",
+       subtitle="Measures of 10 game titles with the highest average player count") 
+```
+
+### Max measures of franchises
+```{r, warning=FALSE, message=FALSE}
+# GTA
+games %>% 
+  mutate(avg_peak_perc = parse_number(avg_peak_perc)) %>%
+  filter(stringr::str_detect(gamename, 'Grand Theft Auto')) %>% 
+  group_by(gamename) %>%
+  summarise(max.avg = max(avg),
+            max.peak=max(peak),
+            max.avg_peak_perc=max(avg_peak_perc),
+            max.gain=max(gain, na.rm=TRUE))
+
+# Warhammer
+games %>% 
+   mutate(avg_peak_perc = parse_number(avg_peak_perc)) %>%
+  filter(stringr::str_detect(gamename, 'Warhammer')) %>% 
+  group_by(gamename) %>%
+  summarise(max.avg = max(avg),
+            max.peak=max(peak),
+            max.avg_peak_perc=max(avg_peak_perc, na.rm=TRUE),
+            max.gain=max(gain, na.rm=TRUE)) 
+```
+
+
+### Cyberpunk 2077 vs GTA V (Jan and Feb 2021)
+```{r}
+games %>% 
+  filter(gamename=="Cyberpunk 2077"|gamename=="Grand Theft Auto V") %>% slice(1:4) %>%
+  mutate(avg_peak_perc = parse_number(avg_peak_perc)) %>%
+  mutate(avg_peak_perc = (avg_peak_perc/100)) %>%
+  rename(Average = avg,
+         `Average to peak ratio` = avg_peak_perc,
+         Gain= gain,
+         Peak= peak) %>%
+  pivot_longer(Average:`Average to peak ratio`) %>%
+  mutate(date=ifelse(month=="January","Jan/2021","Feb/2021")) %>%
+  ggplot(aes(x=factor(date, levels=c("Jan/2021","Feb/2021"),order=T), y= value, fill=gamename)) + 
+  geom_col(position="dodge", alpha=0.9) + 
+  facet_wrap(~name, scales = "free_y") + 
+  scale_y_continuous(labels=scales::comma) +
+  scale_fill_manual(values=c("#5ca4a9","#ef8354")) +
+  theme_minimal(base_size = 10) +
+  theme(
+        strip.text=element_text(size=9, color="#495057"),
+        legend.position="none",
+        panel.grid.minor=element_blank(),
+        plot.margin=unit(c(1,2,1,2),"cm"),
+        plot.title.position="plot",
+        plot.title=element_markdown(face="bold"),
+        plot.caption=element_text(size=8, color="slategrey")
+        ) +
+  labs(x="",y="",
+       title="<span style = 'color:#5ca4a9'><b>Cyberpunk 2077</b></span> vs. <span style = 'color:#ef8354'><b>Grand Theft Auto V</b></span>",
+       subtitle="Number of players on Steam, in January and Febuary 2021",
+       caption="Data from Steam")
+```
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# number of games
+games %>% 
+  mutate(avg_peak_perc = parse_number(avg_peak_perc)) %>%
+  mutate(avg_peak_perc = (avg_peak_perc)) %>%
+  group_by(year) %>% 
+  summarise(game.count = n_distinct(gamename),
+            avg.players = mean(avg),
+            avg.app = mean(avg_peak_perc, na.rm=TRUE)
+            ) %>%
+  filter(between(year, 2013,2020)) %>%
+  ggplot(aes(x=avg.players, y=game.count)) + 
+  geom_point(aes(size=avg.app, fill=year), color="black", shape=21) +
+  #geom_text(aes(label=year), vjust=-1.7, size=3) + 
+  scale_x_continuous(label=scales::comma) +
+  scale_y_continuous(label=scales::comma) +
+  scale_fill_continuous_sequential(palette="La") + 
+  theme_light(base_size = 10) +
+  theme(plot.margin=unit(c(1,2,1,2),"cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold")) + 
+  labs(x="Average player count",
+       y="Game count", 
+       size="Average to peak ratio",
+       color="Year",
+       subtitle="",
+       title= "Steam games and player measures over the years") 
+```
+
+```{r}
+games %>%
+  filter(year==2021) %>%
+  filter(month=="February")
+```
+
+
+
+
+
+```{r}
+# battle royale games
+# inspired by Jake Kaupp (https://twitter.com/jakekaupp/status/1371985296489857026/photo/1)
+games %>% 
+  filter(gamename=="PLAYERUNKNOWN'S BATTLEGROUNDS"| 
+           gamename=="Counter-Strike: Global Offensive"|
+           gamename=="Dota 2") %>% 
+  mutate(month_abb= abbreviate(month, 3, FALSE),
+         month_num = match(month, month.name),
+         month_date = make_date(year, month_num)) %>%
+  select(gamename, year, month_date, avg) %>% 
+  ggplot(aes(x=month_date, y= avg/1000000, color=gamename)) + 
+  geom_line(size=1) + 
+  scale_y_continuous(label=number_format(suffix="M", accuracy=0.1)) + 
+  scale_color_manual(values=c("darkgoldenrod","darkcyan","red")) +
+  theme_bw(base_size = 10) + 
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        plot.margin=unit(c(1,2,1,2),"cm")) + 
+  labs(color="",
+       y="Average player count",
+       x="Month and year",
+       title="Player base of Battle Royale Games")
+```
+
+```{r}
+# area plot
+games %>% 
+  filter(gamename=="PLAYERUNKNOWN'S BATTLEGROUNDS"| 
+           gamename=="Counter-Strike: Global Offensive"|
+           gamename=="Dota 2") %>% 
+  mutate(month_abb= abbreviate(month, 3, FALSE),
+         month_num = match(month, month.name),
+         month_date = make_date(year, month_num)) %>%
+  select(gamename, year, month_date, avg) %>%
+  mutate(gamename= factor(gamename, levels=c("PLAYERUNKNOWN'S BATTLEGROUNDS",
+                                             "Counter-Strike: Global Offensive",
+                                             "Dota 2"))) %>%
+  ggplot(aes(x=month_date, y=avg/1000000)) + 
+  geom_area(aes(fill=gamename), show.legend=F, alpha=0.8) + 
+  facet_wrap(.~gamename, ncol=1) + 
+  theme_minimal() + 
+  theme(panel.grid.minor.y=element_blank()) + 
+  scale_fill_manual(values=c("#2b3a67","#496a81","#66999b")) + 
+  scale_y_continuous(position="right", label=number_format(suffix="M", accuracy=0.1)) + 
+  coord_cartesian(expand=FALSE, clip="off") + 
+  labs(x="",y="",
+       title="Average Player Count Over The ears")
+```
+
+
+```{r}
+# avg number of players after release
+# code from: [Edgar Ruiz](https://github.com/JuanmaMN/TidyTuesday/blob/master/2021/March/TidyTuesday_16-03-2021.R)
+
+# date 
+tidy_games <- games %>% 
+  mutate(month_abb= abbreviate(month, 3, FALSE),
+         month_num = match(month, month.name),
+         month_date = make_date(year, month_num)) %>%
+  select(gamename, month_date, avg, peak) 
+
+# count of games that are released after the oldest date in the data
+tidy_games %>% 
+  group_by(gamename) %>% 
+  summarise(min_month_date = min(month_date)) %>% 
+  ungroup() -> games_start
+
+games_start %>% 
+  filter(min_month_date > min(min_month_date)) %>% 
+  count() #1055 games
+
+# month_number, z score (mean of avg players) and max_month_number
+games_normal <- games_start %>% 
+  filter(min_month_date > min(min_month_date)) %>% 
+  inner_join(tidy_games, by = "gamename") %>% 
+  arrange(gamename, month_date) %>% 
+  group_by(gamename) %>% 
+  mutate(
+    month_number = row_number(),
+    z_avg = (avg - mean(avg)) / sd(avg), 
+    max_month_number = max(month_number)
+    ) %>% 
+  filter(max_month_number >= 12, month_number <= 24) %>% 
+  select(gamename, month_number, z_avg) %>% 
+  ungroup()
+
+# count of games that started after the oldest date & with 24 months of data 
+n_distinct(games_normal$gamename) # 976 games
+
+# bar plot
+games_normal %>% 
+  group_by(month_number) %>% 
+  summarise(mean_z_avg = mean(z_avg)) %>% 
+  ungroup() %>% 
+  mutate(year =  as_factor(ceiling(month_number / 12))) %>%
+  ggplot(aes(x=factor(month_number), y = mean_z_avg)) + 
+  geom_bar(aes(fill=mean_z_avg), stat="identity", show.legend=F) + 
+  scale_fill_continuous_sequential(palette="darkmint", trans="log10") +
+  #scale_fill_manual(values=c("#28666e","#7c9885")) +
+  facet_wrap(~year, scale="free_x", strip.position="bottom") +
+  theme_bw(base_size = 10) + 
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        axis.title=element_text(face="bold", color="#46494c"),
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        #plot.title.position = "plot",
+        plot.title=element_text(face="bold"),
+        #panel.grid.minor.y=element_blank(),
+        #strip.placement = "outside", 
+        strip.text=element_blank(),
+        strip.background = element_blank(),
+        axis.ticks=element_blank()) +
+  scale_y_continuous(expand=c(0,0), limits=c(0,1.5)) +
+  labs(x="Release month number",
+       y="Z-score of avg. players",
+       title="Average number of players by month, since game release date",
+       subtitle="")
+```
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# highlighted line plot: median players in the pandemic vs before
+# code from Julia Silge (https://gist.github.com/juliasilge/8310c8a98b92db1840dd74b956d1172e)
+
+monthly_players <- games %>% 
+    mutate(month = factor(month, levels = month.name),
+           month = fct_relabel(month, ~ month.abb)) %>%
+    group_by(year, month) %>%
+    summarise(avg = median(avg)) %>%
+    ungroup() %>%
+    filter(row_number() != first(row_number()))
+
+monthly_players %>%
+    mutate(pandemic = case_when(year %in% 2020:2021 ~ "pandemic",
+                                TRUE ~ "before the pandemic")) %>%
+    ggplot(aes(month, avg, group = year, color = pandemic)) +
+    geom_line(size = 1.2, alpha = 0.7) +
+    scale_color_manual(values = c("#d6cfcb","#cc5803")) +
+    theme_light() +
+    theme(legend.position="bottom") +
+    labs(x = NULL, color = NULL,
+         y = "Median concurrent players for all games",
+         title = "Video games on Steam and the pandemic",
+         subtitle = "The overall median number of concurrent players is higher during the pandemic")
+```
+
+```{r, fig.width=7, fig.height=3, warning=FALSE, message=FALSE}
+# bump chart: games with highest number of players in 2020
+# code from Juanma (https://t.co/naKCX8NcNz?amp=1)
+
+games_top_10_2020<-games%>% filter(year == "2020") %>%group_by(year,gamename)%>%summarise(avg_2=mean(avg,na.rm=TRUE))
+games_top_10_2020<-games_top_10_2020%>%top_n(10,avg_2)
+top_10<-games_top_10_2020%>%ungroup()%>%select(2)
+games_bump<-games%>% filter(year == "2020") %>% inner_join(top_10, by = "gamename") %>% select(gamename,month,avg)
+
+games_bumprank<-games_bump %>%
+  group_by(month) %>%
+  mutate(rank = min_rank(-avg) * 1) %>%
+  ungroup() %>%
+  mutate(month = match(month, month.name)) 
+
+wp_colours<-c("#2d6a4f", "#fb8b24", "#2e294e", "#7f5539", "#679436","#8ecae6", "#219ebc","#e63946","#7d8597","#b5179e") 
+
+# plot
+ggplot(games_bumprank, aes(month, rank, color = gamename)) +
+  geom_point(size = 3) +
+  geom_text(data = games_bumprank %>% filter(month == min(month)),
+            aes(x = month, label = gamename), size = 3, hjust = 1,nudge_x = -0.2) +
+  geom_text(data = games_bumprank %>% filter(month == max(month)),
+            aes(x = month, label = gamename), size = 3, hjust = 0,nudge_x = 0.5) +
+  geom_bump(aes(smooth = 6), size = 1) +
+  scale_color_manual(values = wp_colours) +
+  scale_y_reverse(limits = c(10, 1),
+                  breaks = seq(1, 10, 1)) +
+  scale_x_continuous(limits = c(-2, 15), breaks = seq(1, 12, 1)) +
+  labs(y = "",
+       x = "Month",
+       title = "Games with the highest number of players on Steam, in 2020",
+      subtitle =  "",
+       caption =  "")  +
+  guides(fill = NULL) +
+  theme(
+    plot.title = element_text(margin = margin(b = 10, t= 10), 
+                              color = "#134074",face = "bold",
+                              hjust = 0.5),
+    plot.caption =  element_text(margin = margin(t = 20), 
+                                 color = "#22222b",
+                                 hjust = 0.95),
+    axis.title.y = element_blank(), 
+    legend.position = "none",
+    axis.text.x    = element_text(color = "#22222b"),
+    axis.text.y    = element_blank(), 
+    panel.background = element_blank(), 
+    panel.grid.major = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(), 
+    plot.margin = unit(c(0, 0, 0, 0), "cm"),
+    plot.background = element_rect(fill = "white", color = NA),    # color removes the border,
+    axis.ticks = element_blank())
+```
+
+
+

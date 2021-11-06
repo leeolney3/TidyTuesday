@@ -1,0 +1,530 @@
+---
+title: "Wealth and Income"
+date: "2021-02-09"
+output: html_notebook
+---
+
+## Data Visualization Exercise
+
+[__TidyTuesday__](https://github.com/rfordatascience/tidytuesday) 2021/week7 
+
+[Wealth and Income over time](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-02-09/readme.md), data from the [Urban Institute](https://apps.urban.org/features/wealth-inequality-charts/) and the [US Census](https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html).
+
+
+### Load libaries
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggtext)
+library(gridExtra)
+library(colorspace) 
+library(lemon) # reposition legend 
+library(gggibbous) # moon line plot
+library(ggstream) #ridge stream plot
+library(CGPfunctions) #slope chart
+```
+ 
+ 
+### Import Data
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 7)
+
+lifetime_earn <- tuesdata$lifetime_earn
+student_debt <- tuesdata$student_debt
+retirement <- tuesdata$retirement
+home_owner <- tuesdata$home_owner
+race_wealth <- tuesdata$race_wealth
+income_time <- tuesdata$income_time
+income_limits <- tuesdata$income_limits
+income_aggregate <- tuesdata$income_aggregate
+income_distribution <- tuesdata$income_distribution
+income_mean <- tuesdata$income_mean
+```
+
+
+### P1: student_debt (percentage) 
+* shared on [twitter](https://twitter.com/leeolney3/status/1358864374421741570/photo/1) 
+
+```{r}
+# loan_debt_pct
+student_debt %>% 
+  ggplot(aes(x=year, y= loan_debt_pct, color=race)) + 
+  geom_line(size=1) + 
+  scale_x_continuous(limits=c(1989, 2016.9), breaks=seq(1989,2016.9,3)) + 
+  scale_y_continuous(limits=c(0,0.45), breaks=seq(0,0.45,0.1), labels=percent_format(accuracy=1)) +
+  labs(x="",
+       y="",
+       title="Share of Families with Student Loan Debt in America",
+       subtitle= "The percentage of <span style = 'color:#9e2a2b'><b>Black</b></span>-families with student loan debt <br> has been higher than <span style = 'color:#fb8500'><b>White</b></span>-families and  <span style = 'color:#006d77'><b>Hispanic</b></span>-families since 2001",
+       caption="Data from Urban Institute and US Census") +
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) + 
+  theme_light() +
+  theme(panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        legend.position= "none",
+        plot.title=element_text(size=14,face="bold"),
+        plot.subtitle=ggtext::element_markdown()
+        ) + 
+  geom_text(data=student_debt,aes(y=0.43, x=2015, label="Black"), color="#9e2a2b", size=3) + 
+  geom_text(data=student_debt,aes(y=0.345, x=2015, label="White"), color="#fb8500", size=3) + 
+  geom_text(data=student_debt,aes(y=0.23, x=2014.8, label="Hispanic"), color="#006d77", size=3) +
+  coord_cartesian(expand=FALSE)
+```
+
+### P2: student_debt (average)  
+* geom_textbox and geom_richtext reference: [ggplot Wizardry Hands-On by Cédric Scherer](https://z3tt.github.io/OutlierConf2021/)
+
+```{r}
+# loan_debt 
+p1a = student_debt %>% 
+  ggplot(aes(x=year, y= loan_debt, color=race)) + 
+  geom_line(size=1) + 
+  scale_x_continuous(limits=c(1989, 2016), breaks=seq(1989,2016,3)) + 
+  scale_y_continuous(limits=c(0,15000), breaks=seq(0,15000, 2500), labels=scales::dollar_format()) +
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) +
+  theme_minimal() + 
+  theme(panel.grid.minor = element_blank(),
+        legend.position="none",
+        plot.title=element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10)) + 
+  # add rich text
+  ggtext::geom_richtext(
+    data=tibble(
+    x=c(2014.5,2014.5,2014.5),y=c(12900,10200,6000),
+    race1= c("Black","White","Hispanic"),
+    lab = c("<b style='font-size:12pt;'>Black</b>", 
+            "<b style='font-size:12pt;'>White</b>", 
+              "<b style='font-size:12pt;'>Hispanic</b>"),
+      angle = c(50, 42, 51)
+    ), 
+  aes(x,y,label=lab, color=race1,angle=angle),
+  size=3, fill=NA, label.color=NA, 
+  lineheight=.3) +
+  labs(title="Student Loan Debt In America",
+       subtitle=" Average family student loan debt for aged 25-55, by race and year normalized to 2016 dollars",
+       caption="Data from Urban Institute and US Census",
+       y="",
+       x="")
+```
+
+
+```{r}
+p1b = p1a + 
+  theme(
+    ## turn title into filled textbox
+    plot.title = ggtext::element_textbox_simple(
+      color = "white", fill = "#1d3557",  size = 14, 
+      padding = margin(8, 4, 8, 4), margin = margin(b = 5), lineheight= .9
+    ),
+    ## add round outline to caption
+    plot.caption = ggtext::element_textbox_simple(
+      width = NULL, linetype = 1, color="slategrey", padding = margin(3, 8, 3, 8), 
+      margin = margin(t = 15), r = grid::unit(8, "pt")
+    ),
+    axis.title.x = ggtext::element_markdown(),
+    axis.title.y = ggtext::element_markdown(),
+  ) +
+  ## textbox
+  ggtext::geom_textbox(
+    data = tibble(x = 1995, y = 12200, label = "From 2007 to 2016, the average student loan debt of <span style = 'color:#9e2a2b'><b>Black</b></span>-families is higher than <span style = 'color:#fb8500'><b>White</b></span>-families and  <span style = 'color:#006d77'><b>Hispanic</b></span>-families."),
+    aes(x, y, label = label), inherit.aes = FALSE,
+    size = 3,
+    fill = "#e5e5e5", box.color = "#457b9d",
+    width = unit(11, "lines")
+  ) 
+
+p1b
+```
+
+### P3: student_debt (loan_debt and loan_debt_pct)
+
+```{r}
+student_debt %>% 
+  ggplot(aes(x=loan_debt, y= loan_debt_pct, color=race)) +
+  geom_point(aes(shape=race),size=2) + 
+  theme_minimal() + 
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) + 
+  scale_y_continuous(label=percent_format(accuracy=1)) +
+  labs(title= "Student loan debt and share of families with student loan debt",
+       color="Racial group",
+       shape="Racial group",
+       caption="Data from Urban Institute and US Census") +
+  theme(legend.position="top",
+        plot.title=element_text(face="bold",hjust=0.5),
+        plot.caption=element_text(color="slategrey"))
+```
+
+### P4: race_wealth 
+
+```{r}
+rw = race_wealth %>% 
+  filter(!is.na(wealth_family)) %>% 
+  filter(year>=1989) %>% 
+  filter(type=="Median") %>%
+  filter(race!="Non-White") %>%
+  mutate(wealth=round(wealth_family)) %>%
+  mutate(grp = ifelse(wealth_family>100000,"Y","N"))
+```
+
+```{r}
+rw %>%
+  ggplot(aes(x=as.factor(year), race)) +
+  geom_tile(aes(fill=wealth_family), color="white", size=2) + 
+  geom_text(aes(label=comma(wealth), color=grp),size=3) +
+  theme_minimal() +
+  theme(legend.position="bottom",
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y=element_text(face="bold"),
+        legend.title = element_text(size=10, color="black"),
+        plot.title=element_text(face="bold"),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(),
+        plot.caption=element_text(hjust=0, color="slategrey"),
+        plot.caption.position = "plot"
+        ) + 
+  scale_x_discrete(position="top") + 
+  scale_fill_continuous_sequential(palette="Dark Mint", trans="log10", label=dollar) +
+  scale_color_manual(values=c("black","white")) + 
+  labs(x="",
+       y="",
+       fill="Median Family Wealth",
+       title= "Family Wealth in America by Race and Year",
+      subtitle = "Normalized to 2016 dollars",
+      caption = "Data from Urban Institute and US Census") +
+  guides(fill= guide_colorbar(title.position="top",
+                              title.hjust = .5,
+                              barwidth = unit(20, "lines"),
+                              barheight = unit(.5, "lines"))) +
+  guides(color=FALSE) #remove text color legend 
+```
+
+### P5: lifetime earn 
+* plot design reference: [Tobias Stalder](https://twitter.com/toeb18/status/1358408394722394117/photo/1) 
+```{r}
+lifetime_earn %>% 
+  ggplot(aes(x=lifetime_earn, y=fct_rev(race))) +
+  geom_line(aes(group=race),size=7,color="#b8b8d1",alpha=0.5) + 
+  geom_point(aes(color=gender),size=8,alpha=0.9) + 
+  scale_x_continuous(labels=scales::dollar_format(), limits=c(1000000, 3000000)) +
+  theme_minimal() + 
+  scale_color_manual(values=c("#3a6ea5","#bd632f")) +
+  theme(legend.position="none",
+        axis.text.y=element_blank(),
+        plot.title = element_text(face="bold",hjust=0.5)) +
+  geom_text(aes(x=1200000, y=3.25, label="Female"), color="#bd632f",size=3.6) + 
+  geom_text(aes(x=1800000, y=3.25, label="Male"), color="#3a6ea5",size=3.6) + 
+  geom_text(aes(x=1500000, y=3, label="Black"),size=3.5, family="Courier") + 
+  geom_text(aes(x=1550000, y=2, label="Hispanic any race"),size=3.5, family="Courier") +
+  geom_text(aes(x=2100000, y=1, label="White"),size=3.5, family="Courier") + 
+  labs(y="",
+       x="",
+       title="Average lifetime earning in America by race and gender",
+       caption="Data from Urban Institute and US Census")
+```
+
+
+### P6: home_owner
+```{r}
+summary(home_owner$year)
+```
+
+```{r}
+home_owner %>% 
+  filter(year>2006) %>% 
+  ggplot(aes(x=year, y=home_owner_pct)) +
+  geom_line(aes(color=race), size=1.5, alpha=0.8) +
+  geom_moon(data= (home_owner %>% filter(year>2006)), aes(ratio=1),size=5, fill="#adb5bd",color="white") +
+  geom_moon(data= (home_owner %>% filter(year>2006)), aes(ratio=home_owner_pct, fill=race), size=5,color="white") + 
+  scale_y_continuous(limits=c(0.35,0.75),labels= percent_format(accuracy=1)) +
+  scale_x_continuous(breaks=seq(2007, 2016,1)) +
+  theme_minimal() +
+  theme(panel.grid.minor=element_blank(),
+        legend.position="none",
+        panel.grid=element_line(size=0.3),
+        plot.caption = element_text(size=8, color="slategrey",hjust=0.5),
+        plot.title = element_text(face="bold", hjust=0.5)) + 
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) + 
+  scale_fill_manual(values=c("#9e2a2b","#006d77","#fb8500")) + 
+  geom_text(data=(home_owner %>% 
+  filter(year>2006)),aes(y=0.71, x=2015, label="White"), color="#fb8500", size=3.5) + 
+  geom_text(data=(home_owner %>% 
+  filter(year>2006)),aes(y=0.49, x=2015, label="Hispanic"), color="#006d77", size=3.5) +
+  geom_text(data=(home_owner %>% 
+  filter(year>2006)),aes(y=0.39, x=2015, label="Black"), color="#9e2a2b", size=3.5) + 
+  labs(x= "",
+       y= "",
+       title= "Home Ownership Percentage in America (2007 to 2016)",
+       subtitle=" by year and racial group",
+       caption = "Data from Urban Institute and US Census") + 
+  theme(plot.title = ggtext::element_textbox_simple(
+        color = "white", fill = "#1d3557",  size = 14, 
+        padding = margin(8, 4, 8, 4), margin = margin(b = 5), lineheight= .9))
+```
+
+### P7: mean_income 
+
+```{r}
+im2 = income_mean %>%
+  filter(income_quintile != "Top 5%") %>%
+  mutate(income_quintile = factor(income_quintile, levels = c("Lowest", "Second", "Middle", "Fourth", "Highest"))) %>%
+  filter(dollar_type == "2019 Dollars") %>%
+  filter(race =="All Races") %>%
+  group_by(year) %>%
+  mutate(pct = round(income_dollars/sum(income_dollars),2))
+summary(im2$year)
+```
+
+```{r}
+# avg household income
+h1 = ggplot(im2, aes(year, income_dollars, fill=fct_rev(income_quintile), label=income_quintile)) + 
+  geom_stream(type="ridge", bw=0.75) + 
+  geom_stream_label(size = 3, type = "ridge", color="black", family="Courier Bold") +
+  scale_fill_manual(values = c("#83c5be","#cbf3f0","#f4f3ee","#ffbf69","#ff9f1c")) + 
+  theme_light() +
+  theme(legend.position="none",
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face="bold",size=11),
+        plot.subtitle= element_text(size=9.5),
+        plot.caption= element_text(hjust=0.5, color="slategrey", size=8)
+        ) + 
+  scale_x_continuous(breaks=seq(1970,2015,5)) + 
+  scale_y_continuous(labels=dollar_format()) +
+  coord_cartesian(expand=FALSE) + 
+  labs(x="",
+       y="",
+       title="Average household income, by quintile in 2019 dollars (1976 to 2019)",
+       subtitle="",
+       caption= "Data from Urban Institute and US Census")
+```
+
+
+```{r}
+# quintile share
+h2 = ggplot(im2, aes(year, pct, fill=fct_rev(income_quintile), label=income_quintile)) + 
+  geom_stream(type="proportional", bw=0.5) + 
+  geom_stream_label(size = 3, type = "proportional", color="black", family="Courier Bold") +
+  scale_fill_manual(values = c("#83c5be","#cbf3f0","#f4f3ee","#ffbf69","#ff9f1c")) + 
+  theme_light() +
+  theme(legend.position="none",
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face="bold",size=11),
+        plot.subtitle= element_text(size=9.5),
+        plot.caption= element_text(hjust=0.5, color="slategrey", size=8)
+        ) +  
+  scale_y_continuous(labels=percent_format(accuracy=1), breaks=seq(0,1,0.2)) + 
+  scale_x_continuous(breaks=seq(1970,2015,5)) + 
+  coord_cartesian(expand=FALSE) + 
+  labs(x="",
+       y="",
+       title="Share of aggregate household income, by quintile (1976 to 2019)",
+       subtitle="",
+       caption= "Data from Urban Institute and US Census")
+```
+
+```{r, fig.height=2.7, fig.width=6}
+# combine both plots
+grid.arrange(h1, h2, ncol=2)
+```
+
+### P8: retirement (average by racial group)
+
+```{r, warning=FALSE, message=FALSE}
+retirement2 = retirement %>% 
+  mutate(ret= round(retirement/1000)) %>%
+  filter(year>2000)
+retirement2$year=as.factor(retirement2$year)
+
+newggslopegraph(dataframe = retirement2,
+                Times = year,
+                Measurement = ret,
+                Grouping = race,
+                LineThickness = 1,
+                LineColor = c("White"="#fb8500","Hispanic"="#006d77", "Black"="#9e2a2b"),
+                Title = "Average family liquid retirement savings by racial group",
+                SubTitle = "Retirement dollars (in thousands) from 2001 to 2016, normalized to 2016 dollar ",
+                Caption = "Data from Urban Institute and US Census",
+                YTextSize = 3.4,
+                DataTextSize = 3,
+                DataLabelFillColor = "white",
+                DataLabelPadding=0.05,
+                CaptionJustify = "center"
+                )
+```
+
+
+### P9: income mean
+* reference: [TidyTuesday's cleaning script](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-02-09/readme.md)
+
+```{r}
+summary(income_mean$year)
+```
+
+
+```{r}
+im = income_mean %>%
+  filter(income_quintile != "Top 5%") %>%
+  mutate(income_quintile = factor(income_quintile, levels = c("Lowest", "Second", "Middle", "Fourth", "Highest"))) %>%
+  filter(dollar_type == "2019 Dollars") %>%
+  filter(race %in% c("White Alone", "Black Alone", "Hispanic")) %>%
+  ggplot(aes(x = year, y = income_dollars, color = race, fill = race, group = race)) +
+  geom_line() +
+  facet_wrap(~income_quintile, scales = "free_y") + 
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) + 
+  theme_light() +
+  theme(strip.text = element_text(face="bold"),
+        strip.background= element_rect(fill="#1d3557")) + 
+  labs(color="Racial Group",
+       title="Income Quintile",
+       subtitle="Mean income received by each fifth of each racial group from 1967 to 2019",
+       x="Income (in dollars)",
+       y="Year", caption= "Data from Urban Institute and US Census")
+
+reposition_legend(im, 'center', panel='panel-3-2')
+```
+
+### P10: income distribution
+* reference: [TidyTuesday's cleaning script](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-02-09/readme.md)
+
+```{r}
+income_levels <- c(
+  "Under $15,000",
+  "$15,000 to $24,999",
+  "$25,000 to $34,999",
+  "$35,000 to $49,999",
+  "$50,000 to $74,999",
+  "$75,000 to $99,999",
+  "$100,000 to $149,999",
+  "$150,000 to $199,999",
+  "$200,000 and over"
+)
+
+
+income_distribution %>%
+  filter(race %in% c("Black Alone", "White Alone", "Hispanic (Any Race)")) %>%
+  filter(year >= 1980) %>%
+  mutate(income_bracket = factor(income_bracket, levels = income_levels)) %>%
+  ggplot(aes(x = year, y = income_distribution, color = race, fill = race)) +
+  geom_col(position = "fill") +
+  theme_light() + 
+  facet_wrap(~income_bracket) +
+  scale_fill_manual(values=c("#ffc145","#c0c0c0","#3a6ea5")) + 
+  scale_color_manual(values=c("#ffc145","#c0c0c0","#3a6ea5")) +
+  coord_cartesian(expand=FALSE) + 
+  theme(strip.text = element_text(face="bold", color="#273e47"),
+        strip.background= element_rect(fill="white"),
+        plot.caption = element_text(size=8, face="italic",hjust=0),
+        plot.caption.position = "plot") + 
+  labs(fill="Racial group", 
+       color="Racial group",
+       y="Income Distribution",
+       x="Year",
+       caption= "Data from Urban Institute and US Census")
+```
+
+
+### P11: ratios
+#### Student debt to family income
+* reference: [David Zoller -
+Change in student loan debt to householdincome by race ](https://twitter.com/winterstat/status/1359289102739251203/photo/1) 
+
+```{r}
+summary(student_debt$year)
+summary(income_distribution$year)
+```
+
+```{r}
+# select data 
+inc = income_distribution %>%
+  filter(race %in% c("Black Alone", "White Alone", "Hispanic (Any Race)")) %>% 
+  mutate(race = recode(race, "White Alone"="White", "Black Alone"="Black","Hispanic (Any Race)"="Hispanic")) %>% 
+  filter(year>=1989) %>%
+  filter(year<=2016) %>%
+  select(year, race, income_mean) %>%
+  distinct(year, race, income_mean, .keep_all=TRUE) #drop dups
+
+stu = student_debt %>% select(-loan_debt_pct)
+
+# merge 
+joined = inner_join(stu, inc, by=c("year","race")) %>% 
+  mutate(ratio = round(loan_debt/income_mean,3)) #get ratio
+head(joined)
+```
+
+```{r}
+left_plot = joined %>% 
+  ggplot(aes(y=year, x=ratio)) + 
+  geom_line(aes(group=year), color="#1d3557",alpha=0.8) +
+  geom_point(aes(color=race), size=2.7, alpha=0.8) + 
+  scale_x_continuous(limits=c(0,0.253),labels=percent_format(accuracy=1)) + 
+  scale_y_continuous(limits=c(1988, 2019),breaks=seq(1989, 2016,3)) + 
+  theme_minimal() + 
+  theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.title=element_text(face="bold",size=14), 
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=9.5, color="#1d3557"),
+        plot.caption =element_text(hjust=0.5, color="#333533",size=8)) + 
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) +
+  coord_cartesian(expand=FALSE) +
+  labs(x="",
+       y="",
+       color="",
+       caption="Data from Urban Institute and US Census",
+       title="Student loan debt to household income, by race",
+       subtitle="Average student loan debt as a percentage of average yearly income")  +
+  geom_text(data=joined,aes(y=2017.5, x=0.1, label="Hispanic"), color="#006d77", size=3) +
+  geom_text(data=joined,aes(y=2017.5, x=0.12, label="White"), color="#fb8500", size=3) + 
+  geom_text(data=joined,aes(y=2017.5, x=0.23, label="Black"), color="#9e2a2b", size=3) 
+  
+```
+
+
+#### Liquid retirement to family wealth
+* reference: [Sonia Winter - Family retirement savings by race in the USA](https://twitter.com/winterstat/status/1359289102739251203/photo/1) 
+
+```{r}
+# join retirement and race_wealth
+wr = race_wealth %>%
+  filter(type=="Average" & race !="Non-White") %>%
+  select(-type) %>%
+  full_join(retirement, by=c("year","race")) %>%
+  mutate(pct = retirement/wealth_family) # ratio variable 
+
+# liquid retirement as a pct of overall wealth
+right_plot = wr %>% filter(year >= 1989) %>%
+  ggplot(aes(y = year, x = pct)) +
+  geom_line(aes(group = year), color="#1d3557",alpha=0.8) +
+  geom_point(aes(color = race), size=2.7, alpha=0.8, show.legend = FALSE) +
+  scale_x_continuous(limits=c(0,0.253),labels=percent_format(accuracy=1)) + 
+  scale_y_continuous(limits=c(1988, 2019),breaks=seq(1989, 2016,3)) +
+  scale_color_manual(values=c("#9e2a2b","#006d77","#fb8500")) +
+  labs(title= "Family liquid retirement to family wealth, by race",
+       subtitle = "Average liquid retirement as a percentage of average family wealth, normalized to 2016 dollars", 
+       caption="Data from Urban Institute",
+       x = "", y = "") +
+  theme_minimal() + 
+  theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.title=element_text(face="bold",size=14), 
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=9.5, color="#1d3557"),
+        plot.caption =element_text(hjust=0.5, color="#333533",size=8)) + 
+  geom_text(data=joined,aes(y=2017.5, x=0.14, label="Hispanic"), color="#006d77", size=3) +
+  geom_text(data=joined,aes(y=2017.5, x=0.165, label="White"), color="#fb8500", size=3) + 
+  geom_text(data=joined,aes(y=2017.5, x=0.185, label="Black"), color="#9e2a2b", size=3) + 
+  coord_cartesian(expand=FALSE) 
+```
+
+```{r, fig.height=2.7, fig.width=6}
+# combine both plots
+grid.arrange(left_plot, right_plot, ncol=2)
+```
+
+
+
+

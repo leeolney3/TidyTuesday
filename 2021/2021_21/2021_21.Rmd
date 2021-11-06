@@ -1,0 +1,205 @@
+---
+title: "TidyTuesday Week21/2021"
+output: html_notebook
+---
+
+Week 21 [Ask a Manager Salary Survey](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-18/readme.md), data from [Ask a Manager](https://docs.google.com/spreadsheets/d/1IPS5dBSGtwYVbjsfbaMCYIWnOuRmJcbequohNxCyGVw/edit?resourcekey#gid=1625408792)
+
+```{r}
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(gghalves)
+library(ggbeeswarm)
+
+library(colorspace)
+library(ggsci)
+
+theme_set(theme_minimal(base_size=10))
+```
+
+```{r}
+survey <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-18/survey.csv')
+```
+
+
+
+```{r}
+survey %>% summarise(across(everything(), ~mean(!is.na(.)))) %>% 
+  gather() %>%
+  mutate(key= fct_reorder(key, value)) %>%
+  mutate(col=ifelse(value==1, "1","0")) %>%
+  ggplot(aes(key, value)) +
+  geom_segment( aes(x=key, xend=key, y=0, yend=value), color="slategrey", linetype="dotted") + 
+  geom_point(aes(color=col),size=3) +
+  geom_text(aes(label= scales::percent(value, accuracy=0.1)),
+            nudge_y=0.07, size=3) + 
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    plot.title.position = "plot",
+    legend.position="none",
+    axis.text.x=element_blank()) + 
+  labs(x="Feature", y="% of data present") + 
+  coord_flip() + 
+  scale_color_npg() + 
+  labs(title ="Missing data")
+```
+
+
+
+
+```{r, warning=F, fig.width=3.8, fig.height=3.2}
+survey %>%
+  filter(currency=="USD") %>%
+  filter(!is.na(gender)) %>%
+  filter(gender!="Prefer not to answer") %>%
+  mutate(gender=recode_factor(gender,`Other or prefer not to answer`="Other")) %>%
+  ggplot(aes(x=gender, 
+             y=annual_salary, fill=gender, color=gender)) + 
+  geom_point(position=position_jitter(0.15),size=1, alpha=0.3,shape=as.numeric(16)) + 
+  geom_flat_violin(position= position_nudge(x=0.25, y=0),adjust=2,alpha=0.9, trim='TRUE',scale='width') +
+  geom_boxplot(aes(x=gender,y=annual_salary,fill=gender), position=position_nudge(x=0.25, y=0),
+               width=0.1, outlier.shape = NA, varwidth=FALSE, color="black", alpha=0.3) + 
+  scale_fill_manual(values=c("#364958","#3b6064","#55828b","#87bba2"))+
+  scale_color_manual(values=c("#364958","#3b6064","#55828b","#87bba2")) +
+  scale_y_continuous(limits=c(0,500000),labels=unit_format(unit = "K", scale = 1e-3, sep = ""),
+                     expand=c(0,0)) +
+  coord_flip() + 
+  theme(legend.position="none",
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", size=18),
+        axis.title.y=ggtext::element_markdown(size=9),
+        axis.title.x=ggtext::element_markdown(size=9),
+        plot.margin=ggplot2::margin(1,1.5,0.5,1,"cm"),
+        plot.caption=element_text(size=8, color="#4a4e69")) +
+  expand_limits(x = 4.25) +
+  labs(x="**Gender**",y='<br>**Annual Salary** (in USD)',
+       title="Gender and Annual Salary",
+       subtitle="Differences in gender groups' annual salary that is below USD 500,000\n",
+       caption="\nTidy Tuesday Week 21 | Data from Ask a Manager Survey")
+```
+
+```{r}
+# US subset
+survey_us = survey %>% 
+  mutate(country=tolower(country)) %>%
+  mutate(country=str_remove_all(country,"[.]")) %>%
+  filter(country %in% c("united states","usa","us","united states of america")) 
+
+survey %>% 
+  mutate(country=tolower(country)) %>%
+  mutate(country=str_remove_all(country,"[.]")) %>%
+  filter(country %in% c("united states","usa","us","united states of america")) %>% count()
+```
+
+```{r, warning=F, message=F}
+# usd subset
+survey_usd = survey %>% filter(currency=="USD")
+
+# Field exp and annual salary(below 500k USD)
+ survey_usd %>%
+  mutate(exp_field = ifelse(years_of_experience_in_field %in% c("21 - 30 years","31 - 40 years","41 years or more"),">20",years_of_experience_in_field)) %>%
+  mutate(exp_field = ifelse(exp_field=="1 year or less","<1",exp_field)) %>%
+  mutate(exp_field=str_remove(exp_field,"years")) %>%
+  mutate(exp_field=str_replace_all(exp_field, fixed(" "), "")) %>%
+  ggplot(aes(y=annual_salary,x=factor(exp_field,levels=c("<1","2-4","5-7","8-10","11-20",">20")),color=exp_field, fill=exp_field)) +
+  geom_half_boxplot(outlier.size=-1, alpha=0.2, show.legend = F) +
+  geom_half_point(alpha=0.5, size=0.6, show.legend = F) + 
+  #geom_beeswarm(beeswarmArgs = list(side = 1)) +
+  scale_y_continuous(limits=c(0,500000),labels=unit_format(unit = "K", scale = 1e-3, sep = "")) + 
+  scale_color_npg() + 
+  scale_fill_npg() + 
+  theme(plot.title.position = "plot",
+        axis.title.y=ggtext::element_markdown(size=9),
+        axis.title.x=ggtext::element_markdown(size=9),) +
+  labs(x="**Field experience** (in years)", y= "**Annual salary** (in USD)",
+       title="Field Experience and Annual Income (<US$500,000)",
+       subtitle="")
+```
+
+
+```{r, warning=F, message=F}
+# industry
+survey_ind = survey %>% filter(currency=="USD") %>% group_by(industry) %>% tally(sort=T) %>% filter(n>1000)
+survey_usd %>% 
+  filter(industry %in% survey_ind$industry) %>%
+  ggplot(aes(x=industry, y=annual_salary, color=industry, fill=industry)) +
+  geom_half_violin(show.legend=F,position=position_nudge(x=-0.05, y=0), alpha=0.85) +
+  #geom_half_boxplot(outlier.size=-1, alpha=0.2, show.legend = F) +
+  geom_half_boxplot(side="r",show.legend = F,fill=NA) +
+  scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 15)) +
+  scale_y_continuous(limits=c(0,500000),labels=unit_format(unit = "K", scale = 1e-3, sep = "")) +
+  scale_color_npg() + 
+  scale_fill_npg() +
+  theme(plot.title.position = "plot") + 
+  labs(x="Industry",y="Annual Salary (in USD)",title="Industry and Annual Income (<US$500,000)")
+```
+
+
+```{r,warning=F, message=F}
+# industry
+survey_job = survey %>% filter(currency=="USD") %>% group_by(job_title) %>% tally(sort=T) %>% filter(n>110)
+survey_usd %>% 
+  filter(job_title %in% survey_job$job_title) %>%
+  ggplot(aes(x=fct_rev(reorder(job_title,annual_salary,median)), y=annual_salary)) +
+  geom_quasirandom(show.legend=F,alpha=0.5,size=1, color="#ee9b00") +
+  geom_boxplot(outlier.size=-1,fill=NA, show.legend = F) +
+  #geom_pointrange(stat = "summary",un.ymin = min,fun.ymax = max,fun.y = median, color="#457b9d", show.legend=F) +
+  scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 14)) +
+  scale_y_continuous(limits=c(0,500000),labels=unit_format(unit = "K", scale = 1e-3, sep = "")) +
+  theme(plot.title.position = "plot") +
+  labs(x="Job title",y="Annual salary (in USD)",title="Job Title and Annual Income (<US$500,000)")
+
+```
+
+
+```{r}
+survey_usd %>% filter(annual_salary<100000000) -> survey_box
+fig = plot_ly(y=survey_box$annual_salary, type="box",quartilemethod="exclusive") 
+fig
+  
+```
+
+```{r}
+survey_usd %>% group_by(highest_level_of_education_completed) %>% tally(sort=T)
+```
+
+
+```{r, warning=F, message=F, fig.width=4, fig.height=3.5}
+survey_usd %>%
+  rename(edu=highest_level_of_education_completed) %>%
+  filter(!is.na(edu)) %>%
+  ggplot(aes(x=reorder(edu, annual_salary, median), y=annual_salary,
+             fill=fct_rev(reorder(edu, annual_salary, median)), 
+             color=fct_rev(reorder(edu, annual_salary, median)))) + 
+  geom_point(position=position_jitter(0.15),size=1, alpha=0.4,shape=as.numeric(16)) + 
+  geom_flat_violin(position= position_nudge(x=0.25, y=0),adjust=2,alpha=0.85, trim='TRUE',scale='width') +
+  geom_boxplot(aes(x=edu,y=annual_salary,
+                   fill=edu), position=position_nudge(x=0.25, y=0),
+               width=0.1, outlier.shape = NA, varwidth=FALSE, color="black", alpha=0.3) + 
+  scale_y_continuous(limits=c(0,200000),labels=unit_format(unit = "K", scale = 1e-3, sep = ""),
+                     expand=c(0,0)) +
+  theme(legend.position="none",
+        plot.title.position = "plot",
+        axis.title.y=ggtext::element_markdown(size=9),
+        axis.title.x=ggtext::element_markdown(size=9),
+        plot.margin=ggplot2::margin(1,1.5,0.5,1,"cm"),
+        plot.caption=element_text(size=8, color="#4a4e69")) +
+  expand_limits(x = 6.2) +
+  scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 14)) +
+  scale_color_npg() + 
+  scale_fill_npg() + 
+  coord_flip() + 
+  labs(x="**Education**",y='<br>**Annual Salary** (in USD)',
+       title="Education and Annual Salary",
+       subtitle="")
+```
+
+
+
+
+
+
+  

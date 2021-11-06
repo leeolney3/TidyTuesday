@@ -1,0 +1,395 @@
+---
+title: "Tidy Tuesday Week 32/2021"
+date: "2021/08/03"
+output: html_notebook
+---
+
+This notebook uses [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 32 [Paralympic Medals](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-03/readme.md),
+data from [International Paralympic Committee](https://db.ipc-services.org/sdms/hira/web/index).
+
+```{r}
+# Load libraries 
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(countrycode)
+library(janitor)
+library(ggmosaic)
+library(gt)
+library(kableExtra) 
+library(formattable) 
+library(colorspace)
+library(wesanderson)
+library(glue)
+
+theme_set(theme_minimal(base_size = 10))
+theme_update(panel.grid.minor = element_blank(),
+             plot.margin=unit(c(.5,1.5,.5,1),"cm"),
+             panel.grid=element_line(size=.3),
+             plot.title.position = "plot",
+             plot.title=element_text(face="bold",size=11.5),
+             plot.subtitle=element_text(size=10, margin=margin(b=10)),
+             plot.caption=element_text(hjust=-0.85, color="grey20"))
+
+# Suppress summarise info
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r}
+# Import data
+athletes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-03/athletes.csv')
+```
+```{r}
+# rename country names
+athletes = athletes %>% mutate(country=case_when(country=="United States of America"~"USA",
+                           country=="Great Britain" ~"UK",
+                           TRUE~country))
+```
+
+```{r}
+summary(athletes$year)
+```
+
+#### Proportion of gender by type of sport
+* shared on [Twitter](https://twitter.com/leeolney3/status/1422399069016797184)
+
+```{r}
+athletes %>% filter(!is.na(gender)) %>%
+  group_by(type, gender) %>%
+  tally() %>% 
+  mutate(prop=n/sum(n)) %>%
+  ggplot(aes(y=type, x=prop, fill=gender)) + 
+  geom_col(width=.6, alpha=0.85) + 
+  coord_cartesian(expand=F, clip="off") +
+  scale_fill_manual(values=c("#5A9599FF","#C71000FF","#FF6F00FF")) +
+  scale_x_continuous(labels=scales::percent_format()) +
+  scale_y_discrete(expand=c(0,0)) +
+  theme(axis.text.y=element_text(size=9, face="bold", color="grey50", margin=margin(r=3)),
+        axis.ticks.x=element_line(color="grey"),
+        axis.title=element_blank(),
+        axis.ticks.length=unit(.25, "cm"),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.margin = margin(l=-5),
+        legend.key.height =unit(.5,"cm"),
+        legend.key.width =unit(.25,"cm")
+        ) + 
+  guides(fill = guide_legend(reverse=T)) +
+  labs(subtitle="Proportion of gender by type of sport, from 1980 to 2016",fill="", title="Paralympics Sport and Gender", caption="\n#TidyTuesday Week 32 | Data from International Paralympic Committee ")
+```
+
+#### Paralympics medals by year and type of sport
+```{r}
+athletes %>% count(year, type) %>%
+  group_by(type) %>% 
+  mutate(col=if_else(n==max(n),"#ee9b00","#4f5d75")) %>%
+  ggplot(aes(x=factor(year), y=n)) + 
+  geom_bar(stat="identity", aes(fill=col), width=0.7) +
+  facet_wrap(~type, scales="free_y") + 
+  scale_fill_identity() +
+  theme(axis.text.x=element_text(angle=90),
+        panel.grid=element_blank(),
+        axis.text=element_text(size=7),
+        strip.text=element_text(size=9.5, face="bold", color="grey50"),
+        axis.title=element_blank()
+        ) + 
+  labs(title="Paralympics medals by year and sport\n")
+```
+
+#### Sport type: event, medal, year count
+```{r}
+# sport type: event, medal, year count
+athletes %>% 
+  group_by(type) %>% 
+  summarise(medal_count = n(),
+            event_count = n_distinct(event), 
+            year_count = n_distinct(year),
+            earliest_year = min(year),
+            latest_year = max(year)
+            ) %>%
+  #arrange(desc(medal_count)) %>%
+  DT::datatable(rownames=FALSE,options = list(order = list(list(1, 'desc')),pageLength = 11)) 
+```
+
+#### Countries with most Paralympic medals (type)
+```{r}
+# sport type, medal, country
+type_df = athletes %>% filter(!is.na(country)) %>%
+  group_by(type, medal, country) %>% 
+  summarise(medal_count=n()) %>%
+  arrange(type, medal, desc(medal_count)) %>%
+  slice(1) %>%
+  arrange(type, desc(medal_count)) %>%
+  mutate(medal = fct_inorder(medal))
+
+# kable tile function reference: https://github.com/moriahtaylor1/tidy-tuesday/blob/main/2021_Week31/TT_Olympics.R
+gold_tile <- function() {
+  formatter("span", 
+            style = style(
+              display = "block",
+              padding = "5 5px",
+              "border-radius" = "10px",
+              "color" = csscolor("black"),
+              "background-color" = "#be9625"
+            )
+  )
+}
+
+silver_tile <- function() {
+    formatter("span", 
+            style = style(
+              display = "block",
+              padding = "5 5px",
+              "border-radius" = "10px",
+              "color" = csscolor("black"),
+              "background-color" = "#9F9F9F"
+            )
+  )
+}
+
+bronze_tile <- function() {
+  formatter("span", 
+            style = style(
+              display = "block",
+              padding = "5 5px",
+              "border-radius" = "10px",
+              "color" = csscolor("black"),
+              "background-color" = "#cd7f32"
+            )
+  )
+}
+
+# kable 
+type_df %>% select(-medal_count) %>%
+  pivot_wider(names_from=medal, values_from=country) %>%
+  rename(Sport = type) %>%
+  mutate(Sport=cell_spec(Sport,"html", color="black", align="left",bold=F),
+         Gold=gold_tile()(Gold),
+         Silver=silver_tile()(Silver),
+         Bronze=bronze_tile()(Bronze)) %>%
+  select(Sport, Gold, Silver, Bronze) %>%
+  kable(
+    "html", escape = F,align=c("lcccc"),
+  ) %>%
+  kable_minimal() %>%
+  column_spec(2:4,width_min='4cm') %>%
+  add_header_above(c("Countries with most Paralympic medals" = 4), color="black", font_size=18)
+
+```
+
+#### Medal/event/unique country count, by year
+```{r}
+# year: medals, events, country 
+athletes %>% group_by(year) %>% 
+  summarise(medal_count = n(),
+            event_count = n_distinct(event),
+            country_count=n_distinct(country))
+```
+#### Medal count by year
+```{r}
+# medal count by year 
+medal_df = athletes %>% group_by(year) %>% 
+  summarise(medal = n(),
+            event = n_distinct(event)) 
+
+athletes %>% group_by(year) %>% 
+  summarise(event = n_distinct(event)) %>%
+  ggplot(aes(x=factor(year), y=event, fill=event)) + 
+  geom_col(width=0.7) + 
+  geom_text(aes(label=event),size=3.3, vjust=2, color="white") + 
+  #geom_text(aes(y=20, label=year),,size=3, color="white") + 
+  scale_fill_gradientn(colours = wes_palette("Zissou1", 10, type = "continuous")) + 
+  theme(legend.position = "none",
+        panel.grid.major.x=element_blank(),
+        axis.title=element_text(size=8.5)) +
+  scale_y_continuous(expand=c(0,0)) + 
+  labs(x="Year", y="Event count", title="Paralympics event count by year", subtitle="(1980 to 2016)")
+```
+
+
+
+
+#### Medals by country and year
+```{r}
+# 10 countries with most medals 
+df10 = athletes %>% filter(!is.na(country)) %>% group_by(country) %>% tally(sort=T) %>% slice(1:10) %>%
+  mutate(labs=glue::glue("<b>{country}</b> ({n})")) %>%
+  mutate(labs=fct_inorder(labs))
+
+# plot
+athletes %>% filter(!is.na(country)) %>%
+  mutate(country=ifelse(country=="United States of America","USA",country)) %>%
+  filter(country %in% df10$country) %>% 
+  mutate(country=fct_rev(fct_infreq(country))) %>%
+  group_by(year, country) %>% tally() %>%
+  mutate(col = if_else(n>50,"black","white")) %>%
+  ggplot(aes(x=factor(year), y=country, fill=n)) + 
+  geom_tile(size=2, color="white") +
+  geom_text(aes(label=n, color=col), size=2.85) +
+  scale_color_identity() +
+  scale_fill_gradientn(colours = wes_palette("Zissou1", 10, type = "continuous")) +
+  #scale_fill_continuous_sequential(pal="BluYl") +
+  scale_y_discrete(labels=rev(df10$labs)) + 
+  theme(axis.text.y=element_markdown(size=9, color="grey30"),
+        axis.text.x=element_text(size=8.5, color="grey30"),
+        panel.grid.major.x=element_blank(),
+        legend.position = "none",
+        axis.title=element_blank()
+        ) + 
+  labs(title= "Paralympics medals by country and year",
+       subtitle = "10 countries with the most medals from 1980 to 2016")
+  
+```
+
+#### Event and sport
+```{r}
+# top 10 event/sport by count of medals
+athletes %>% count(type, event, sort=T) %>% slice(1:10)
+```
+```{r}
+# event with highest medal from each sport
+athletes %>% 
+  count(type, event) %>%
+  group_by(type) %>%
+  arrange(type, desc(n)) %>%
+  slice(1)
+```
+
+#### Swimming medals 
+```{r}
+# countries with most swimming medals 
+df_swim = athletes %>% 
+  filter(type=="Swimming", !is.na(country), country!="-") %>%
+  count(country, sort=T) %>% 
+  slice(1:10)
+
+# gender of swimming medalists from 10 countries with most swimming medals
+athletes %>% filter(type=="Swimming", !is.na(country), country!="-") %>%
+  filter(country %in% df_swim$country) %>%
+  group_by(country, gender) %>% tally() %>%
+  ggplot(aes(y=reorder(country,n), x=n, fill=gender)) + 
+  geom_col(alpha=0.95,width=.6)+
+  scale_fill_manual(values=c("#288994","#083346","#77C4D1")) + 
+  scale_x_continuous(breaks=seq(0,150,25)) +
+  coord_cartesian(expand=F, clip="off") +
+  theme(axis.text.y=element_text(margin=margin(r=4)),
+        axis.title=element_blank(),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.margin = margin(l=-5),
+        legend.key.height =unit(.5,"cm"),
+        legend.key.width =unit(.25,"cm"),
+        plot.subtitle=element_text(size=9.5, lineheight = 1.2),
+        panel.grid.major.y=element_blank(),
+        plot.background = element_rect(fill="#fdfff7",color=NA)
+        ) + 
+  guides(fill = guide_legend(reverse=T)) + 
+  labs(fill="", title="Paralympics Swimming Medals", subtitle = "1980 to 2016\nTen countries with the most swimming medals")
+  
+```
+
+
+
+### Rank plot
+* top 10 countries with most medals
+* reference: https://twitter.com/issa_madjid/status/1422635232994463746
+
+```{r}
+# top 10 countries with most medals
+athletes1 <- athletes %>% 
+  mutate(abb = case_when(abb == "URS" ~ "RUS",
+                         abb == "FRG" ~ "GER",
+                         TRUE ~ abb))
+top_10 = athletes1 %>% count(abb,sort=T) %>% slice(1:10)
+
+ranking = athletes1 %>% 
+  filter(abb %in% top_10$abb) %>%
+  group_by(year, abb) %>% tally() %>%
+  arrange(year, -n) %>%
+  mutate(rank = dense_rank(desc(n)),
+         col= case_when(abb=="USA"~ "#ae2012",
+                        abb=="GER" ~ "#0077b6",
+                        abb=="AUS" ~ "#588157",
+                        abb=="CHN" ~ "#f3722c",
+                        TRUE ~ "grey")
+         )
+
+# x axis labels
+# reference: https://github.com/AbdoulMa/TidyTuesday/tree/main/2021_w32
+olympics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv')
+summer <- olympics %>% 
+  filter(season == "Summer") %>% 
+  distinct(year, city) %>% 
+  mutate(edition = glue::glue('<span style = "color: grey35;">{year}</span> <br> <span style = "color: grey35;">{city}</span>')) %>% 
+  filter(between(year, 1980,2016)) %>% 
+  arrange(year)
+```
+
+
+```{r}
+ggplot(data = (ranking %>% filter(col=="grey")), aes(year, rank, fill=abb)) +
+  geom_line(alpha=.7, color="grey50") + 
+  geom_point(aes(year, rank, fill=abb),shape=21, fill="white",size=6, color="grey50") + 
+  geom_text(aes(year, rank, label=abb),size=1.7, color="grey30") + 
+  # add highlights
+  geom_line(data = (ranking %>% filter(col!="grey")), aes(year, rank, color=col),size=0.8) + 
+  geom_point(data = (ranking %>% filter(col!="grey")),aes(year, rank, color=col), size=6.5, show.legend=F) +
+  geom_text(data = (ranking %>% filter(col!="grey")),aes(label=abb), size=1.9, color="white") +
+  coord_cartesian(clip="off") +
+  scale_color_identity() +
+  scale_y_reverse(breaks=seq(1,10,1)) + 
+  geom_richtext(data = summer, aes(x = year, y = 10.75, group = seq_along(year), label = edition),
+                fill = NA, label.color = NA, size = 2.4, lineheight = .9) + 
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_text(size=8, face="bold", margin=margin(t=-4)),
+        axis.title.y=element_text(size=8, face="bold"),
+        panel.grid.major.x=element_blank(),
+        plot.subtitle=element_text(hjust=0.5, face="bold")) + 
+  labs(y="Rank", x="Year and Host City", 
+       subtitle="Which country won the most Paralympic medals? ")
+```
+
+#### Proportion of Paralympics medals by sport
+```{r}
+athletes %>% 
+  group_by(year, type) %>% 
+  tally() %>%
+  mutate(prop=n/sum(n)) %>%
+  ggplot(aes(x=year, y=n, fill=fct_rev(type), label=fct_rev(type))) + 
+  geom_stream(type="proportional") + 
+  scale_fill_futurama() + 
+  scale_x_continuous(limits=c(1980,2023), breaks=c(1980,1990, 2000, 2010, 2016)) +
+  theme(legend.position="none",
+        axis.title=element_blank(),
+        axis.text.x=element_text(margin=margin(t=-8)),
+        axis.text.y=element_text(margin=margin(r=-8)),
+        plot.title.position = "plot") + 
+  annotate(geom= "text",x=2017, y=0.01, label="Archery",size=2.7, hjust=0,
+           color="#1A5354FF",fontface="bold") + 
+  annotate(geom= "text",x=2017, y=0.15, label="Athletics",size=2.7,hjust=0,
+           color="#87d5ba",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.325, label="Basketball",size=2.7,hjust=0,
+           color="#3D3B25FF",fontface="bold") + 
+  annotate(geom= "text",x=2017, y=0.365, label="Fencing",size=2.7,hjust=0,
+           color="#FF95A8FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.4, label="Powerlifting",size=2.7,hjust=0,
+           color="#84D7E1FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.435, label="Rugby",size=2.7,hjust=0,
+           color="#FF6348FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.6, label="Swimming",size=2.7,hjust=0,
+           color="#5A9599FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.75, label="Table Tennis",size=2.7,hjust=0,
+           color="#8A4198FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.84, label="Triathlon",size=2.7,hjust=0,
+           color="#008EA0FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.915, label="Volleyball",size=2.7,hjust=0, 
+           color="#C71000FF",fontface="bold") +
+  annotate(geom= "text",x=2017, y=0.965, label="Wheelchair Tennis",size=2.7,hjust=0, 
+           color="#FF6F00FF",fontface="bold") + 
+  labs(subtitle = "Proportion of Paralympics medals by sport (1980-2016)")
+  
+  
+```
+
+
+

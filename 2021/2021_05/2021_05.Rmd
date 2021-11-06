@@ -1,0 +1,165 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(countrycode)
+library(ggsci)
+```
+
+```{r}
+plastics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-26/plastics.csv')
+dim(plastics)
+```
+
+```{r}
+plastics2 = plastics %>% filter(parent_company!="Grand Total") %>% filter(country!="EMPTY") %>% group_by(country, year) %>% summarise_at(vars(empty:pvc), sum, na.rm = TRUE) %>% filter(year=="2020")
+```
+
+```{r}
+plastics2 %>% select(country, pet) %>% arrange(desc(pet))
+```
+
+```{r}
+plastics3
+```
+
+
+```{r}
+library(sf)
+library(here)
+library(rgdal)
+```
+
+```{r}
+my_spdf <- readOGR( 
+  dsn= paste0(getwd(),"/world_shape_file/") , 
+  layer="TM_WORLD_BORDERS_SIMPL-0.3",
+  verbose=FALSE
+)
+```
+
+
+```{r}
+library(RColorBrewer)
+library(colorspace)
+library(wesanderson)
+library(viridis)
+```
+
+```{r}
+
+countries_sf = my_spdf %>% sf::st_as_sf()
+
+plastics3 = plastics2 %>% rename(NAME= country) 
+
+pal <- wes_palette("Zissou1", 100, type = "continuous")
+
+left_join(countries_sf, plastics3, by='NAME') %>% 
+  ggplot(aes(fill = pet)) +
+  geom_sf(color = NA) +
+  scale_fill_gradientn(colours = pal, na.value = 'lightgrey') + 
+  theme_void() + 
+  labs(title = "Polyester Plastic (PET) waste collected in 2020",
+    subtitle="Count of PET waste (polyester fibers, soft drink bottles,\nfood containers) collected by volunteers in 55 countries.",
+    fill = "",
+    caption = "Data from Break Free from Plastic, courtesy of Sarah Sauve") + 
+  theme(plot.title = element_text(hjust=0.5), plot.subtitle=element_text(size=9, hjust=0.5), plot.caption=element_text(face="italic", size=8))
+  
+```
+
+```{r}
+n_distinct(plastics3$NAME)
+```
+
+```{r}
+plastics_g = plastics3 %>% mutate(gt = empty+ hdpe+ ldpe + o + pet + pp + ps + pvc) %>% mutate(pet_prop = pet/gt)
+head(plastics3)
+```
+
+```{r}
+plastics_gt = plastics %>% filter(parent_company=="Grand Total")  
+
+```
+
+
+```{r}
+# cut() and scale_manual_discrete 
+my_breaks = c(0, 100, 200, 500, 1000, 9000, 27000)
+  
+plastics3$c1<- 
+  cut(plastics3$pet, breaks = c(0, 1, 100, 200, 500, 1000, 9000, 27390),
+      labels = c("0", "1-100", "100-200", "200-500", "500-1000","1000-9000", "27390"),
+      include.lowest = TRUE, right=FALSE)  
+  
+  
+left_join(countries_sf, plastics3, by='NAME') %>% 
+  ggplot(aes(fill = c1)) +
+  geom_sf(color = NA) +
+  scale_fill_manual(values=c("#f72585","#b5179e","#7209b7","#3f37c9","#4361ee", "#4895ef","#4cc9f0"),na.value = 'lightgrey') + 
+  theme_void() + 
+  labs(title = "Polyester Plastic (PET) waste collected in 2020",
+    subtitle="Count of PET waste (polyester fibers, soft drink bottles,\nfood containers) collected by volunteers in 55 countries.",
+    fill = "",
+    caption = "Data from Break Free from Plastic, courtesy of Sarah Sauve") + 
+  theme(plot.title = element_text(hjust=0.5), plot.subtitle=element_text(size=9, hjust=0.5), plot.caption=element_text(face="italic", size=8))
+```
+
+```{r}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(wesanderson)
+library(viridis)
+library(RColorBrewer)
+library(colorspace)
+```
+
+```{r, warning=FALSE}
+# gradient and log10
+p1 = left_join(countries_sf, plastics3, by='NAME') %>% 
+  ggplot(aes(fill = pet)) +
+  geom_sf(color = NA) +
+  scale_fill_gradientn(colours = pal, trans= "log10", na.value = 'lightgrey') + 
+  theme_void() + 
+  labs(title = "Using scale_fill_gradient and log10",
+       subtitle="Polyester Plastic (PET) waste collected in 2020",
+    fill = "",
+    caption = "Data from Break Free from Plastic, courtesy of Sarah Sauve") + 
+  theme(plot.title = element_text(hjust=0.5), plot.subtitle=element_text(size=9, hjust=0.5), plot.caption=element_text(face="italic", size=8))
+p1
+```
+
+```{r, warning=FALSE}
+# viridis and log10
+p2= left_join(countries_sf, plastics3, by='NAME') %>% 
+  ggplot(aes(fill = pet)) +
+  geom_sf(color = NA) +
+  scale_fill_viridis(trans= "log10", na.value = 'lightgrey') + 
+  theme_void() + 
+  labs(title = "Polyester Plastic (PET) waste collected in 2020",
+    subtitle="Count of PET waste (polyester fibers, soft drink bottles,\nfood containers) collected by volunteers in 55 countries.",
+    fill = "",
+    caption = "Data from Break Free from Plastic, courtesy of Sarah Sauve") + 
+  theme(plot.title = element_text(hjust=0.5), plot.subtitle=element_text(size=9, hjust=0.5), plot.caption=element_text(face="italic", size=8))
+p2
+```
+
+```{r, warning=FALSE}
+# continuous_sequential and log
+p3= left_join(countries_sf, plastics3, by='NAME') %>% 
+  ggplot(aes(fill = pet)) +
+  geom_sf(color = NA) +
+  scale_fill_continuous_sequential(palette = "Plasma", trans="log10", na.value = 'lightgrey') + 
+  theme_void() + 
+  labs(title = "Polyester Plastic (PET) waste collected in 2020",
+    subtitle="Count of PET waste (polyester fibers, soft drink bottles,\nfood containers) collected by volunteers in 55 countries.",
+    fill = "",
+    caption = "Data from Break Free from Plastic, courtesy of Sarah Sauve") + 
+  theme(plot.title = element_text(hjust=0.5), plot.subtitle=element_text(size=9, hjust=0.5), plot.caption=element_text(face="italic", size=8))
+p3
+```
+

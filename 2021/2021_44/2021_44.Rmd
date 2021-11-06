@@ -1,0 +1,783 @@
+---
+title: "TidyTuesday 2021W44"
+date: "2021/10/26"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) 2021W44 [Ultra Trail Running](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-26/readme.md), data from from [Benjamin Nowak](https://github.com/BjnNowak/UltraTrailRunning) by way of [International Trail Running Association (ITRA)](https://itra.run/Races/FindRaceResults).
+
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(lubridate)
+library(ggmosaic)
+library(ggbump)
+library(countrycode)
+library(gt)
+library(gtExtras)
+
+# Suppress summarise info
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r}
+library(showtext)
+font_add_google("Roboto Mono") 
+showtext_auto()
+```
+
+
+```{r}
+ultra_rankings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-26/ultra_rankings.csv')
+race <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-26/race.csv')
+```
+
+### Summary
+```{r}
+skimr::skim(ultra_rankings %>% mutate_if(is.character,as.factor))
+```
+
+```{r}
+skimr::skim(race %>% mutate_if(is.character,as.factor))
+```
+
+
+
+### Participants count by gender and by year
+
+```{r}
+# wrangle
+p1_data = ultra_rankings %>% 
+  left_join(race, by="race_year_id") %>%
+  mutate(year= year(date),gender=recode(gender, "M"="Man", "W"="Woman")) %>%
+  filter(year<=2020, !is.na(gender)) 
+
+# plot
+p1_data %>%
+  ggplot() +
+  geom_mosaic(aes(x=product(gender, year), fill=gender)) +
+  geom_text(data = layer_data(last_plot(), 1) %>% filter(.wt > 0),
+             aes(x = (xmin + xmax) / 2,
+                 y = (ymin + ymax) / 2,
+                 label = .wt), size=3, color="white") +
+  coord_cartesian(expand=F, clip="off") +
+  scale_fill_manual(values=c("#5B3A90","#115B51")) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid=element_blank(),
+        axis.title=element_blank(),
+        axis.text.x=element_text(size=8, color="#343a40"),
+        axis.text.y=element_text(size=9, color="#343a40"),
+        plot.title.position="plot",
+        plot.subtitle=element_markdown(size=7.5, lineheight = 1.3, margin=margin(b=10)),
+        plot.title=element_markdown(family="Roboto"),
+        plot.margin = unit(c(.5, 1.25, .5, .75), "cm"),
+        plot.caption=element_text(size=6.5, hjust=0, margin=margin(t=10)),
+        plot.caption.position = "plot"
+        ) +
+  labs(y="Gender", x="Year",
+       subtitle="Breakdown of ultra running participants by gender and by year, from Jan 14, 2012 to Dec 26, 2021, shown as a mosaic plot. The widths of<br>each rectangle are proportional to the number of participants in that year and the heights are proportional to the number of participants by<br>gender. Numbers represent the counts of participants within each category. The highest number of participants (n= 24,564) was in 2019, and<br>lowest (n= 6,909) was in 2020. The largest proportion of women participants (16.8%) was in 2020, and smallest proportion (13.6%) in 2013.",
+       title="<span style = 'color:#115B51;'>**Women**</span> and <span style = 'color:#5B3A90;'>**Man**</span> Ultra Running Participants",
+       caption="#TidyTuesday week 44 | Data from Benjamin Nowak by way of International Trail Running Association (ITRA)")
+```
+
+### US races participant count
+```{r}
+caption_text = "#TidyTuesday week 44 | Data from Benjamin Nowak by way of ITRA"
+```
+
+```{r}
+# table of races in United states
+us_race = race %>% 
+  filter(distance>0,participants>0, country %in% c("United States")) %>%
+  group_by(country, event, race, date) %>%
+  tally(participants) %>% ungroup() %>%
+  mutate(year=year(date)) %>%
+  filter(year>=2016)
+```
+
+
+```{r}
+# get top 5 events with the most participants
+us_event = us_race %>% group_by(event) %>% tally(n, sort=T) %>% slice(1:5) %>% pull(event)
+```
+
+
+```{r}
+# prepare data
+us_race = us_race %>% 
+  mutate(event_grp= case_when(event %in% us_event ~ event,
+                                        TRUE~"Other events")) %>%
+  mutate(event_grp = factor(event_grp,levels=c("Javelina Jundred","Coldwater Rumble","Kettle Moraine 100",
+                                               "Rocky Raccoon","Bighorn Trail Run","Other events")))
+```
+
+
+```{r}
+# plot
+us_race %>%
+  ggplot(aes(x=date, y=n)) +
+  geom_line(color="#c9d7e4") +
+  geom_point(aes(color=event_grp, size=ifelse(event_grp=="Other events",1,3.5)), alpha=.9) +
+  scale_color_manual("Event",values=c("#168aad","#F28F38","#019176","#01dca6","#ff483b","black")) +
+  scale_size_identity() +
+  scale_x_date(breaks="1 year", date_labels = "%Y", expand=c(.02,.02)) +
+  scale_y_continuous(limits=c(0,NA), expand = expansion(mult = c(0, .05))) +
+  guides(color=guide_legend(nrow=2, override.aes = list(shape=15, size=4))) +
+  theme_minimal(base_size = 9.5) +
+  theme(panel.grid=element_line(size=.3),
+        legend.position = "top",
+        legend.margin=margin(b=-5),
+        legend.justification = "left",
+        panel.grid.minor.x=element_blank(),
+        axis.title=element_text(size=8),
+        axis.line.x = element_line(),
+        plot.title.position = "plot",
+        plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+        plot.subtitle = element_text(size=10),
+        legend.title=element_text(size=9),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, hjust=0, margin=margin(t=7))
+        ) +
+  labs(subtitle="Number of Participants in US Ultra Trail Running Events (100 mile races), from Jan 23, 2016 to Jul 24, 2021", x="Event date", y="Number of Participants",caption=caption_text)
+```
+
+### Finishers
+```{r}
+# finishers df
+df = ultra_rankings %>% 
+  left_join(race, by="race_year_id") %>% 
+  filter(!is.na(gender),!is.na(time_in_seconds), !is.na(distance), distance != 0, !is.na(rank)) %>% 
+  mutate(gender=recode(gender, "M"="Man", "W"="Woman"),
+         time_in_hours = time_in_seconds/3600,
+         sp = distance/time_in_hours,
+         runner=str_to_title(runner),
+         year=year(date)) 
+
+# finishers df without speed outliers
+df1 = df %>%
+  mutate(zscore_sp = (sp- mean(sp))/ sd(sp)) %>% #get zscore
+  filter(between(zscore_sp,-3,3)) #drop outliers
+```
+
+```{r}
+# count of finishers by gender
+Hmisc::describe(df$gender)
+```
+
+### Summary table 
+```{r}
+# summary stats: speed
+sum_sp = df1 %>% filter(distance>160) %>% arrange(sp) %>%
+  group_by(gender) %>%
+  summarise(n=n(),min=min(sp), median=median(sp), max=max(sp), st.dev=sd(sp), histogram= list(sp), 
+            skew=skewness(sp),kurtosis = kurtosis(sp), .groups="drop") %>%
+  mutate(grp = "Speed (km/h)")
+
+# summary stats: distance
+sum_dist = df1 %>% filter(distance>160) %>% arrange(distance) %>%
+  group_by(gender) %>%
+  summarise(n=n(),min=min(distance), median=median(distance), max=max(distance), st.dev=sd(distance), 
+            histogram= list(distance), skew=skewness(distance),kurtosis = kurtosis(distance),.groups="drop") %>%
+  mutate(grp = "Distance (km)")
+
+# bind both summary 
+sum1 = rbind(sum_sp, sum_dist)
+```
+
+
+```{r}
+sum1 %>% mutate(across(where(is.numeric), round, 2)) %>% 
+  group_by(grp) %>% 
+  gt() %>% 
+  gt_theme_nytimes() %>%
+  tab_header(title = "Ultra Trail Running Finishers",
+             subtitle="Summary of speed and distance by gender for races 100 miles or more, from 2012-01-14 to 2021-09-03") %>%
+  # histogram and density plots
+  gtExtras::gt_sparkline(
+    histogram,
+    type = "histogram",
+    line_color = "#474747FF",
+    fill_color = "#474747FF",
+    bw = 0.75, same_limit = FALSE
+  ) %>%
+  cols_width(gender:st.dev ~ px(80),
+             skew:kurtosis ~ px(70))
+```
+
+### Finishers nationality ranking
+* inspired by https://www.bloomberg.com/graphics/2021-germanys-unfinished-business/?utm_content=graphics&utm_campaign=socialflow-organic&utm_source=twitter&utm_medium=social&cmpid%3D=socialflow-twitter-graphics
+
+```{r}
+# get 10 nationalities with the most finishers from 2012 to 2020
+nat_10 = df %>% filter(year<=2020) %>% count(nationality, sort=T) %>% slice(1:10) %>% pull(nationality)
+```
+
+```{r}
+# prepare data
+bump_data = df %>% 
+  filter(year<=2020,nationality %in% nat_10) %>%
+  count(nationality, year) %>%
+  mutate(country=countrycode(nationality, origin = "iso3c", destination="country.name"),
+         region=countrycode(nationality, origin="iso3c", destination = "continent"),
+         region=case_when(region=="Americas"~"North America", TRUE~region),
+         region=case_when(country=="Argentina"~"South America", TRUE~region)
+         ) %>%
+  group_by(year) %>%
+  mutate(rank = dense_rank(desc(n))) %>%
+  ungroup()
+```
+
+```{r}
+# plot
+bump_data %>%
+  ggplot(aes(x=year, rank, group=nationality, color=region)) +
+  geom_bump(size = 5, smooth = 8, alpha=.8) +
+  scale_y_reverse(limits=c(10.5,0.5), expand=c(0,0)) +
+  geom_text(data = bump_data %>% filter(year == min(year)),
+            aes(x = year - .1, label = country), size = 3, hjust = 1, color="black")  +
+  geom_text(data = bump_data %>% filter(year == max(year)),
+            aes(x = year + .1, label = country), size = 3, hjust = 0, color="black") +
+  geom_vline(xintercept = seq(2013,2020,1), color="white", size=.5) +
+  scale_x_continuous(limits=c(2010.5,2021.5), expand=c(0,0), breaks=seq(2012,2020,1)) +
+  coord_cartesian(clip="off") +
+  scale_color_manual("",values=c("#fa8c00","#00dca6","#15607a","#c5ded7")) +
+  theme_void(base_size = 10) +
+  theme(legend.position = "top",
+        legend.margin=margin(t=6,b=-2),
+        legend.justification = "left",
+        plot.margin = unit(c(.5, 1, .5, .5), "cm"),
+        plot.title=element_text(face="bold"),
+        axis.line.x.bottom = element_line(),
+        axis.text.x=element_text(size=8, margin=margin(t=3)),
+        axis.ticks.x = element_line(),
+        axis.ticks.length=unit(.15, "cm"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, hjust=0, margin=margin(t=10))
+        ) +
+  labs(title="Ultra Runners Finishers Rankings",
+       subtitle="10 nationalties with the highest count of finishers for 100 mile races, from 2012 to 2020",
+       caption=caption_text) +
+  ggpattern::geom_rect_pattern(aes(xmin=2018, xmax=2020, ymin=10.5, ymax=.5),show.legend = F,color=NA, fill=NA, 
+                               pattern = 'stripe', pattern_fill="white", pattern_color="white",pattern_alpha=.3,
+                               pattern_density=.01,pattern_angle=40, pattern_size=.5,pattern_spacing=.03)
+```
+
+### Count of Rank 1 by nationality 
+* inspired by https://blog.datawrapper.de/favorite-popular-chart-types/
+
+```{r}
+# get 10 nationalies with most rank==1 from 2012 to 2020
+rank_10 = df %>% filter(rank==1,year<=2020) %>% count(nationality, sort=T) %>% slice(1:10) %>% pull(nationality)
+```
+
+```{r}
+# prepare data
+rank_data = df %>% filter(rank==1) %>%
+  mutate(year= year(date)) %>%
+  filter(year<=2020) %>%
+  filter(nationality %in% rank_10) %>%
+  count(nationality, year) %>%
+  mutate(country=countrycode(nationality, origin = "iso3c", destination="country.name")) %>%
+  group_by(year) %>%
+  mutate(rank = rank(desc(n), ties.method="random")) %>%
+  ungroup()
+```
+
+```{r}
+# plot
+rank_data %>%
+  ggplot(aes(x=year, rank, color=country, group=country)) +
+  geom_line(show.legend=F) +
+  geom_point(aes(size=n)) +
+  scale_y_reverse(limits=c(10.5,0.5), expand=c(0,0)) +
+  geom_text(data = rank_data %>% filter(year == min(year)),
+            aes(x = year - .25, label = country), size = 3, hjust = 1, color="black")  +
+  geom_text(data = rank_data %>% filter(year == max(year)),
+            aes(x = year + .25, label = country), size = 3, hjust = 0, color="black") +
+  scale_x_continuous(limits=c(2010.5,2021.5), expand=c(0.01,0.01), breaks=seq(2012,2020,1)) +
+  coord_cartesian(clip="off") +
+  scale_color_manual("",values=c("#88f5b9","#fa8c00","#ff483b","#019176","#15607a",
+                                 "#c9d7e4","#01dca6","#ffbe48","#1d81a2","#b83229","grey"), guide="none") +
+  scale_size_area(max_size = 11) +
+  theme_void(base_size = 10) + 
+  theme(legend.position = "none",
+        plot.margin = unit(c(.5, 1, .5, .5), "cm"),
+        plot.title=element_text(face="bold"),
+        axis.line.x.bottom = element_line(),
+        axis.text.x=element_text(size=8, margin=margin(t=3)),
+        axis.ticks.x = element_line(),
+        axis.ticks.length=unit(.15, "cm"),
+        legend.title=element_text(size=8.5),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, hjust=0, margin=margin(t=10))
+        ) +
+  labs(title="Count of rank 1 ultra runners by nationality",
+       subtitle="10 nationalities with most total ultra runners with rank==1 for 100 mile races, from 2012 to 2020\n",
+       size="Count of unique participants",
+       caption=caption_text) +
+  geom_text(data=rank_data %>% filter(country=="United States"), aes(label=n), size=3, color="white")
+```
+
+### Finishers speed 
+
+```{r}
+race %>% filter(event=="Ultra-Trail Mt. Fuji"| race=="UTMB®" | race=="Western States Endurance Run") %>%
+  mutate(run = case_when(race=="UTMF - Full Course 165km" ~ "UTMF",TRUE~race)) %>%
+  group_by(run) %>%
+  summarise(n=n(), median_distance=median(distance), median_elevation_gain=median(elevation_gain), min_date=min(date), max_date=max(date))
+```
+
+```{r}
+# events df
+ut3 = df %>% filter(event=="Ultra-Trail Mt. Fuji"|race=="UTMB®"|event=="Western States Endurance Run") %>%
+  mutate(lab= case_when(event=="Ultra-Trail Mt. Fuji" ~ "**Ultra-Trail Mt. Fuji**<br>(167km, 8392m)",
+                        event=="UTMB®" ~ "**Ultra-Trail**<br>**du Mont-Blanc**<br>(170km, 9955m)",
+                        event=="Ultra-Trail Du Mont-Blanc®" ~ "**Ultra-Trail**<br>**du Mont-Blanc**<br>(170km, 9955m)",
+                        event=="The North Face Ultra-Trail Du Mont-Blanc®"~ "**Ultra-Trail**<br>**du Mont-Blanc**<br>(170km, 9955m)",
+                        event=="Western States Endurance Run"~"**Western States**<br>**Endurance Run**<br>(161km, 5510m)")) %>%
+  mutate(lab= fct_rev(fct_reorder(lab, sp, median)))
+```
+
+```{r}
+# annotation df 
+ut3_labs = ut3 %>% 
+  group_by(lab) %>%
+  summarise(md = round(median(sp),2),
+            max= round(max(sp),2),
+            min= round(min(sp),2),
+            n=n())
+```
+
+```{r}
+# plot
+ut3 %>%
+  ggplot(aes(x=lab, y=sp, fill=lab, color=lab)) +
+  ggdist::stat_halfeye(adjust=.2, position=position_nudge(x=.1), .width=0, point_color = NA, alpha=.8) +
+  geom_point(shape="|", size=3, alpha=.2, position=position_nudge(x=-0.15,y=0)) +
+  geom_boxplot(width = .1, outlier.shape = NA, fill="white") +
+  scale_x_discrete(name="**Race** (median distance and elevation gain)",expand = expansion(mult = c(.2, 0))) +
+  scale_y_continuous(name="**Speed** (km/h)",limits=c(3,12), breaks=seq(3,12,2), expand=c(0,0)) +
+  scale_color_manual(values=c("#b76935","#5c4d3c","#143642")) +
+  scale_fill_manual(values=c("#b76935","#5c4d3c","#143642")) +
+  coord_flip() +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.y=element_blank(),
+        axis.title.x=element_markdown(size=8),
+        axis.title.y=element_markdown(size=8, margin=margin(r=5)),
+        legend.position = "none",
+        plot.title.position = "plot",
+        axis.text.x=element_text(color="#212529"),
+        axis.text.y=element_markdown(color="#212529", lineheight = 1.3),
+        plot.title=element_text(size=12, family="Roboto Mono", face="bold"),
+        plot.subtitle=element_text(size=9, margin=margin(b=-10)),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, hjust=0, margin=margin(t=10)),
+        plot.margin = unit(c(.5, .5, .5, .5), "cm")) +
+  labs(title="Ultra Running Finishers",subtitle="Distribution of finishers speed by race, from 2012-05-18 to 2021-08-27", caption = caption_text) +
+  # annotate
+  geom_text(data=ut3_labs, aes(x=lab, y=md, label=md), size=3, nudge_x = .17, color="white") +
+  geom_text(data=ut3_labs, aes(x=lab, y=7.5, label=glue::glue("n={n}")), 
+            size=2.9, nudge_x = .3, color="#212529") +
+  geom_text(data=ut3_labs, aes(x=lab, y=max+0.3, label=glue::glue("max=\n{max}")), 
+            size=2.9, nudge_x = -.1,lineheight=.9, color="#212529")
+```
+
+### Finishers speed (United States events)
+
+```{r}
+# table of us event, count of finishers and participants from 2012 to 2016
+event = df %>% filter(country=="United States", year>=2016) %>%
+  group_by(event) %>%
+  summarise(finishers=n(), participants = sum(participants)) %>%
+  arrange(desc(finishers)) 
+```
+
+```{r}
+# get 3 us events with the most finishers 
+event3 = event %>% arrange(desc(finishers)) %>% slice(1:3) %>% pull(event)
+event3
+```
+
+```{r}
+# plot data
+rc_data = df %>% 
+  filter(event %in% event3, year>=2016) %>%
+  group_by(event) %>%
+  mutate(avg_dist= round(mean(distance),2)) %>%
+  mutate(lab=glue::glue("{event}\n({avg_dist}km)")) %>%
+  ungroup() %>%
+  mutate(lab=fct_reorder(lab, sp, median)) 
+
+# annotations df
+rc_labs = rc_data %>% group_by(lab) %>%
+  summarise(md = round(median(sp),2),
+            max= round(max(sp),2),
+            n=n())
+```
+
+```{r}
+rc_data %>%
+  ggplot(aes(x=lab, y=sp, fill=lab, color=lab)) +
+  ggdist::stat_halfeye(adjust=.2, position=position_nudge(x=.1), .width=0, point_color = NA, alpha=.8) +
+  geom_point(shape="|", size=3, alpha=.2, position=position_nudge(x=-0.15,y=0)) +
+  geom_boxplot(width = .1, outlier.shape = NA, fill="white") +
+  scale_x_discrete("Event (average distance)", labels = function(x) str_wrap(x, width = 16), 
+                   expand = expansion(mult = c(.2, 0))) +
+  scale_y_continuous("Speed (km/h)",expand=c(0,0), limits=c(4,13)) +
+  scale_fill_manual(values=c("#0091ad","#5c4d7d","#b7094c")) +
+  scale_color_manual(values=c("#0091ad","#5c4d7d","#b7094c")) +
+  coord_flip() +
+  theme_minimal() +
+  theme(panel.grid.major.y=element_blank(),
+        axis.title=element_text(size=9),
+        legend.position = "none",
+        axis.text.x=element_text(size=8, color="#212529"),
+        plot.title.position = "plot",
+        axis.text=element_text(color="#212529"),
+        plot.title=element_text(size=11, family="Roboto Mono", face="bold"),
+        plot.subtitle=element_text(size=9, margin=margin(b=-10)),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, hjust=0, margin=margin(t=10)),
+        plot.margin = unit(c(.5, .5, .5, .5), "cm")) +
+  geom_text(data=rc_labs, aes(x=lab, y=md, label=md), size=3, nudge_x = .17, color="white") +
+  geom_text(data=rc_labs, aes(x=lab, y=8, label=glue::glue("n={n}")), 
+            size=2.9, nudge_x = .3, color="#212529",hjust=1) +
+  geom_text(data=rc_labs, aes(x=lab, y=max, label=glue::glue("max=\n{max}")), 
+            size=2.9, nudge_x=.3, lineheight=.9, color="#212529") +
+  labs(title="Ultra Running Finishers: US Events",subtitle="Distribution of finishers speed by event. Three events in United States with most finishers from 2016-06-25 to 2021-06-26.",caption = caption_text)
+  
+```
+
+### Finishers of Javelina Jundred
+* inspired by https://twitter.com/BjnNowak/status/1453012193155428353/photo/1  
+
+```{r}
+# prepare data
+wdf = df %>% 
+  filter(between(time_in_hours, 20,47), event=="Javelina Jundred",year>=2016) %>%
+  mutate(hr=round(time_in_hours)) %>%
+  count(hr, gender)
+```
+
+```{r}
+ggplot(wdf,aes(fill=gender,values=n))+
+  geom_waffle(size=.6,n_rows=5,color='white',flip=TRUE)+
+  facet_wrap(
+    ~hr,nrow=1,strip.position = 'bottom') +
+  coord_equal(clip="off") +
+  scale_y_continuous(expand=c(0,0)) +
+  scale_fill_manual(values = c("#2C9EAD","#FA681C")) +
+  theme_void() +
+  theme(legend.position = "none",
+        strip.text.x=element_text(margin=margin(t=5)),
+        axis.title.x=element_text(size=10, margin=margin(t=3)),
+        plot.title=element_markdown(margin=margin(l=-20,t=20,b=-40), family="Roboto Mono", face="bold"),
+        plot.subtitle=element_markdown(size=9, lineheight = 1.5, margin=margin(l=-20,t=30,b=-40)),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=7, margin=margin(t=10)),
+        plot.margin = unit(c(0, .5, .5, .5), "cm")) +
+  labs(title="All Finishers of Javelina Jundred",
+       subtitle="Each square represents one finisher of the 160km race.<br>From 2016 to 2020, <span style = ';color:#FA681C;'>**476 women**</span> and <span style = ';color:#2C9EAD;'>**998 men**</span> finished the race",
+       x="Finishing time (hours)",
+       caption="#TidyTuesday week 44 | Data from Benjamin Nowak by way of ITRA | Inspired by @BjnNowak")
+```
+
+
+### Finishing times of first places in 170km races
+* inspired by: https://twitter.com/BlakeRobMills/status/1453207974646849537/photo/1
+
+```{r}
+# table: first places of 170km races
+df170 = df %>% 
+  mutate(distance_round = round(distance)) %>%
+  filter(distance_round==170, rank==1) %>%
+  distinct() %>%
+  arrange(date)
+```
+
+```{r}
+# 2 fastest runner to complete 170km race
+df170 %>% arrange(time) %>% slice(1:2) %>% select(runner, time, date)
+```
+
+```{r}
+# plot
+
+annotation <-"hrs"
+
+df170 %>%
+  ggplot(aes(y=time_in_hours, x=date)) +
+  geom_point(aes(color=time_in_hours), show.legend=F) +
+  geom_segment(aes(x=date, xend=date, y=0, yend=time_in_hours, color=time_in_hours),show.legend=F) +
+  scale_color_gradientn(colors = rev(c("#2c2d54", "#434475", "#717287", "#8692a7", "#87bcbd", "#89ab7c", "#6f9954"))) +
+  # annotate first label reference: https://gist.github.com/ellocke/e71203b53e8bd503a4ebd9a9ae403de7
+  scale_y_continuous("Finishing time",limits=c(0,35), expand = expansion(mult = c(0, .02)),
+                     breaks=seq(0,35,10),
+                     labels = function(x) {
+      labels <- x 
+      labels[-length(labels)] <- paste0(labels[-length(labels)], "\U2006\U2001\U2000")# "___" ) 
+      labels[length(labels)] <- paste0(labels[length(labels)], " ", annotation)
+      return(labels)
+    }) +
+  scale_x_date("Date",breaks="1 year", labels=scales::date_format("%Y")) +
+  theme_minimal(base_family = "Roboto Mono") +
+  theme(plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        axis.ticks.x=element_line(color="#6c757d"),
+        axis.line.x=element_line(color="#6c757d"),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.title.y=element_text(size=8,face="bold", margin=margin(r=5),color="#495057"),
+        axis.title.x=element_text(size=8,face="bold", margin=margin(t=-2),color="#495057"),
+        axis.text.y=element_text(color="#495057",face="bold", margin=margin(r = -.9, unit = "cm"), size=8, hjust=0),
+        axis.text.x=element_text(color="#495057",hjust=-0.75, vjust=3, face="bold", size=8),
+        plot.title = element_text(face="bold"),
+        plot.subtitle=element_markdown(size=9, family="sans", lineheight = 1.4),
+        plot.caption=element_text(size=7, family="sans", margin=margin(t=10), hjust=0)
+        ) +
+  labs(title="Ultra Trail Running",
+       subtitle = "Finishing time (in hours) of **first places in 170km races**, from 2012-01-14 to 2021-09-03. *Berthier Guillaume* was<br>the fastest to finish a 170km race at 14:46:49 in 2020, followed by *Quiroga Fernando Reyes* at 16:21:18 in 2018.",
+       caption="#TidyTuesday week 44 | Data from Benjamin Nowak by way of ITRA | Inspired by @BlakeRobMills")
+```
+
+
+### Most first places 
+* inspired by https://bjnnowak.netlify.app/2021/10/04/r-beautiful-tables-with-gt-and-gtextras/
+* inspired by https://twitter.com/jakepscott2020/status/1453154730600017932/photo/1
+
+```{r}
+# get names of 10 runners with the most first places
+runner10 = df %>% filter(rank==1) %>% count(runner, sort=T) %>% slice(1:10) %>% pull(runner)
+df10 = df %>% filter(runner %in% runner10) 
+
+# gt_plt_winloss data
+winloss = df10 %>% 
+  mutate(wins_1 = ifelse(rank==1,1,0)) %>%
+  group_by(runner) %>% arrange(runner,date) %>%
+  summarise(outcomes = list(wins_1))
+
+# gt_plt_bar_stack data
+bar = df %>% filter(runner %in% runner10) %>%
+  mutate(rank_grp = case_when(rank<=3 ~"Top 3",
+                              rank>3~"Other Rank"),
+         rank_grp= fct_rev(rank_grp)) %>%
+  group_by(runner,rank_grp,.drop = FALSE) %>% tally() %>%
+  ungroup() %>%
+  group_by(runner) %>%
+  summarise(bar=list(n))
+```
+
+```{r}
+# prepare data
+tab = df %>% filter(runner %in% runner10) %>%
+  mutate(wins_1 = ifelse(rank==1,1,0)) %>%
+  group_by(runner, nationality) %>%
+  summarise(first_place=length(wins_1[wins_1==1]),completed=n(), 
+            min_date=min(date), max_date=max(date)) %>%
+  ungroup() %>%
+  left_join(winloss, by="runner") %>%
+  left_join(bar, by="runner") %>%
+  select(1:4, 7:8, 5:6) %>%
+  arrange(desc(first_place)) %>%
+  slice(1:5)
+```
+
+
+```{r}
+# table
+tab %>% gt() %>%
+  gt_theme_nytimes() %>%
+  gt_merge_stack(col1 = runner, col2 = nationality) %>%
+  gt_fa_repeats(column = first_place, palette = "#013369",name = "trophy",align = "left") %>%
+  gt_plt_winloss(column=outcomes,max_wins=23) %>%
+  gt_plt_bar_stack(column=bar, position="stack", labels=c("Top 3 Places","Other Ranks"),
+                   palette=c("#006466","black","black"), width=55) %>%
+  tab_header(title = "Most First Place Ultra Runners",
+             subtitle="100 miles races from 2012-01-14 to 2021-09-03") %>%
+  tab_source_note(source_note = md("Data from Benjamin Nowak by way of ITRA<br>Inspired by @jakepscott2020 and @BjnNowak")) %>%
+  cols_label(first_place = "First places count",
+             completed="Race completed",
+             outcomes="First place outcomes",
+             min_date = "Earliest race",
+             max_date = "Latest race") %>%
+  cols_align(columns=completed, align=c("center")) %>%
+  cols_align(columns=bar, align=c("left")) %>%
+  cols_width(first_place ~ px(150)) %>%
+  tab_options(source_notes.font.size = 12,
+              source_notes.padding = 10)
+  
+```
+
+### Finishers: speed, elevation, gender
+
+```{r}
+# prepare data
+ev_gen = df1 %>% group_by(event,gender) %>%
+  summarise(median_sp = median(sp),
+            median_ele = median(elevation_gain)) %>%
+  mutate(n=n()) %>% filter(n==2)  %>% select(-n) %>% # get obs with both men and women finishers 
+  ungroup() %>%
+  group_by(event) %>%
+  mutate(diff = (median_sp)-lag(median_sp)) %>%
+  filter(gender=="Woman") %>%
+  mutate(grp = case_when(diff<0~"Man faster than Woman",
+                         diff==0~"Similar",
+                         diff>0~"Woman faster than Man"))
+```
+
+```{r}
+# summary of group
+n_distinct(df1$event)
+Hmisc::describe(ev_gen$grp)
+```
+
+```{r}
+# dot plot (elevation and speed)
+e1 = ev_gen %>%
+  ggplot(aes(x=median_sp, y=median_ele, color=grp)) +
+  geom_point(alpha=.9, size=1) +
+  scale_color_manual(values=c("#f6bd60","#9a031e","#006d77")) +
+  scale_y_continuous(labels=scales::comma, breaks= seq(0,15000,2500)) +
+  scale_x_continuous(limits=c(2,10), breaks=seq(2,10,1), expand=c(0,0)) +
+  theme_minimal(base_size = 9) +
+  theme(axis.title=element_text(size=7.5),
+        plot.title.position = "plot",
+        plot.title=element_text(size=10, family="Roboto Mono", face="bold"),
+        plot.subtitle = element_markdown(lineheight=1.3, size=7.5, margin=margin(t=2,b=7)),
+        legend.title=element_blank(),
+        legend.text=element_text(face="bold", size=7.5),
+        axis.text=element_text(size=6.5),
+        legend.margin=margin(t=-5, b=-5, l=-45),
+        legend.position="top",
+        legend.justification = "left",
+        panel.grid=element_line(size=.3),
+        panel.grid.minor = element_blank(),
+        plot.caption.position = "plot",
+        plot.caption=element_text(size=6.5, hjust=0, margin=margin(t=8))
+        ) +
+  labs(x= "Median Speed (km/h)", y="Approx. Trail Elevation Gain (meters)", color="Group",
+       title="Ultra Running Finishers",
+       caption=caption_text,
+       subtitle="From 2012-01-14 to 2021-09-03, 371 out of 415 ultra running events have finishers of both gender. In the 371 events, <span style = 'color:#006d77;'>**woman are faster<br>than man in 78 (21%) events**</span> in terms of **median speed (km/h)**. Man are faster than women in 290 (78.2%) events. There are 3 (0.8%)<br>events where men and women have similar speed.") +
+  guides(color=guide_legend(override.aes = list(shape=15, size=3)))
+```
+
+```{r}
+# theme for histogram and density plot
+evtheme = theme_minimal(base_size = 9) +
+  theme(axis.title=element_text(size=7.5),
+        axis.text=element_text(size=6.5),
+        plot.title.position="plot",
+        panel.grid=element_line(size=.3),
+        plot.subtitle = element_text(size=8.5)) 
+
+# histogram
+e2 = ev_gen %>% filter(grp!="Similar") %>%
+  ggplot(aes(x=median_ele, fill=grp)) +
+  geom_histogram(alpha=.9, show.legend = F) +
+  scale_fill_manual(values=c("#f6bd60","#006d77")) +
+  evtheme +
+  labs(x="Approx. Trail Elevation Gain (meters)", y="Count")
+
+# density plot
+e3 = ev_gen %>% filter(grp!="Similar") %>%
+  ggplot(aes(x=median_ele, color=grp)) +
+  geom_density(show.legend = F, size=1.5) +
+  scale_color_manual(values=c("#f6bd60","#006d77")) +
+  evtheme + 
+  labs(x="Approx. Trail Elevation Gain (meters)", y="Density")
+```
+
+```{r, warning=F, message=F}   
+# combine plots
+e1 + (e2/e3) + plot_layout(widths = c(1.75, 1)) & theme(plot.margin = unit(c(.25, .25, .25, .25), "cm"))
+```
+
+### Countries, elevation, distance, finishers
+
+```{r}
+# prepare data
+ev1 = df %>% 
+  mutate(event = str_to_title(event), race=str_to_title(race)) %>%
+  group_by(country, event) %>%
+  summarise(n_finisher=n(), n_raceyear=n_distinct(race_year_id), 
+            md_distance= median(distance),
+            md_elevation = median(elevation_gain)) %>%
+  filter(md_distance>150) %>%
+  ungroup() 
+
+# pull countries with >10 events 
+ev2 = ev1 %>% count(country, sort=T) %>% filter(n>10) %>% pull(country)
+```
+
+```{r}
+# scatter plot
+ev1 %>% filter(country %in% ev2) %>%
+  group_by(country) %>%
+  mutate(unique_events = n()) %>%
+  mutate(clab = glue::glue("{country} ({unique_events})")) %>% 
+  ggplot(aes(x=md_distance, y=md_elevation, color=clab)) +
+  geom_point(aes(size=n_finisher/n_raceyear), alpha=.8) +
+  rcartocolor::scale_color_carto_d(name="Country (events)",palette="Bold") +
+  guides(color=guide_legend(override.aes = list(shape=15, size=4, alpha=1)),
+         size=guide_legend(override.aes = list(shape=21))) +
+  scale_y_continuous("Median elevation",limits=c(0,12000), expand=c(0.02,0.02), label=scales::unit_format(unit="m")) +
+  scale_x_continuous("Median distance", labels=scales::unit_format(unit="km")) +
+  scale_size(name="Avg. number of finishers", breaks=c(2,400,1829)) +
+  theme_minimal(base_size = 9.5, base_family = "Roboto") +
+  theme(legend.title=element_text(size=8.5),
+        axis.title=element_text(size=9),
+        legend.spacing.y = unit(0.1, 'cm'),
+        legend.margin=margin(t=3),
+        plot.title=element_text(family=font1, face="bold"),
+        plot.title.position = "plot",
+        plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=1, size=7),
+        plot.subtitle = element_markdown(size=8.3, margin=margin(b=10), lineheight = 1.3)) +
+  labs(title="Ultra Running Events", 
+       subtitle="Countries with >10 unique events and that distance is >150km. Median elevation (in meters), median distance (in kilometers), and<br>average number of finishers per race. 5 out of unique 18 events in France had more than 1600 finishers (average) in a race.",
+       caption=caption_text)
+```
+
+### UTMB® finishers, nationality
+
+```{r}
+font1 = "Roboto Mono"
+
+df %>% filter(race=="UTMB®") %>% 
+  mutate(grp = case_when(nationality=="FRA"~"French national", TRUE~"Other nationalities")) %>%
+  group_by(year) %>%
+  mutate(total=n(),
+         ylab = glue::glue("{year} ({total})")) %>%
+  ungroup() %>%
+  group_by(year, ylab, grp) %>%
+  tally() %>%
+  mutate(lab=glue::glue("{n} ({scales::percent(n/sum(n), accuracy=.1)})"),
+         val=ifelse(grp=="French national",-1*n,n)) %>%
+  ggplot(aes(x=year, y=val, fill=grp)) +
+  geom_col(width=.6, show.legend = F) +
+  geom_text(aes(label=lab, color=I(ifelse(grp=="French national","white","black"))), 
+            position = position_stack(vjust=0.5), size=3, family=font1) +
+  geom_text(aes(y=-850, x=year, label=ylab), size=3, hjust=1, family=font1) +
+  annotate(geom="richtext",y=61, x=2012.2, label="<span style = 'color:#3e5168;'>French National</span> | <span style = 'color:#8fb7b0;'>Other Nationalities</span>", size=3.5, fill = NA, label.color = NA,family=font1, fontface="bold") +
+  annotate(geom="text", y=-1150, x=2020, label="2020", size=3, family=font1, hjust=0, color="#6c757d") + #2020 spacing
+  geom_segment(aes(x=2020, xend=2020, y=-1000, yend=1183), linetype="dotted", color="#6c757d") + 
+  annotate(geom="text", size=3, family=font1, y=-1210, x=2017, label="Year (total finishers)", angle=90) + #y-axis title
+  annotate(geom="segment", x=2021.8, xend=2021.8, y=-787, yend=1183, size=.3, arrow = arrow(ends="both",length = unit(0.15,"cm"))) +
+  annotate(geom="richtext", size=3, family=font1, y=170, x=2021.8, label="Finisher count", label.color = NA) + #x-axis title
+  coord_flip() +
+  scale_x_reverse() +
+  scale_y_continuous(limits=c(-1210,1210)) +
+  scale_fill_manual(values=c("#3e5168","#8fb7b0")) +
+  theme_void(base_family = font1) +
+  theme(plot.title=element_text(hjust=.5, face="bold", margin=margin(b=3), size=14),
+        plot.title.position = "plot",
+        plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+        plot.caption=element_text(size=7),
+        ) +
+  labs(title="UTMB® Finishers", caption=caption_text)
+```
+

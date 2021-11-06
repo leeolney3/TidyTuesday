@@ -1,0 +1,263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+### Tidy Tuesday Week 20 
+[Internet Access, US Broadband](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-11/readme.md), data from [Microsoft](https://github.com/microsoft/USBroadbandUsagePercentages) by way of [The Verge](https://www.theverge.com/22418074/broadband-gap-america-map-county-microsoft-data).
+
+TidyTuesday week 20 | Data from Microsoft and The Verge 
+
+#### Data definition
+
+| variable                       | class     | description                                                                                                                                                                                                                   |
+|--------------------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| st                             | character | 2 letter abbreviation of states in the United States   https://www.iso.org/obp/ui/#iso:code:3166:US                                                                                                                           |
+| county_id                      | double    | 4 to 5 digit code used to represent the county (last 3 digits) and the state (first digit or first 2 digits)    https://www.census.gov/geographies/reference-files.html                                                       |
+| county_name                    | character | County Name                                                                                                                                                                                                                   |
+| broadband_availability_per_fcc | character | percent of people per county with access to fixed terrestrial broadband at speeds of 25 Mbps/3 Mbps as of the end of 2017   https://www.fcc.gov/document/broadband-deployment-report-digital-divide-narrowing-substantially-0 |
+| broadband_usage                | character | percent of people per county that use the internet at broadband speeds based on the methodology explained above. Data is from November 2019.                                                                                  |
+
+### Visualization  
+
+```{r, message=F}
+# load libaries 
+library(tidytuesdayR)
+library(tidyverse)
+library(urbnmapr)
+library(urbnthemes)
+library(janitor)
+library(colorspace)
+library(wesanderson)
+library(patchwork)
+library(ggstatsplot)
+```
+
+
+```{r}
+# import data
+broadband <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-11/broadband.csv')
+```
+
+```{r}
+# clean data 
+# reference: Jesse Mostipak  
+broadband = broadband %>% janitor::clean_names()
+glimpse(broadband)
+
+broadband = broadband %>% mutate(broadband_usage= as.numeric(broadband_usage),
+                                 broadband_availability_per_fcc = as.numeric(broadband_availability_per_fcc))
+```
+
+```{r}
+# us counties shp 
+counties_sf <- get_urbn_map("counties", sf = TRUE)
+```
+
+
+### U.S. Availability and Usage by County
+
+```{r}
+# availability by county
+p1 = counties_sf %>% 
+  left_join(broadband, by="county_name") %>%
+  #filter(st=="CA") %>%
+  ggplot() + 
+  geom_sf(mapping = aes(fill = broadband_availability_per_fcc),
+          color = "#ffffff", size = 0.25) +
+  coord_sf(datum = NA) + 
+  scale_fill_gradientn(labels = scales::percent,
+                       colours = wes_palette("Zissou1", 100, type = "continuous"), 
+                       na.value="grey89",
+                       trans="reverse") +
+  theme_minimal(base_size = 10) + 
+  theme(plot.subtitle=element_text(size=9),
+        plot.title=element_text(size=14)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                reverse=TRUE,
+                                barheight = unit(10, "lines"), 
+                                barwidth = unit(.5, "lines"))) +
+  labs(fill="",
+       title="U.S. Broadband Availability by County",
+       subtitle="Percent of people per county with access to fixed terrestrial broadband at speeds of 25 Mbps/3 Mbps, as of the end of 2017")
+
+# usage by county
+p2 = counties_sf %>% 
+  left_join(broadband, by="county_name") %>%
+  #filter(st=="CA") %>%
+  ggplot() + 
+  geom_sf(mapping = aes(fill = broadband_usage),
+          color = "#ffffff", size = 0.25) +
+  coord_sf(datum = NA) + 
+  scale_fill_gradientn(labels = scales::percent,
+                       colours = wes_palette("Zissou1", 100, type = "continuous"), 
+                       na.value="grey89",
+                       trans="reverse") +
+  theme_minimal(base_size = 10) + 
+  theme(plot.subtitle=element_text(size=9),
+        plot.title=element_text(size=14)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                reverse=TRUE,
+                                barheight = unit(10, "lines"), 
+                                barwidth = unit(.5, "lines"))) +
+  labs(fill="",
+       title="U.S. Broadband Usage by County",
+       subtitle="Percent of people per county that use the internet at broadband speeds of 25 Mbps/3 Mbps, as of November 2019")
+
+
+```
+
+
+```{r, fig.width=4, fig.height=5}
+p1/ p2 + plot_annotation(caption='TidyTuesday week 20 | Data from The Microsoft') & theme(plot.caption = element_text(hjust=0.5))
+```
+
+
+### Texas: Broadband Availability and Usage
+* shared on [Twitter](https://twitter.com/leeolney3/status/1392001239873949697/photo/1)
+
+```{r}
+# availability Texas
+plot1 = counties_sf %>% filter(state_abbv=="TX") %>%
+  left_join(broadband, by="county_name") %>%
+  ggplot() + 
+  geom_sf(mapping = aes(fill = broadband_availability_per_fcc),
+          color = "#ffffff", size = 0.25) +
+  coord_sf(datum = NA) + 
+  scale_fill_gradientn(labels = scales::percent,
+                       colours = wes_palette("Zissou1", 100, type = "continuous"), 
+                       na.value="grey89",
+                       trans="reverse") +
+  theme_minimal(base_size = 10) + 
+  theme(plot.subtitle=element_text(size=9),
+        plot.title=element_text(size=14)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                reverse=TRUE,
+                                barheight = unit(10, "lines"), 
+                                barwidth = unit(.5, "lines"))) +
+  labs(fill="",
+       title="Broadband Availability In Texas, U.S.",
+       subtitle="Percent of people per county with access to fixed terrestrial broadband at speeds\nof 25 Mbps/3 Mbps, as of the end of 2017")
+
+# Usage Texas
+plot2 = counties_sf %>% filter(state_abbv=="TX") %>%
+  left_join(broadband, by="county_name") %>%
+  ggplot() + 
+  geom_sf(mapping = aes(fill = broadband_usage),
+          color = "#ffffff", size = 0.25) +
+  coord_sf(datum = NA) + 
+  scale_fill_gradientn(labels = scales::percent,
+                       colours = wes_palette("Zissou1", 100, type = "continuous"), 
+                       na.value="grey89",
+                       trans="reverse") +
+  theme_minimal(base_size = 10) + 
+  theme(plot.subtitle=element_text(size=9),
+        plot.title=element_text(size=14)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                reverse=TRUE,
+                                barheight = unit(10, "lines"), 
+                                barwidth = unit(.5, "lines"))) +
+  labs(fill="",
+       title="Broadband Usage In Texas, U.S.",
+       subtitle="Percent of people per county that use the internet at broadband speeds of\n25 Mbps/3 Mbps, as of November 2019")
+```
+
+```{r, fig.width=4, fig.height=5}
+plot1/ plot2 + plot_annotation(caption='TidyTuesday week 20 | Data from Microsoft') & theme(plot.caption = element_text(hjust=0.5))
+```
+
+
+
+# Broadband Availability by State
+
+```{r, warning=F, fig.width=3.5, fig.height=3.5}
+broadband %>% drop_na() %>% group_by(st) %>%
+  summarise(med = median(broadband_usage)) -> table_median
+
+# boxplot of broadband usage by state
+broadband %>% drop_na() %>%
+  ggplot(aes(x=reorder(st,broadband_usage), y=broadband_usage)) + 
+  geom_boxplot(color="grey60") + 
+  geom_point(data=table_median, aes(x= st, y=med, fill=med), shape=23, color="slategrey",show.legend=F) +
+  scale_fill_continuous_sequential(palette="Viridis") +
+  scale_y_continuous(label=scales::percent) +
+  theme_minimal(base_size=10) + 
+  theme(panel.grid.minor=element_blank()) +
+  coord_flip()
+```
+
+
+
+```{r, fig.width=3.5, fig.height=2.5}
+# usage 5 states
+
+# geom_flat_violin function from: https://gist.github.com/dgrtwo/eb7750e74997891d7c20
+# reference: https://neuroconscience.wordpress.com/2018/03/15/introducing-raincloud-plots/
+# reference: https://bitsandgen.es/my-first-shiny-app-raincloudplots/
+
+pop = c("CA","TX","FL","NY", "PA") # states for plot
+broadband_pop = broadband %>% filter(st %in% pop)
+
+broadband_pop %>%
+  ggplot(aes(x=fct_rev(st), 
+             y=broadband_usage, fill=st, color=st)) + 
+  geom_point(position=position_jitter(0.15),size=1.5, alpha=0.6,shape=as.numeric(16)) + 
+  geom_flat_violin(position= position_nudge(x=0.25, y=0),adjust=2,alpha=0.9, trim='TRUE',scale='width') +
+  geom_boxplot(aes(x=st,y=broadband_usage,fill=st), position=position_nudge(x=0.25, y=0),
+               width=0.1, outlier.shape = NA, varwidth=FALSE, color="black", alpha=0.3) + 
+  scale_y_continuous(label=scales::percent) +
+  scale_fill_manual(values=c("#588b8b","#f28f3b","#457b9d","#c8553d","#5b5f97"))+
+  scale_color_manual(values=c("#588b8b","#f28f3b","#457b9d","#c8553d","#5b5f97")) +
+  coord_flip() + 
+  theme_minimal(base_size = 10) +
+  theme(legend.position="none",
+        plot.title.position = "plot",
+        plot.subtitle=element_text(face="bold", size=10),
+        axis.title=element_text(size=9, face="bold"),
+        plot.margin=ggplot2::margin(1,1,1,1,"cm")) +
+  expand_limits(x = 5.25) +
+  labs(x="State",y="Broadband Usage",
+       subtitle="Comparision of broadband usage across five U.S. States\n")
+```
+
+```{r, fig.width=4, fig.height=3}
+# comparing five states
+
+# availability 
+s1 = ggstatsplot::ggbetweenstats(
+  data=broadband_pop, 
+               x= st, y=broadband_availability_per_fcc,
+               title="Distribution of broadband availability",
+               package="wesanderson",
+               palette="Darjeeling1") +
+  ggplot2::theme(plot.margin=ggplot2::margin(1,1,1,1,"cm"))
+
+# usage 
+s2 = ggstatsplot::ggbetweenstats(
+  data=broadband_pop, 
+               x= st, y=broadband_usage,
+               title="Distribution of broadband usage",
+               package="wesanderson",
+               palette="Darjeeling1") +
+  ggplot2::theme(plot.margin=ggplot2::margin(1,1,1,1,"cm"))
+```
+
+```{r, fig.width=7}
+s1 | s2
+```
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,128 @@
+---
+title: "TidyTuesday Week 23/2021"
+output: html_notebook
+---
+
+TidyTuesday 2021/23 [Survivor TV Show](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-01/readme.md), data from [{survivoR} R package](https://github.com/doehm/survivoR). 
+
+```{r, message=F}
+# Load libraries
+library(tidyverse)
+library(ggtext)
+library(ggpubr)
+theme_set(theme_minimal())
+```
+
+```{r}
+# Import data
+summary <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-01/summary.csv')
+viewers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-01/viewers.csv')
+
+glimpse(summary)
+glimpse(viewers)
+```
+
+
+### Finale Viewers
+* shared on [Twitter]()
+* waterfall chart reference: https://twitter.com/JackiePsych/status/1341515449549393921/photo/1
+
+```{r}
+# data preparation
+viewers = summary %>% 
+  select(season, viewers_finale) %>% #, viewers_premier, viewers_finale, viewers_reunion) %>%
+  mutate(id=row_number(),
+         season=season, 
+         start=lag(viewers_finale),
+         end=viewers_finale,
+         dif=viewers_finale-lag(viewers_finale),
+         change_type=case_when(
+           dif >0 ~"Increase",
+           dif ==0 ~ "no change",
+           dif <0 ~ "Decrease"
+         )) 
+
+viewer_s1 = viewers %>% filter(season==1) #first season 
+viewer_s40 = viewers %>% filter(season==40) #last season
+```
+
+
+```{r, warning=F, message=F, fig.height=3, fig.width=4}
+# plot
+viewers %>% 
+  ggplot() + 
+  geom_rect(data = viewers,
+            aes(
+              x = season,
+              fill = change_type,
+              xmin = id - .45,
+              xmax = id + .45,
+              ymin = end,
+              ymax = start
+            ))  + 
+  geom_rect(data = viewer_s1,
+            aes(
+              x = season,
+              xmin = id - .45,
+              xmax = id + .45,
+              ymin = 0,
+              ymax = viewers_finale
+            ), 
+            fill = "#577590") +
+  geom_rect(data = viewer_s40,
+            aes(
+              x = season,
+              xmin = id - .45,
+              xmax = id + .45,
+              ymin = 0,
+              ymax = start
+            ),
+            fill = "#577590") + 
+  scale_fill_manual(values = c("#f3722c", "#43aa8b"), na.translate=FALSE) + 
+  scale_x_continuous(breaks=c(1,10,20,30,40)) + 
+  theme_bw() +
+  theme(panel.grid.minor=element_blank(),
+        panel.border = element_blank(),
+        panel.grid=element_blank(),
+        axis.ticks.length=unit(.15, "cm"),
+        axis.title.x=element_text(size=9.5, face="bold"),
+        axis.title.y=element_markdown(size=9.5),
+        plot.title=element_text(margin=ggplot2::margin(t=10,b=-82),
+                                hjust=0.9,face="bold",size=34,color="#4a4e69"),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        legend.position = c(0.81, 0.72),
+        legend.direction = "horizontal") +
+  labs(x="Season\n",y="**Viewers** (in millions)",
+       caption="Tidy Tuesday Week 23 | Data from survivorR package",
+       title="Survivor TV Show\nFinale Viewers",
+       fill="")
+```
+
+
+### Share of viewers aged 18-49
+
+```{r, warning=F}
+# Share of viewers aged 18-49
+viewers %>% filter(!is.na(share_18_49)) -> viewers3
+summary(viewers3$share_18_49)
+
+viewers3 %>% filter(!is.na(share_18_49)) %>%
+  ggplot() + 
+  geom_point(aes(x=season, y=episode, color=share_18_49,size=share_18_49)) + 
+  scale_y_continuous(trans="reverse", breaks=c(1,5,10,15)) + 
+  scale_x_continuous(breaks=c(1,10,20,30,40)) + 
+  scale_color_continuous_sequential(palette="batlow", trans="log10",
+                                    limits=c(3,54),breaks=c(3,10,30,54)) +
+  scale_size_continuous(trans="log10", limits=c(3,54), breaks=c(3,10,30,54)) +
+  guides(color= guide_legend(nrow = 1), size=guide_legend(nrow = 1)) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top",
+        panel.grid.minor=element_blank(),
+        axis.title=element_text(face="bold")) + 
+  coord_cartesian() + 
+  labs(x="Season",y="Episode", color="Share of viewers aged 18-49",size="Share of viewers aged 18-49")
+```
+
+
+
+

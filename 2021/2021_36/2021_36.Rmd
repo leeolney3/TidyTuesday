@@ -1,0 +1,525 @@
+---
+title: "Tidy Tuesday Week 36/2021"
+date: "2021/08/31"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) Week 36 [Bird Baths](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-31/readme.md), Data from [Cleary et al, 2016](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0150899#abstract0).
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(ggsci)
+library(hrbrthemes)
+library(ggtext)
+library(waffle)
+library(tidymodels)
+library(patchwork)
+
+options(dplyr.summarise.inform = FALSE)
+```
+
+
+```{r}
+# Import data
+bird_baths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-31/bird_baths.csv',show_col_types = FALSE)
+```
+
+```{r}
+# Missing data
+colSums(is.na(bird_baths))
+# Variable unique value count 
+bird_baths %>% summarise_all(n_distinct)
+```
+
+### Bird count by region and location  
+* shared on [Twitter](https://twitter.com/leeolney3/status/1432635306134720514)   
+```{r, fig.width=3.5, fig.height=2.5}
+bird_baths %>% drop_na(survey_year) %>%
+  group_by(bioregions, urban_rural, survey_year) %>%
+  tally(bird_count) %>%
+  ungroup() %>%
+  mutate(survey_year2=ifelse(survey_year==2015, "Summer'15", "Winter'14")) %>%
+  mutate(group=paste(survey_year2,urban_rural)) %>%
+  mutate(group2=factor(group, levels=c("Winter'14 Rural","Winter'14 Urban","Summer'15 Rural", "Summer'15 Urban"), ordered=T)) %>%
+  ggplot(aes(y=reorder(bioregions,n), x=n, color=group2, shape=group2)) +
+  geom_line(aes(group=bioregions), color="grey70") +
+  geom_point(size=2.2) +
+  scale_shape_manual(values=c(16,16,17,17)) +
+  scale_x_continuous(limits=c(0,1200), expand=c(0,0)) +
+  scale_color_futurama() +
+  theme_ipsum(base_size=9) +
+  theme(legend.position = "top",
+        panel.grid.major.y = element_blank(),
+        legend.text = element_text(size=9),
+        legend.title = element_text(size=9),
+        legend.justification = "left",
+        legend.box.margin = margin(l=-111.5, b=-5),
+        axis.title.x=element_text(hjust=0.5, size=9),
+        axis.title.y=element_text(hjust=0.5, size=9),
+        plot.title.position = "plot",
+        plot.title=element_text(size=14),
+        plot.subtitle = element_text(size=9, margin=margin(t=-4), color="grey20"),
+        plot.margin=unit(c(.5,1.5,.5,.5),"cm"),
+        plot.caption=element_text(size=8, color="grey20", face="plain")
+        ) + 
+  labs(x= "Bird count", 
+       y= "Region",
+       color="Period and location", shape="Period and location",
+       title="Bird occurrence count at bird baths, in Australia",
+       caption="Week 36 Bird Baths | Data from Cleary et al, 2016",
+       subtitle="Data on bird occurrence at bird baths were collected during austral winter (June 24th to July 26th 2014) and summer (January 27th to\nFebruary 29th 2015). The highest bird count (n=1190) at bird baths was recorded during Winter'14 in Sydney Basin rural location, and\nlowest bird count (n=26) was recorded during Summer'15 in Victorian Midlands urban location.")
+```
+ALT text: The highest bird count (n=1190) at bird baths was recorded during Winter'14 in Sydney Basin rural location and lowest bird count (n=26) was recorded during Summer'15 in Victorian Midlands Urban location. 
+
+```{r}
+# bird count by year
+bird_baths  %>% group_by(survey_year) %>% tally(bird_count)
+
+# bird count by region
+bird_baths %>% 
+  drop_na(bioregions) %>%
+  group_by(bioregions) %>%
+  tally(bird_count, sort=T)
+
+# bird count by species
+bird_baths %>%
+  drop_na(bird_type) %>%
+  group_by(bird_type) %>% 
+  tally(bird_count, sort=T)
+```
+
+### Species count by region and period
+```{r}
+bird1 = bird_baths %>% 
+  drop_na() %>%
+  group_by(bioregions,survey_year, bird_type) %>%
+  tally(bird_count) %>%
+  filter(n>0) %>%
+  ungroup() %>%
+  group_by(bioregions,survey_year) %>%
+  summarise(n_type = n_distinct(bird_type)) %>%
+  ungroup() 
+
+bird1 %>%
+  mutate(n=ifelse(survey_year==2014,-1*n_type,n_type)) %>%
+  ggplot(aes(y=bioregions, x=n, fill=factor(survey_year))) + 
+  geom_col(width=.65) +
+  geom_text(aes(label=abs(n), hjust=ifelse(n>0,1.3,-0.5)), 
+            fontface="bold", color="white", size=3.1) +
+  #scale_x_continuous(limits=c(-110,110),expand=c(0,0)) +
+  scale_x_continuous(limits=c(-110,110), expand=c(0,0), labels=abs) +
+  scale_fill_manual(values=c("#404e7c","#71b48d")) +
+  theme_minimal(base_size=10) + 
+  theme(legend.position = "none",
+        panel.grid=element_line(linetype = "dotted",color="grey50", size=.2),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank(),
+        axis.title=element_blank(),
+        axis.text=element_text(size=9.1),
+        plot.margin=unit(c(1,1.5,1,1),"cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", size=12),
+        plot.subtitle=element_markdown(face="bold",size=11, hjust=0.5,
+                                       margin = margin(10,0,5,129))
+        ) + 
+  labs(subtitle="<span style='color:#404e7c;'>Winter 2014</span> | <span style='color:#71b48d;'>Summer 2015</span>",
+       title="Bird baths in Australia: Species count by bioregion and period")
+```
+
+### Species count by bioregion (2014 and 2015)   
+* code reference: https://twitter.com/nicci_potts/status/1432797343821312006   
+* Australia bioregion shapefiles source: http://www.environment.gov.au/fed/catalog/search/resource/downloadData.page?uuid=%7B2CD8B271-A723-4B1B-8D26-9C68B1974B45%7D   
+
+```{r}
+library(tmap)
+library(rgdal)
+library(sf)
+library(rmapshaper)
+library(cowplot)
+```
+
+```{r}
+# NSW
+NSWLayer <- st_read("ibra61_reg_nsw_shape/ibra61_reg_nsw_shape.shp", layer= "ibra61_reg_nsw_shape") 
+NSWLayer <- st_transform(NSWLayer, "+init=epsg:4326") 
+SimpleNSW <- ms_simplify(NSWLayer) 
+
+# Victoria
+VICLayer <- st_read("ibra61_reg_vic_shape/ibra61_reg_vic_shape.shp", layer= "ibra61_reg_vic_shape") 
+VICLayer <- st_transform(VICLayer, "+init=epsg:4326") 
+SimpleVIC <- ms_simplify(VICLayer)
+
+# South Australia
+SALayer <- st_read("ibra61_reg_sa_shape/ibra61_reg_sa_shape.shp", layer= "ibra61_reg_sa_shape") 
+SALayer <- st_transform(SALayer, "+init=epsg:4326") 
+SimpleSA <- ms_simplify(SALayer) 
+
+# Queensland
+QLDLayer <- st_read("ibra61_reg_qld_shape/ibra61_reg_qld_shape.shp", layer= "ibra61_reg_qld_shape") 
+QLDLayer <- st_transform(QLDLayer, "+init=epsg:4326") 
+SimpleQLD <- ms_simplify(QLDLayer)
+
+# join shapefile
+bio <- rbind(SimpleNSW, SimpleVIC, SimpleSA, SimpleQLD)
+```
+
+```{r}
+# prepare data
+bird_df = bird1 %>% 
+  rename("REG_NAME" = bioregions) %>%
+  group_by(REG_NAME) %>% tally(n_type)
+# merge
+bird_map = merge(bio,bird_df, by= 'REG_NAME')
+```
+
+```{r}
+# plot map
+#map
+map <- tm_shape(bird_map) +
+  tm_polygons(
+    col = "n",
+    palette = 'Greens',
+    title = '',
+    lwd = .25,
+    border.col = 'gray20'
+  ) +
+  tm_text("REG_CODE",
+          size= "AREA")+
+  tm_style("white") +
+  tm_layout(
+    frame = FALSE,
+    bg.color = '#3d5a80',
+    "Bird baths in Australia:\nSpecies count\nby bioregion",
+    title.color = 'white',
+    title.size = 1,
+    legend.bg.color = TRUE,
+    legend.frame = FALSE,
+    legend.position = c("left", "bottom"),
+    legend.text.color = 'white',
+    legend.text.size = 0.7
+  ) 
+map
+```
+
+### Top species by region and period
+```{r}
+bird_baths %>% 
+  drop_na() %>%
+  group_by(bioregions,survey_year, bird_type) %>%
+  tally(bird_count) %>%
+  filter(n>0) %>%
+  ungroup() %>%
+  group_by(bioregions, survey_year) %>%
+  mutate(perc=paste0(sprintf("%4.1f", n / sum(n) * 100), "%")) %>%
+  top_n(1,perc)
+```
+
+### Bird count by bioregion and location
+```{r}
+count = bird_baths %>% 
+  drop_na() %>%
+  group_by(bioregions,urban_rural) %>%
+  tally(bird_count) %>%
+  mutate(n=n/10)
+
+count_order = count %>% 
+  group_by(bioregions) %>% tally(n) %>%
+  arrange(desc(n)) %>%
+  mutate(bioregions=fct_inorder(bioregions))
+```
+
+```{r}
+count %>% mutate(bioregions=factor(bioregions, levels=count_order$bioregions)) %>%
+  ggplot(aes(fill=urban_rural, values=n)) + 
+  geom_waffle(color="white", size=.25, n_rows=5, flip=T, show.legend=T) +
+  facet_wrap(~bioregions, nrow=1, strip.position = "bottom",
+             labeller = labeller(bioregions = label_wrap_gen(width = 9))) + 
+  scale_x_discrete(expand=c(.25,.25)) + 
+  scale_y_continuous(labels = function(x) x * 50, # multiplyer same as n_rows
+                     expand = c(0,0)) +
+  scale_fill_manual(values=c("#588b8b","#f28f3b")) +
+  coord_equal() +
+  guides(fill = guide_legend(reverse=T,keywidth = unit(.5, "cm"), keyheight = unit(.5, "cm"))) +
+  theme_minimal(base_size = 8.5) + 
+  theme(panel.grid=element_line(size=.3,color="grey80"),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x=element_blank(),
+        plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+        legend.position = "top",
+        panel.spacing.x = unit(0, "lines"),
+        axis.text.y=element_text(margin=margin(r=-20), vjust=-0.7, color="grey30"),
+        strip.text=element_text(color="grey30", size=7.5),
+        axis.ticks.y=element_line(color="grey80",size=.3),
+        axis.ticks.length.y.left = unit(1, "cm"),
+        legend.title=element_blank(),
+        legend.justification = "left"
+        ) + 
+  labs(title="Bird Baths in Australia: Count of bird occurances by bioregion and location",
+       subtitle="Count of bird occurances by bioregion and location, where each square represents 10 occurances observed.")
+```
+### Probablity and predicted probabilty of seeing bird type   
+* reference: https://juliasilge.com/blog/bird-baths/
+
+```{r}
+# theme
+theme = theme_minimal(base_size=10) +
+  theme(panel.grid=element_line(size=.3),
+        plot.title=element_text(size=10),
+        plot.title.position = "plot",
+        legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        legend.box.margin= margin(t=-10))
+```
+
+
+```{r}
+# top 15 bird species by count
+top_birds <-
+  bird_baths %>%
+  filter(is.na(urban_rural)) %>%
+  arrange(-bird_count) %>%
+  slice_max(bird_count, n = 15) %>%
+  pull(bird_type)
+
+# summary 
+bird_parsed <-
+  bird_baths %>%
+  filter(
+    !is.na(urban_rural),
+    bird_type %in% top_birds
+  ) %>%
+  group_by(urban_rural, bird_type) %>%
+  summarise(bird_count = mean(bird_count), .groups = "drop")
+```
+
+```{r}
+# plot probability
+p1 <-
+  bird_parsed %>%
+  ggplot(aes(bird_count, bird_type)) +
+  geom_segment(
+    data = bird_parsed %>%
+      pivot_wider(
+        names_from = urban_rural,
+        values_from = bird_count
+      ),
+    aes(x = Rural, xend = Urban, y = bird_type, yend = bird_type),
+    alpha = 0.7, color = "gray70", size = 1
+  ) +
+  geom_point(aes(color = urban_rural), size = 2) +
+  scale_x_continuous(labels = scales::percent, limits=c(0,0.45), expand=c(0,0)) +
+  scale_color_npg(guide = guide_legend(reverse = TRUE)) +
+  theme + 
+  labs(x = NULL, y = NULL, color = NULL,shape=NULL,
+       title="Probability of seeing bird")
+```
+
+```{r}
+# prepare data for model 
+bird_df <-
+  bird_baths %>%
+  filter(
+    !is.na(urban_rural),
+    bird_type %in% top_birds
+  ) %>%
+  mutate(bird_count = if_else(bird_count > 0, "bird", "no bird")) %>%
+  mutate_if(is.character, as.factor)
+```
+
+```{r}
+# 10-fold cv
+set.seed(123)
+bird_split <- initial_split(bird_df, strata = bird_count)
+bird_train <- training(bird_split)
+bird_test <- testing(bird_split)
+
+set.seed(234)
+bird_folds <- vfold_cv(bird_train, strata = bird_count)
+```
+
+```{r}
+# glm
+glm_spec <- logistic_reg()
+
+# preprocess
+rec_basic <-
+  recipe(bird_count ~ urban_rural + bird_type, data = bird_train) %>%
+  step_dummy(all_nominal_predictors())
+
+# workflow
+wf_basic <- workflow(rec_basic, glm_spec)
+```
+
+```{r}
+# fit to train (10 times to 10 fold) 
+doParallel::registerDoParallel()
+ctrl_preds <- control_resamples(save_pred = TRUE)
+rs_basic <- fit_resamples(wf_basic, bird_folds, control = ctrl_preds)
+
+collect_metrics(rs_basic)
+#augment(rs_basic) %>% roc_curve(bird_count, .pred_bird) %>% autoplot()
+```
+```{r}
+# with explicit interaction terms
+rec_interact <-
+  rec_basic %>%
+  step_interact(~ starts_with("urban_rural"):starts_with("bird_type"))
+
+wf_interact <- workflow(rec_interact, glm_spec)
+rs_interact <- fit_resamples(wf_interact, bird_folds, control = ctrl_preds)
+
+collect_metrics(rs_interact)
+#augment(rs_interact) %>% roc_curve(bird_count, .pred_bird) %>% autoplot()
+```
+
+```{r}
+# fit to entire training set
+bird_fit <- fit(wf_interact, bird_train)
+
+new_bird_data <-
+  tibble(bird_type = top_birds) %>%
+  crossing(urban_rural = c("Urban", "Rural"))
+
+# predict 
+bird_preds <-
+  augment(bird_fit, new_bird_data) %>%
+  bind_cols(
+    predict(bird_fit, new_bird_data, type = "conf_int")
+  )
+```
+
+```{r}
+# plot predicted probabilty 
+p2 <-
+  bird_preds %>%
+  ggplot(aes(.pred_bird, bird_type, color = urban_rural)) +
+  geom_errorbar(aes(
+    xmin = .pred_lower_bird,
+    xmax = .pred_upper_bird
+  ),
+  width = .15, size = 1.2, alpha = 0.5
+  ) +
+  geom_point(size = 2) +
+  theme+
+  scale_x_continuous(labels = scales::percent) +
+  scale_color_npg(guide = guide_legend(reverse = TRUE)) +
+  labs(title = "Predicted probability of seeing bird", y = NULL, color = NULL, x=NULL) 
+```
+
+```{r}
+# combine plots
+p1 + p2
+```
+
+### Bird sightings and species count by bioregion
+* reference: https://twitter.com/geokaramanis/status/1433785579074998279/photo/1
+
+```{r}
+library(tidyverse)
+library(here)
+library(sf)
+library(ggrepel)
+library(biscale)
+library(cowplot)
+```
+
+```{r}
+# shp file: https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B1273FBE2-F266-4F3F-895D-C1E45D77CAF5%7D 
+ibra <- read_sf(here::here("IBRA7_subregions_states", "IBRA7_subregions_states.shp")) %>% 
+  st_make_valid() %>% 
+  st_simplify(dTolerance = 0.1)
+```
+
+```{r}
+# summary
+summary = bird_baths %>% 
+  filter(!is.na(bioregions)) %>% 
+  group_by(bioregions) %>%
+  filter(bird_count>0) %>%
+  summarise(n=sum(bird_count), n_type=n_distinct(bird_type)) %>%
+  mutate(bioregions = if_else(bioregions == "Victorian Volcanic Plain", "Southern Volcanic Plain", bioregions)) %>%
+  bi_class(x = n, y = n_type , style = "quantile", dim = 3)
+
+ibra_sf <- ibra %>% 
+  filter(REG_NAME_7 %in% summary$bioregions) %>% 
+  group_by(REG_NAME_7) %>% 
+  summarise(geometry = st_union(geometry)) %>% 
+  ungroup() %>% 
+  rename(bioregions = REG_NAME_7)
+
+join_sf = ibra_sf %>% left_join(summary)
+```
+
+```{r}
+# centroid coordinates
+totals = bird_baths %>% 
+  filter(!is.na(bioregions)) %>% 
+  group_by(bioregions) %>% 
+  summarise(n = sum(bird_count)) 
+
+ibra_centroids <- ibra_sf %>%
+  st_centroid() %>% 
+  left_join(totals) %>% 
+  cbind(st_coordinates(.))
+```
+
+
+```{r}
+p3 = ggplot() +
+  geom_sf(data = ibra_sf, fill = "grey72", color = "grey99", size = 0.25) + 
+  geom_sf(data = join_sf, aes(fill=bi_class), color = "grey99", size = 0.25) + 
+  bi_scale_fill(pal = "GrPink", dim = 3, guide = "none") +
+  geom_label_repel(data = ibra_centroids, aes(x = X, y = Y, label = bioregions), color = "grey20", point.padding = 10, size = 2, fontface = "bold", label.size = 0, fill = "#f8f8ff70", stat = "unique", nudge_y = 0) +
+  theme_void() +
+  theme(plot.margin=unit(c(.5,.5,.5,.5),"cm"))
+```
+
+```{r}
+p4 = bi_legend(pal = "GrPink", #DkCyan
+            dim = 3,
+            xlab = "Bird count",
+            ylab = "Species count ",
+            size = 2.5) + 
+  theme(panel.border = element_blank(),
+        axis.text = element_blank(),
+        axis.title.x = element_text(size = 5,
+                                    color = "#22222b", margin=margin(t=-5)),
+        axis.title.y = element_text(size = 5,
+                                    color = "#22222b", margin=margin(r=-5)),
+        legend.text = element_text(size = 5),
+        legend.text.align = 0)
+```
+
+```{r}
+ggdraw() +
+  draw_plot(p3, 0, 0, 1, 1) +
+  draw_plot(p4, 0, 0.1, 0.25, 0.25) +
+  draw_label("Bird sightings and species count at bird baths, in Australia", #fontface= "bold",
+             color = "#22222b", size = 9, angle = 0, x =0.06, y = 0.95, hjust=0) 
+```
+
+### Bird sightings count by bioregion 
+* reference: https://twitter.com/geokaramanis/status/1433785579074998279/photo/1
+```{r}
+summary(ibra_centroids$n)
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = ibra_sf, fill = "grey72", color = "grey99", size = 0.25) +
+  coord_sf(clip = "off", xlim = c(133, 155), ylim = c(-22, -40), expand = FALSE) + 
+  geom_point(data = ibra_centroids, aes(X, Y, size=n, color=n)) + 
+  geom_label_repel(data = ibra_centroids, aes(x = if_else(str_detect(bioregions, "Coastal"), X+.5, X - .5), y = Y, label = bioregions, hjust = if_else(str_detect(bioregions, "Coastal"), 0, 1)), color = "grey20", point.padding = 10, size = 2, fontface = "bold", label.size = 0, fill = "#f8f8ff70", stat = "unique", nudge_y = 0.15) +
+  scale_size_continuous(limits=c(101, 1962), breaks=c(101, 500, 1000, 1500, 1962),
+                        range = c(2,7)) +
+  scale_color_continuous_sequential(limits=c(101, 1962),breaks=c(101, 500, 1000, 1500, 1962),
+                                    palette = "viridis", rev=F) + 
+  guides(color=guide_legend(), size=guide_legend()) +
+  theme_void(base_size = 9) + 
+  labs(color="", size="",
+       title="Bird sightings at bird baths in Australia, by bioregions")
+```
+
+
+

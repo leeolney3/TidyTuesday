@@ -1,0 +1,88 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Tidy Tuesday week 16 | Data from Cameron Blevins and Richard W. Helbock. 
+
+[US Post Offices](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-13/readme.md), data from [Cameron Blevins and Richard W. Helbock](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NUKCNA) with the [corresponding article](https://cblevins.github.io/us-post-offices/)
+
+Reference:
+"Blevins, Cameron; Helbock, Richard W., 2021, "US Post Offices", https://doi.org/10.7910/DVN/NUKCNA, Harvard Dataverse, V1, UNF:6:8ROmiI5/4qA8jHrt62PpyA== [fileUNF]"
+
+```{r}
+# load library
+library(tidyverse)
+library(colorspace)
+library(maps)
+library(mapdata)
+library(geofacet)
+```
+
+```{r}
+# import data
+post_offices <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-13/post_offices.csv')
+```
+
+```{r}
+post_offices %>%  filter(is.na(discontinued)) %>% count() #29089 operating post offices
+```
+
+```{r}
+post_offices %>% 
+  filter(is.na(discontinued)) %>% 
+  group_by(state) %>%
+  tally() -> table1
+table1  
+```
+
+```{r}
+table1 %>% arrange(desc(n))
+```
+
+
+```{r, fig.width=4.5, fig.height=3.3}
+# tile map
+# function reference: https://medium.com/@NickDoesData/visualizing-geographic-data-in-r-fb2e0f5b59c5
+
+create_gradient_state_tile_map <- function(state, value, title, subtitle, caption, legend_title, state_grid='us_state_grid2') {
+  
+  df <- as.tibble(data.frame(state, value))
+  
+  fig <- df %>% 
+    mutate(x = 1) %>% 
+    mutate(label_y = .5) %>%  
+    mutate(label_x = 1) %>% 
+    ggplot()+
+    geom_bar(mapping=aes(x=x, fill=value))  +
+    facet_geo(~ state, grid=state_grid) +
+    scale_fill_continuous_sequential(palette="Batlow") + 
+    ggtitle(title) +
+    theme_classic() + 
+    theme(plot.title = element_text(size = 24, face="bold"),
+          plot.caption=element_text(color="#343a40", hjust=0, size=10),
+          plot.margin = unit(c(1,1,1,1), "cm"),
+          legend.text=element_text(size=16),
+          legend.title = element_text(size=16),
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks = element_blank(),
+          strip.text.x = element_blank(),
+          axis.line = element_blank()) +
+    geom_text(aes(x=label_x, y=label_y, label=state), color='#ffffff', size=5) + 
+    guides(fill = guide_colorbar(title="Count",
+                                 title.position = "top", 
+                                 barwidth = unit(.75, "lines"), 
+                                 barheight = unit(10, "lines"))) + 
+    labs(caption=caption)
+  
+  return(fig)
+}
+
+# plot tile map
+tile_map <- create_gradient_state_tile_map(table1$state, table1$n, title='Operating US Post Offices, by State\n', legend_title = "Count", caption="\nTidy Tuesday Week 16 | Data from Cameron Blevins and Richard W. Helbock (2021)")
+tile_map
+
+# alt text: Tile map showing the count of operating US Post Offices (n=29089) by state, where Pennsylvania has the most operating post offices (n=1782), followed by New York (n=1595) and Texas (n=1504). 
+```
+

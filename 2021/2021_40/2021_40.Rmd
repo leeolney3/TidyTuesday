@@ -1,0 +1,304 @@
+---
+title: "Tidy Tuesday 2021 Week 40"
+date: "2021/09/28"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 40: [NBER papers](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-28/readme.md), data from the National Bureau of Economic Research [NBER](https://www2.nber.org/RePEc/nbr/nberwo/) by way of the [nberwp package by Ben Davies](https://github.com/bldavies/nberwp).
+
+```{r}
+library(tidyverse)
+library(glue)
+library(gt)
+library(gtExtras)
+```
+
+```{r}
+papers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-28/papers.csv')
+authors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-28/authors.csv')
+programs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-28/programs.csv')
+paper_authors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-28/paper_authors.csv')
+paper_programs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-28/paper_programs.csv')
+```
+
+```{r}
+joined_df <- left_join(papers, paper_authors) %>% 
+  left_join(authors) %>% 
+  left_join(paper_programs) %>% 
+  left_join(programs)%>% 
+  mutate(
+    catalogue_group = str_sub(paper, 1, 1),
+    catalogue_group = case_when(
+      catalogue_group == "h" ~ "Historical",
+      catalogue_group == "t" ~ "Technical",
+      catalogue_group == "w" ~ "General"
+    ),
+    .after = paper
+  ) 
+```
+
+### Working paper count by program and decade
+* shared on [Twitter](https://twitter.com/leeolney3/status/1442671857015087106)
+* inspired by https://bldavies.com/blog/female-representation-collaboration-nber/
+
+```{r}
+wp = joined_df %>% group_by(program, program_desc, year) %>%
+  summarise(n=n_distinct(paper)) %>%
+  arrange(year) %>%
+  mutate(decade=case_when(between(year,1980,1989)~"1980s",
+                          between(year,1990,1999)~"1990s",
+                          between(year,2000,2009)~"2000s",
+                          between(year,2010,2019)~"2010s"
+                          )) %>%
+  drop_na() 
+
+wp2 = wp %>% mutate(program=glue::glue("{program_desc} ({program})")) %>%
+  group_by(program) %>% mutate(total=sum(n)) %>%
+  arrange(year, program) %>%
+  mutate(spark=list(n)) %>%
+  select(program, spark, total) %>%
+  distinct()
+
+wp3 = wp %>% mutate(program=glue::glue("{program_desc} ({program})")) %>%
+  group_by(program, decade) %>% tally(n) %>% 
+  ungroup() %>%
+  pivot_wider(names_from = decade, values_from=n) %>%
+  mutate_if(is.numeric, list(~replace_na(., 0)))
+```
+
+
+```{r}
+wp3 %>% inner_join(wp2, by="program") %>%
+  select(Program=program, Total=total, "1980s","1990s","2000s","2010s",Trend=spark) %>%
+  arrange(desc(Total)) %>%
+  gt() %>%
+  gt_theme_espn() %>%
+  cols_align(Program, align="left") %>%
+  gt_plt_dot(Total, Program,palette = "rcartocolor::ag_GrnYl", max_value=5246) %>%
+  gtExtras::gt_sparkline(Trend) %>%
+  tab_options(table.font.size = 12.5,
+              heading.subtitle.font.size = 14) %>%
+  gt_color_box(`1980s`, domain=2:786) %>%
+  gt_color_box(`1990s`, domain=2:797) %>%
+  gt_color_box(`2000s`, domain=132:1647) %>%
+  gt_color_box(`2010s`, domain=200:2424) %>%
+  tab_header(title="Economic Papers", subtitle="Working papers count by program and decade") %>%
+  tab_source_note(source_note="TidyTuesday Week 40 | Data source: National Bureau of Economic Research (NBER) by way of the nberwp package by Ben Davies") 
+```
+
+#### Count and percent of female authors by year
+
+```{r}
+library(gender)
+library(hrbrthemes)
+library(ggtext)
+library(patchwork)
+library(scales)
+library(colorspace)
+```
+
+```{r}
+# add gender
+paper_authors<-paper_authors%>%
+  left_join(papers)%>%
+  left_join(authors)%>%
+  separate(name,c("given",NA))
+name<-gender(paper_authors$given, years = c(2020-60,2020-30))
+paper_authors<-paper_authors%>%
+  left_join(name,by= c("given"="name"))
+```
+
+```{r}
+female = paper_authors %>% 
+  filter(between(year, 1980, 2020)) %>%
+  group_by(year,gender) %>%
+  tally() %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(gender=="female")
+```
+
+```{r}
+# count and percent of female authors
+female %>% 
+  mutate(prop=round(prop*100,2)) %>%
+  rename("Count"=n,"Percent"=prop) %>%
+  pivot_longer(Count:"Percent") %>%
+  mutate(value=ifelse(name=="Percent",-1*value,1*value)) %>%
+  ggplot(aes(x=year, y=value, fill=name, alpha=ifelse((value==max(value)|value==min(value)),1,0.6))) +
+  scale_alpha_identity() +
+  scale_fill_manual(values=c("#31572c","#034078")) +
+  geom_col() +
+  facet_grid(str_to_upper(name)~., scales="free",switch="both") +
+  #scale_x_continuous(expand=c(0.01,0.01)) +
+  scale_y_continuous(labels=abs) +
+  theme_ipsum(base_size = 8) +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.grid.minor=element_blank(),
+        strip.placement = "outside",
+        strip.text.y.left=element_text(angle=0, size=8, hjust=.5),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.title=element_text(size=13, face="plain"),
+        plot.subtitle=element_markdown(size=10, color="#5c6b73"),
+        plot.caption.position="plot",
+        plot.caption=element_text(face="plain",size=7, hjust=0),
+        plot.margin = unit(c(1, 2, 1, 1), "cm")
+        ) +
+  labs(title="Female Authors in NBER Papers",
+       caption="Data source: National Bureau of Economic Research (NBER) by way of the nberwp package by Ben Davies",
+       subtitle= "<span style = 'color:#31572c;'><b>Count</b></span> and <span style = 'color:#034078;'><b>Percent</b></span> of female authors in NBER papers by year, from 1980 to 2020")
+```
+
+### Percentage of program by gender
+
+```{r}
+gender_df = joined_df %>% separate(name,c("given",NA))
+name<-gender(gender_df$given, years = c(2020-60,2020-30))
+gender_df<-gender_df %>%
+  left_join(name,by= c("given"="name"))
+```
+
+
+```{r}
+gender_tab = gender_df %>% 
+  select(program_category, program_desc, gender) %>%
+  drop_na() %>%
+  count(program_category, program_desc, gender)
+```
+
+```{r}
+gt2 = gender_tab %>%
+  group_by(gender) %>%
+  mutate(prop=n/sum(n)) %>%
+  mutate(rank = rank(prop, ties.method = "random"))
+
+gt2 %>%
+  ggplot(aes(x=str_to_title(gender), y=rank, color=program_category)) +
+  geom_point(size=5) +
+  geom_line(aes(group=program_desc), alpha=.5) +
+  scale_color_manual(values=c("#219ebc","#e85d04","#023047")) +
+  geom_text(data=gt2 %>% filter(gender=="female"), aes(label=program_desc), size=2.5, hjust=1, nudge_x = -.07,family="Arial Narrow") +
+  geom_text(data=gt2 %>% filter(gender=="male"), aes(label=program_desc), size=2.5, hjust=0, nudge_x = .07, family="Arial Narrow") +
+  geom_text(data=gt2 %>% filter(gender=="female"), aes(label=round(prop*100,1)), 
+            size=2.2, color="white",fontface="bold",family="Arial Narrow") +
+  geom_text(data=gt2 %>% filter(gender=="male"), aes(label=round(prop*100,1)), 
+            size=2.2, color="white",fontface="bold",family="Arial Narrow") +
+  scale_x_discrete(position="top", expand=c(0.6,0.6)) +
+  theme_minimal(base_size = 10, base_family = "Arial Narrow") +
+  guides(color=guide_legend(reverse=T)) +
+  theme(legend.margin=margin(t=-5),
+        axis.title=element_blank(),
+        panel.grid = element_blank(),
+        axis.text.y=element_blank(),
+        axis.text.x.top=element_text(size=10, margin=margin(b=-2), color="black"),
+        legend.text=element_text(size=8),
+        legend.title=element_text(size=8),
+        plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+        plot.title=element_text(margin=margin(b=13))) +
+  labs(color="Program Category",
+       title="NBER Papers: Percentage of programs by gender")
+```
+
+#### Count and percent of females by program 
+
+```{r}
+df = joined_df %>% 
+  select(name, program_desc, year) %>% 
+  drop_na(program_desc, year) %>%
+  separate(name, into = c('name',NA))
+
+gender_names <- gender(df$name) %>% 
+  select(name, gender) %>% 
+  distinct()
+
+gender_pd = df %>% 
+  count(name, program_desc) %>%
+  left_join(gender_names) %>% 
+  na.omit() %>%
+  group_by(program_desc, gender) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(prop = n/sum(n)) %>% 
+  ungroup()
+```
+
+```{r}
+gender_pd %>%
+  filter(gender=="female") %>%
+  ggplot(aes(y=reorder(program_desc,prop), x=prop)) +
+  geom_vline(xintercept = 0, size=.2, color="#adb5bd") +
+  geom_richtext(aes(x=0.001,label=glue::glue("{program_desc} | **{percent(prop, accuracy=.1)}**")),
+            size=1.9, hjust=0, nudge_y = 0.35,fill=NA, label.color=NA) +
+  geom_text(aes(label=n), size=1.8, hjust=-0.75) +
+  geom_segment(aes(x=0, xend=prop, y=reorder(program_desc,prop), yend=reorder(program_desc,prop)), color="#05668d") +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_discrete(expand = expansion(mult = c(0, .035))) +
+  geom_point(aes(size=n), show.legend = F, color="#f25c54", alpha=.8) +
+  coord_cartesian(clip="off") +
+  theme_void(base_size = 9) +
+  theme(plot.margin = unit(c(.5, 3, .5, 3), "cm"),
+        plot.subtitle = element_markdown(size=7, lineheight = 1.3),
+        plot.title=element_markdown(size=9.5),
+        plot.caption=element_text(size=5)) +
+  labs(subtitle = "by program, bar length represents <b><span style = 'color:#05668d;'>percent</span></b> and circle size represents <b><span style = 'color:#f25c54;'>count</span></b> of female authors<br>",
+       title="Female Authors in NBER Publications",
+       caption="\nData source: National Bureau of Economic Research")
+```
+
+#### Proportion of females authors by program and year
+* inspired by: https://twitter.com/toeb18/status/1443498109846368256
+
+```{r}
+gender_pd2 = df %>% 
+  count(name, program_desc,year) %>%
+  left_join(gender_names) %>% 
+  na.omit() %>%
+  group_by(program_desc, year, gender) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(prop = n/sum(n)) %>% 
+  ungroup() %>% filter(gender=="female")
+
+#gender_pd2 %>% group_by(program_desc, year) %>% mutate(paper=sum(n))
+
+female2020 = gender_pd2 %>% 
+  filter(year==2020) %>% 
+  arrange(desc(prop)) %>% 
+  mutate(program_desc=fct_inorder(program_desc)) 
+
+gender_pd2$program_desc = factor(gender_pd2$program_desc, levels = female2020$program_desc)
+```
+
+```{r, fig.width=3.5, fig.height=4}
+gender_pd2 %>% 
+  ggplot(aes(y=fct_rev(program_desc), x=year)) +
+  geom_point(aes(color = prop, size = prop), shape = 15) +
+  geom_text(data = gender_pd2 %>% filter(year==2020), aes(x=1975,label=program_desc), 
+            size=2.2, hjust=0, vjust=-1.7) +
+  scale_x_continuous(expand=c(0.02,0.02)) +
+  scale_size_continuous("% of Female Authors", range = c(1, 4), 
+                        breaks=c(0.02,0.25, 0.50,0.75,1.00),labels=percent_format())+
+  scale_color_continuous_sequential(palette="viridis", name="% of Female Authors",
+                                    breaks=c(0.02,0.25, 0.50,0.75,1.00),labels=percent_format()) +
+  guides(color= guide_legend(), size=guide_legend(), alpha = guide_legend()) +
+  theme_minimal(base_size = 7) +
+  theme(axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank(),
+        legend.direction = "horizontal",
+        axis.line.x.bottom = element_line(),
+        legend.position = "bottom",
+        plot.title=element_markdown(size=12),
+        plot.subtitle=element_text(size=8, color="#343a40"),
+        plot.margin = unit(c(.7, 1, .5, .5), "cm")
+        ) +
+  labs(title="Proportion of **Female** Authors in NBER Publications",
+       subtitle="Publication history in different programs, from 1975 to 2020\n",
+       x="Publication Year")
+  
+```
+
+
+
+

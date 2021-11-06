@@ -1,0 +1,175 @@
+---
+title: "Tidy Tuesday Week 28/2021"
+date: "2021/07/06"
+output: html_notebook
+---
+
+Tidy Tuesday week 28 [Independence Days](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-06/readme.md), data from [Wikipedia](https://en.wikipedia.org/wiki/List_of_national_independence_days).
+
+
+```{r}
+# load libraries
+library(tidyverse)
+library(ggtext)
+library(lubridate)
+library(colorspace)
+library(maps)
+library(patchwork)
+
+# theme set
+theme_set(theme_minimal(base_size = 10))
+```
+
+
+```{r}
+# import data
+holidays <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-06/holidays.csv')
+glimpse(holidays)
+```
+
+
+```{r}
+# number of countries in dataset
+n_distinct(holidays$country)
+```
+
+
+### Independence event count: year
+* shared on [Twitter](https://twitter.com/leeolney3/status/1412310245129527297/photo/1)
+
+```{r}
+# independence year
+ind_year = holidays %>% count(year) %>%
+  drop_na() 
+
+lab = ind_year %>% arrange(desc(n)) %>% slice(1:4)
+
+ind_year %>%
+  ggplot(aes(x=year, y=n)) + 
+  geom_segment(aes(x=year, xend=year, y=0, yend=n, color=I(ifelse(n==max(n),"#9d0208","black")))) +
+  geom_point(aes(size=n, color=I(ifelse(n==max(n),"#9d0208","black")))) + 
+  geom_text(data = lab,aes(label=n), color="white",size=3) +
+  annotate(geom="text",x=1291, y=2.2, label="Switzerland",hjust = "left",size=2.2, angle=50) + 
+  annotate(geom="text",x=1523, y=2.2, label="Sweden",hjust = "left",size=2.2, angle=50) + 
+  annotate(geom="text",x=1581, y=2.2, label="The Netherlands",hjust = "left",size=2.2, angle=50) + 
+  annotate(geom="text",x=1635, y=2.2, label="Portugal",hjust = "left",size=2.2, angle=50) +
+  annotate(geom="text",x=1655, y=2.2, label="Oman",hjust = "left",size=2.2, angle=50) +
+  annotate(geom="text", x= 1780, y=17, 
+           label="17 countries in 1960",size=2.7, hjust="left") +
+  annotate(
+    geom = "curve", x = 1900, y = 17, xend = 1940, yend = 17, 
+    curvature = 0, arrow = arrow(length = unit(1.5, "mm"))
+  ) +
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title=element_blank(),
+        panel.grid.major=element_line(size=0.3),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        plot.caption = element_text(size=7.5, color="#495057"),
+        plot.title=element_markdown(
+          margin=margin(t=15,b=-60),hjust=0,face="bold",size=26,color="black")) + 
+  scale_y_continuous(position="right") + 
+  scale_x_continuous(breaks=c(1291,1523, 1581, 1640, 1776,1821,1918,2011)) +
+  labs(caption= "\nTidy Tuesdy Week 28 | Data from Wikipedia") + 
+  ggtitle("195 COUNTRIES<br><span style = 'color:#9d0208'>INDEPENDENCE YEAR</span>")
+```
+
+### Countries with 2 independence events
+```{r}
+# countries with 2 independence events
+c2 = holidays %>% count(country) %>% arrange(desc(n)) %>% filter(n==2)
+n_distinct(c2$country)
+
+# map data
+world= map_data("world")
+
+# check for differences
+setdiff(c2$country, world$region)
+
+# recode 
+c2 = c2 %>% mutate(region= ifelse(country=="Congo, Republic of the","Republic of Congo",country))
+
+# join
+joined = left_join(world, c2, by="region") %>% 
+  mutate(col = ifelse(is.na(n),"0","2"))
+
+# plot
+joined %>% ggplot(aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill=col)) + 
+  coord_fixed(1.3) + 
+  theme(legend.position = "none") + 
+  scale_fill_manual(values=c("grey90","#ee9b00")) + 
+  theme_void() +
+  theme(legend.position = "none",
+        plot.title = element_text(face="bold",color="#ee9b00",size=12,hjust=0.5),
+        plot.margin=ggplot2::margin(0.5,0,0.5,0,"cm")) + 
+  labs(title = "21 Countries With Two Independence Events\n")
+```
+
+### Independence event count: day of month
+```{r}
+# day of month
+holidays %>% count(day) %>%
+  drop_na() %>%
+  ggplot(aes(x=day, y=n)) + 
+  geom_segment(aes(x=day, xend=day, y=0, yend=n)) + 
+  geom_point(aes(size=n, color=n)) + 
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.subtitle = element_text(face="bold"),
+        panel.grid.major=element_line(size=0.3),
+        axis.title=element_text(face="bold",size=9),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm")) + 
+  scale_x_continuous(limits=c(1,31), breaks=seq(1,31,10)) + 
+  labs(subtitle="Independence event count, by day of month\n", x="Day of month",y="Count") + 
+  scale_color_continuous_sequential(palette="Viridis", trans="reverse")
+```
+
+### Independence event count: month and week day 
+
+```{r}
+# prepare data
+holidays2 = holidays %>%
+  mutate(date = mdy(date_mdy),
+         wday = wday(date, week_start = 1, label=T),
+         wday_n = wday(date, week_start = 1),
+         mth_n = month(date),
+         mth = month(date, label=T)) 
+
+# month 
+p1 = holidays2 %>% group_by(mth, mth_n) %>% tally() %>% drop_na() %>%
+  ggplot(aes(x=mth_n-0.5, y=n)) + 
+  geom_step() + 
+  geom_segment(aes(x=mth_n-0.5, xend=mth_n+0.5, y=n, yend=n)) + 
+  geom_text(aes(x=mth_n, y=n,label=mth), vjust=2, size=3.2) +
+  geom_text(aes(x=mth_n, y=n, label=n), vjust=-1.5, size=3.2) +
+  scale_x_continuous(breaks=c(1,4,7,10)) + 
+  scale_y_continuous(limits=c(5,31)) + 
+  theme_void() + 
+  theme(plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        plot.subtitle = element_text(face="bold",size=9)) + 
+  labs(subtitle="Independence event count by month")
+
+# wday 
+p2 = holidays2 %>% group_by(wday, wday_n) %>% tally() %>% drop_na() %>%
+  ggplot(aes(x=wday_n-0.5, y=n)) + 
+  geom_step() + 
+  geom_segment(aes(x=wday_n-0.5, xend=wday_n+0.5, y=n, yend=n)) + 
+  geom_text(aes(x=wday_n, y=n,label=wday), vjust=2, size=3.2) +
+  geom_text(aes(x=wday_n, y=n, label=n), vjust=-1.5, size=3.2) + 
+  scale_y_continuous(limits=c(20,35)) + 
+  theme_void() + 
+  theme(plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        plot.subtitle = element_text(face="bold",size=9)) + 
+  labs(subtitle="Independence event count by week day")
+
+# combine plot
+p1/
+  p2
+```
+
+
+
+
+

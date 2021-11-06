@@ -1,0 +1,329 @@
+---
+title: "Kenya Census"
+date: "01/2021"
+output: html_notebook
+---
+
+## Data visualization exercise 
+
+This notebook uses [TidyTuesday](https://github.com/rfordatascience/tidytuesday) 2021/week4 [Kenya Census](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-19/readme.md) data containing gender, crops and households indicators of the 2019 Kenya Population and Housing Census, from [rKenyaCensus](https://github.com/Shelmith-Kariuki/rKenyaCensus) courtesy of Shelmith Kariuki. 
+
+
+### Load libaries
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(waffle)
+library(ggsci)
+library(ggpubr)
+library(scales)
+```
+
+### Import data
+```{r, message=FALSE, warning=FALSE}
+gender <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/gender.csv')
+crops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/crops.csv')
+households <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/households.csv')
+```
+
+
+### Clean and merge data 
+```{r}
+# clean names
+crops_df = crops %>% clean_names()
+households_df = households %>% clean_names()
+gender_df = gender %>% clean_names()
+
+# change county names to upper for joining
+households_df$county <- sapply(households_df$county, toupper)
+gender_df$county <- sapply(gender_df$county, toupper)
+
+# recode factors for joining
+gender_df = gender_df %>% mutate_at(vars(county), ~recode_factor(.,"TOTAL" = "KENYA"))
+crops_df <- crops_df %>% rename(county = sub_county) 
+
+# remove white space in county
+crops_df$county <- gsub('\\s+', '', crops_df$county)
+households_df$county <- gsub('\\s+', '', households_df$county)
+gender_df$county <- gsub('\\s+', '', gender_df$county)
+
+# rename NAIROBI to NAIROBICITY in crops_df
+crops_df = crops_df %>% mutate_at(vars(county), ~recode_factor(.,"NAIROBI" = "NAIROBICITY"))
+
+# merge three dataframe
+data = list(crops_df, households_df, gender_df) %>% 
+  reduce(full_join, by = "county")
+dim(data)
+```
+
+### Visualise missing data
+* reference: [@joshyam_](https://twitter.com/joshyam_/status/1351281661250396160/photo/1)
+```{r}
+# plot
+data %>% summarise(across(everything(), ~mean(!is.na(.)))) %>% 
+  gather() %>%
+  mutate(key= fct_reorder(key, value)) %>%
+  ggplot(aes(key, value)) +
+  geom_point(size=3, color="#006d77") +
+  geom_segment( aes(x=key, xend=key, y=0, yend=value)) + 
+  geom_text(aes(label= percent(value)),
+            nudge_y=0.07, size=3) + 
+  scale_y_continuous(labels= scales::percent) + 
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position="none"
+  ) +
+  theme(axis.text.x=element_blank()) +
+  labs(x="", y="% of data present") + 
+  coord_flip()
+```
+
+### Distribution of Households Growing Permanent Crops by Type and County 
+
+```{r}
+crops_df2 <- crops_df %>% mutate_if(is.factor, function(x) tolower(as.character(x)))
+crops_df2$county = str_to_title(crops_df2$county)
+
+k_crops = crops_df2 %>% filter(county=="Kenya") 
+k_crops_key = k_crops %>% gather("farming":"khat_miraa", key="crop_type",value="households") %>% mutate(households_mil = round((households/1000000),2))
+```
+
+```{r}
+ggdotchart(k_crops_key, x = "crop_type", y = "households_mil",
+           color = c("#457b9d"), # Custom color palette
+           sorting = "descending",                       # Sort value in descending order
+           rotate = TRUE,                                # Rotate vertically
+           dot.size = 8,                                 # Large dot size
+           label = round(k_crops_key$households_mil,1),
+           font.label = list(color = "white", size = 9, 
+                             vjust = 0.5),
+           ggtheme = theme_pubr()                        # ggplot2 theme
+           )+
+  theme_cleveland() +                                     # Add dashed grids
+    labs(y="Number of households (in millions)", caption= "Data from rKenyaCensus", title="Distribution of Households Growing Permanent Crops by Type", subtitle="2019 Kenya Population and Housing Census")
+```
+
+### Crops: Coffee vs Tea 
+* Inspired by: [izz_m2](https://twitter.com/izz_m2/status/1351615438795509762/photo/1)
+```{r}
+# prepare data
+ct_key = crops_df2 %>% select(county, coffee, tea) %>% gather(crop_type, households, 2:3) %>% filter(!is.na(households)) %>% filter(county!="Kenya") 
+ct_key = ct_key %>% group_by(county) %>% mutate(households_total = sum(households)) %>% ungroup() %>% arrange(desc(households_total))
+
+# plot
+ggplot(ct_key, aes(households, reorder(county,households_total))) +
+  geom_line(aes(group = county)) +
+  geom_point(aes(color = crop_type)) + 
+  theme_minimal() + 
+  scale_color_d3() + 
+  labs(y="County",
+       x="Number of households",
+       color="", 
+       title= "Coffee vs. Tea ", 
+       subtitle="Number of farming households in Kenya by County",
+       caption= "Data from rKenyaCensus")
+```
+
+
+### Crops: Cashew Nut vs. Coconut 
+```{r}
+# prepare data
+mc_key = crops_df2 %>% select(county, cashew_nut, coconut) %>% gather(crop_type, households, 2:3) %>% filter(!is.na(households)) %>% filter(county!="Kenya") 
+mc_key = mc_key %>% group_by(county) %>% mutate(households_total = sum(households)) %>% ungroup() %>% arrange(desc(households_total))
+
+right_label <- mc_key %>%
+        group_by(county) %>%
+        arrange(desc(households)) %>%
+        slice(1)
+
+left_label <- mc_key %>%
+        group_by(county) %>%
+        arrange(desc(households)) %>%
+        slice(2)
+
+# plot
+ggplot(mc_key, aes(households, reorder(county,households_total))) +
+  geom_line(aes(group = county)) +
+  geom_point(aes(color = crop_type), size=3) + 
+  geom_text(data = right_label, aes(color = crop_type, label = round(households, 0)),
+                  size = 3, hjust = -.5) +
+  geom_text(data = left_label, aes(color = crop_type, label = round(households, 0)),
+                  size = 3, hjust = 1.5) +
+  theme_minimal() + 
+  theme(legend.position = "bottom") +
+  scale_color_nejm() + 
+  scale_x_continuous(limits = c(-5000, 50000)) + 
+  labs(y="County",
+       x="Number of households",
+       color="", 
+       title= "Cashew nut vs. Coconut ", 
+       subtitle="Number of farming households in Kenya by County",
+       caption= "Data from rKenyaCensus")
+```
+
+### Crops: Cashew Nut vs. Coconut 
+```{r}
+# waffle plot
+# cashew nut
+cas_df = crops_df2 %>% select(county, cashew_nut) %>% filter(!is.na(cashew_nut)) %>% arrange(desc(cashew_nut))
+cas_df = cas_df[-1,] #remove first row
+
+cas_vec = c(`KILIFI (27940)`=27940, `KWALE (22803) `=22803, `LAMU (8085) `=8085,
+	`TANA RIVER (1691) `=1691, `MOMBASA (602) `=602, `TAITA/TAVETA (543) `=543)
+	
+p1 = waffle(cas_vec/500, rows=8, size=0.6,
+      colors=c("#e85d04", "#264653", "#e9c46a","#00509d", "#90be6d", "#9e2a2b"),
+      title="Households Growing Cashew Nut by Counties of Kenya",
+      xlab="1 square = 500 households, data from rKenyaCensus", pad=7) 
+p1 = p1 + theme(plot.title = element_text(size = 12))
+
+# coconut
+coco_df = crops_df %>% select(county, coconut) %>% filter(!is.na(coconut)) %>% arrange(desc(coconut))
+coco_df = coco_df[-1,] #remove first row
+coco_vec = c(`KILIFI (47561)`=47561, `KWALE (31954) `=31954, `LAMU (5017) `=5017,
+	`TAITA/TAVETA  (2504) `=2504, `TANA RIVER (2228) `=2228, `MOMBASA (1688) `=1688)
+	
+p2 = waffle(coco_vec/500, rows=8, size=0.6,
+            colors=c("#e85d04", "#264653", "#e9c46a","#9e2a2b", "#00509d", "#90be6d"),
+            title="Households Growing Coconut by Counties of Kenya",
+            xlab="1 square = 500 households, data from rKenyaCensus")
+p2 = p2 + theme(plot.title = element_text(size = 12))
+
+# plot
+iron(p1,p2)
+```
+
+
+### Avocados 
+* Inspired by [@adriaaaaaaan](https://twitter.com/adriaaaaaaan/status/1351665628013355008/photo/1)
+
+```{r}
+avo_df = crops_df2 %>% dplyr::select(county, avocado, farming) %>% filter(!is.na(avocado)) %>% mutate(ratio = round((avocado/farming),4))
+
+avo_df %>% ggplot(aes(reorder(county,ratio), ratio)) + geom_point(color="#606c38",size=2.5) + coord_flip() + 
+  scale_y_continuous(labels = scales::percent, limits=c(0, 0.45)) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank()) +
+  labs(x="",y="", title="Avocados from Kenya", subtitle="Percentage of county's farming households farming avocados", caption="Data from rKenyaCensus")
+```
+
+### Avocados (map)
+* reference: [Kenya X Coffee by @pyyxxo](https://twitter.com/pyyxxo/status/1351568045714645000/photo/1)
+```{r, message=FALSE, warning=FALSE}
+library(Hmisc)
+library(sf)
+library(colorspace)
+library(ggrepel)
+library(RColorBrewer)
+library(rKenyaCensus)
+
+  k_shp <- rKenyaCensus::KenyaCounties_SHP
+```
+
+```{r, message=FALSE, warning=FALSE}
+# clean
+clean_county <- function(X) {
+    X %>%
+      tolower %>%
+      str_replace_all("[^[:alpha:]]+", "") %>%
+      str_replace_all(fixed("city"), "")
+}
+
+households = households %>% mutate(County = clean_county(County))
+crops = crops %>% mutate(County = clean_county(SubCounty))
+gender = gender %>% mutate(County = clean_county(County))
+
+k_shp %>%
+    as("sf") %>%
+    dplyr::select(-Population) %>%
+    mutate(County = clean_county(County)) %>%
+    inner_join(households, by="County") %>%
+    inner_join(gender, by="County") %>%
+    inner_join(crops, by="County") ->
+    k_data
+
+
+# centroids
+k_data$centroids <- st_transform(k_data) %>% 
+    st_centroid() %>% 
+    st_transform(., '+proj=longlat +ellps=GRS80 +no_defs') %>%
+    st_geometry()
+
+# centriods as dataframe
+k_data_2 <- k_data %>% st_centroid() %>%  
+    as_Spatial() %>%                
+    as.data.frame()
+```
+
+```{r}
+# select four countries to label 
+topavo <- subset(k_data_2, Avocado>50000)
+topavo$County <- capitalize(topavo$County)
+topavo[, c("County", "coords.x1", "coords.x2")]
+topavo$County[topavo$County=="Muranga"] <- "Murang'a"
+```
+
+```{r, fig.height=9, fig.width=16}
+ggplot(k_data) + 
+    geom_sf(aes(fill=Avocado), color="black") +
+   geom_text_repel(data = topavo, aes(x = coords.x1, y = coords.x2, label = County), 
+                   size=8, color="firebrick4", 
+                             #  bungoma  / kakamega / kisii / muranga
+                   nudge_x = c(-100000,   -250000,  +5000, -50000), 
+                   nudge_y = c(+100000, -250000, -200000, -400000) ) +
+   labs(title = "KENYA: Population growing/farming avocados by county", 
+        subtitle="",
+        fill="",
+        caption="Data from rKenyaCencus") +
+  scale_fill_continuous_sequential(palette = "Greens") +
+   theme_void() + 
+   theme(legend.position = "left",
+         legend.text=element_text(size=16),
+         text = element_text(color="black"),
+         plot.caption  = element_text(size = 14, hjust=.5), 
+         plot.title    = element_text(size = 32, hjust=0), 
+         plot.subtitle = element_text(size = 24, hjust=0, color="gray30"), 
+         plot.margin=unit(c(0.5, 0, 0.5, 0),"cm") )
+```
+
+
+### Clustering household data by county
+* Reference: [@OzancanOzdemir](https://twitter.com/OzancanOzdemir/status/1351794062626578432/photo/1)
+
+```{r, message=FALSE, warning=FALSE}
+# libraries
+library(factoextra)
+library(ggthemes)
+```
+
+```{r}
+# prepare data 
+cdf<-as.data.frame(households) #change class
+rownames(cdf)<-households$County
+cdf<-cdf[,-1] # drop first col
+cdf<-cdf[-1,] # drop national data
+
+# scale
+cdf_scaled = scale(cdf)
+head(cdf_scaled)
+```
+
+
+```{r}
+# check optimal clusters using elbow plot
+fviz_nbclust(cdf, kmeans, method = "wss") #4 clusters
+```
+
+```{r, fig.height=4, fig.width=7}
+# K means with 4 clusters
+set.seed(123)
+k4 = kmeans(cdf, 4,nstart=25)
+
+# plot
+fviz_cluster(k4, data = cdf)+theme_fivethirtyeight()+theme(rect = element_rect(fill = "White",linetype = 0, colour = NA))+labs(title="Cluster of Counties in Kenya based on Household",caption="Data from rKenyaCensus")
+```
+

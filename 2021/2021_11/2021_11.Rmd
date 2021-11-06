@@ -1,0 +1,294 @@
+---
+title: "11/2021 Bechdel Test"
+date: "2021/03/09"
+output: html_notebook
+---
+
+This notebook uses [TidyTuesday](https://github.com/rfordatascience/tidytuesday) Week 11/2021 [Bechdel Test](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-09/readme.md) data from [FiveThirtyEight](https://github.com/fivethirtyeight/data/tree/master/bechdel). 
+
+Data set description (from [TidyTuesday](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-09/readme.md)):     
+1. **raw_bechdel** : includes data from 1970 - 2020, for ONLY bechdel testing    
+2. **movies**: includes IMDB scores, budget/gross revenue, and ratings but only from 1970 - 2013    
+
+
+```{r,warning=FALSE, message=FALSE}
+# load library
+library(tidyverse)
+library(tidytuesdayR)
+library(gghalves)
+library(ggpubr)
+library(scales)
+library(ggExtra)
+library(tidytext)
+library(gt)
+```
+
+
+```{r}
+# load data
+tuesdata <- tidytuesdayR::tt_load('2021-03-09')
+b = tuesdata$raw_bechdel
+m = tuesdata$movies
+```
+
+
+```{r}
+summary(b$year)
+summary(m$year)
+```
+
+### Outcomes and metascore
+
+```{r}
+# Outcomes and Metascore
+# shared on twitter (https://twitter.com/leeolney3/status/1369238810085777410/photo/1)
+m %>% 
+  filter(!is.na(metascore)) %>%
+  filter(between(year, 1970,2020)) %>%
+  mutate(binary= ifelse(binary=="FAIL","Bechdel Test: Fail","Bechdel Test: Pass")) %>%
+  ggplot(aes(x=clean_test, y=metascore, color=clean_test)) + 
+  geom_half_point(size=0.8, alpha=0.5) + 
+  geom_half_boxplot(outlier.size = -1) + 
+  facet_grid(~binary,scales = "free", space = "free") +
+  scale_color_manual(values=c("#f79d65","#f4845f","#f27059","#f25c54","#33658a")) + 
+  theme_bw() +
+  theme(axis.title=element_text(size=9, face="bold"),
+        legend.position = "none",
+        strip.background = element_blank(),
+        axis.ticks=element_blank(),
+        plot.title=element_text(face="bold", lineheight = 10),
+        plot.caption=element_text(color="#6d6a75", size=8),
+        #plot.title.position = "plot",
+        plot.margin=unit(c(0.4,1.2,0.4,0.3),"cm")) +
+  labs(x="Outcomes of Bechdel Test",
+       y="Metascore",
+       title="Bechdel Test Outcomes and Metascore of Movies (1970 to 2013)",
+       caption="Data from FiveThirtyEight")
+```
+
+
+```{r}
+# Outcomes and Domestic Gross 
+m1 = m
+m1$domgross_2013= as.numeric(m1$domgross_2013)
+
+ylab = c(0,500,1000,1500)
+m1 %>% 
+  filter(!is.na(domgross_2013)) %>%
+  filter(between(year, 1970,2020)) %>%
+  mutate(binary= ifelse(binary=="FAIL","Bechdel Test: Fail","Bechdel Test: Pass")) %>%
+  ggplot(aes(x=clean_test, y=domgross_2013, color=clean_test)) + 
+  geom_half_point(size=0.8, alpha=0.5) + 
+  geom_half_boxplot(outlier.size = -1) + 
+  #geom_jitter(size=0.8, alpha=0.2, color="yellow") + 
+  #geom_boxplot(fill=NA) + 
+  facet_grid(~binary,scales = "free", space = "free",) +
+  scale_y_continuous(labels = paste(ylab, "M"),
+                     breaks = 10^6 * ylab
+  ) + 
+  scale_color_manual(values=c("#f79d65","#f4845f","#f27059","#f25c54","#33658a")) + 
+  theme_bw() +
+  theme(axis.title=element_text(size=9),
+        legend.position = "none",
+        #plot.title.position = "plot",
+        strip.background = element_blank(),
+        plot.title=element_text(face="bold")
+        )+
+  labs(x="Outcome of Bechdel Test",
+       y="Domestic gross (in millions)",
+       title="Bechdel Test Outcomes and Domestic Gross of Movies (1970 to 2013)",
+       subtitle= "Domestic gross normalised to 2013 dollars")
+
+```
+
+
+
+### Bechdel test ratings (0-3)
+
+```{r}
+b %>% group_by(rating) %>% tally() %>% mutate(prop=round(n/sum(n),3))
+```
+
+
+```{r}
+b %>% 
+  filter(between(year, 1970,2020)) %>%
+  group_by(year, rating) %>%
+  tally() %>% mutate(prop=round(n/sum(n),3)) %>%
+  mutate(rating_long = case_when(rating==0 ~"Unscored",
+                   rating==1 ~"At least two named women",
+                   rating==2 ~"Women talk to each other",
+                   rating==3 ~"About something besides a man"
+                   )) %>%
+  ggplot(aes(x=year, y=prop, color= rating_long)) + 
+  geom_point(key_glyph = draw_key_point, alpha=0.8) + 
+  scale_color_manual(values=c("#a8201a","#0f8b8d","#143642","#ec9a29")) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_light(base_size=10) + 
+  theme(legend.position="top",
+        #plot.title.position="plot",
+        legend.justification='left',
+        legend.title=element_text(size=9),
+        legend.margin=margin(0,0,0,0),
+        plot.title=element_text(face="bold")
+        ) +
+  guides(color=guide_legend(ncol=2,override.aes = list(shape = 15, size =4))) + 
+  labs(x="Year",y="Percentage",color="Rating",
+       title="Bechdel Test Ratings of Movies from 1970 to 2020",
+       caption="Data from FiveThirtyEight")
+```
+
+### Movie count by genre
+
+```{r}
+m= m %>% filter(!is.na(type)) 
+m %>% 
+  select(imdb, genre) %>% 
+  unnest_tokens(word, genre) %>% 
+  filter(!is.na(word)) %>% 
+  group_by(word) %>% 
+  tally(sort=T) %>% 
+  filter(word!="fi") %>% mutate(word=ifelse(word=="sci","sci-fi",word)) %>% 
+  ggplot(aes(y=reorder(word,n), x=n)) + 
+  geom_point() + 
+  theme_light(base_size = 10) + 
+  theme(plot.title=element_text(face="bold")) +
+  labs(x="Count",
+       y="Genre",
+       title="Movies Count by Genre")
+```
+
+
+### Median IMDB rating and metascare
+
+```{r, warning=FALSE, message=FALSE}
+# median IMDB rating and Metascore 
+# reference: Tobias Stalder (https://twitter.com/toeb18/status/1369265527714103298/photo/1)
+
+m_median= m %>% 
+  select(year, binary, budget, metascore, imdb_rating, genre, type)%>%
+  drop_na(genre, metascore, binary, imdb_rating, type) %>% 
+  filter(year>=1980) %>%
+  group_by(year, binary) %>%
+  summarise(`Metascore` = median(metascore),
+            `IMDB Rating` = median(imdb_rating)) %>%
+  pivot_longer(cols=`Metascore`:`IMDB Rating`, values_drop_na=TRUE) %>%
+  mutate(binary= ifelse(binary=="FAIL","Fail","Pass"))
+
+ggplot(m_median, aes(x=year, y= value, color=binary)) + 
+  ggbump::geom_bump(aes(x = year, y = value, color = binary), show.legend = TRUE) +
+  scale_color_manual(values = c("#b7094c","#0091ad")) + 
+  facet_wrap(~name, scales="free") + 
+  theme_light(base_size = 10) + 
+  theme(legend.position = "top",
+        legend.justification = "left",
+        legend.title=element_text(size=9),
+        strip.text = element_text(color="white", face="bold"),
+        strip.background = element_rect(fill="slategrey"),
+        plot.title=element_text(face="bold")) + 
+  guides(color=guide_legend(override.aes = list(shape = 15, size =7))) + 
+  labs(x="",y="", color="Bechdel Test", title="Median IMDB Rating and Metascore, by Bechdel Test Outcome")
+ 
+```
+
+### Budget, domestic gross, imdb, bechdel test
+
+```{r, warning=FALSE}
+# budget, domestic gross, imdb, bechdel test (movies 1970 to 2013)
+# reference: Sherosha Raj (https://twitter.com/SheroshaR/status/1369455581422092288/photo/1)
+
+p1 = m1 %>%
+  filter(budget>100000000) %>%
+  ggplot(aes(x=budget_2013/1000000, y=domgross_2013/1000000, color=binary, size=imdb_votes/1000)) +
+  geom_point(alpha=0.5) + 
+  scale_color_manual(values = c("#b7094c","#0091ad")) +
+  scale_x_continuous(label = label_number(suffix="M"), trans = "log10") +
+  scale_y_continuous(label=label_number(suffix="M"), trans = "log10") + 
+  scale_size_continuous(label=label_number(suffix="K")) + 
+  theme_light(base_size = 10) +
+  theme(legend.position="bottom",
+        axis.ticks=element_blank(),
+        panel.grid=element_blank(),
+        axis.title = element_text(size=10, face="bold"),
+        legend.title=element_text(size=9.5, face="bold"),
+        plot.title=element_text(face="bold")) + 
+  labs(x="Budget (log)",
+       y="Domestic gross (log)",
+       size="IMDB votes",
+       color="Bechdel Test",
+       subtitle="Budget and domestic gross normalised to 2013 dollars",
+       title="Movies from 1970 to 2013, with budget over 100 million") 
+
+ggMarginal(p1, groupColour = T, groupFill = T) #type='boxplot
+```
+
+### Total gross revenue by decade
+
+```{r, warning=FALSE}
+m1 = m
+m1$domgross_2013= as.numeric(m1$domgross_2013)
+m1$intgross_2013= as.numeric(m1$intgross_2013)
+m1$int_dom_2013 = m1$domgross_2013 + m1$intgross_2013
+
+m1 %>% 
+  mutate(decade= year-(year %% 10)) %>% # get decade 
+  ggplot(aes(x=factor(decade), y=int_dom_2013/1000000000, color=binary)) + 
+  geom_boxplot() + 
+  scale_color_manual(values = c("#b7094c","#0091ad")) + 
+  scale_y_continuous(label=label_number(suffix="B")) +
+  theme_light(base_size=10) + 
+  theme(plot.title=element_text(face="bold")) +
+  labs(y="Total Gross",
+       x="Decade",
+       color="Bechdel Test", 
+       title="Total Gross Revenue (Domestic and International)",
+       subtitle="Movies from 1970 to 2013, gross values normalised to 2013 dollars")
+```
+
+### Content rating and bechdel test 
+
+```{r}
+table(m$rated)
+
+m %>% 
+  filter(rated == "R"| rated =="PG-13" | rated == "PG") %>% 
+  group_by(rated, binary) %>% 
+  tally() %>%
+  mutate(percent=round(n/sum(n),4)) %>%
+  mutate(binary = ifelse(binary=="FAIL","Fail","Pass")) %>% 
+  rename("Bechdel Test" = "binary", "Rated"="rated") %>%
+  ungroup() %>%
+  gt() %>%
+  tab_header(title="Movies 1970 to 2013", subtitle= "Content Rating and Bechdel Test Outcome") %>%
+  fmt_percent(columns=vars(percent)) %>%
+  #data_color(columns=vars(Rated),
+             #colors=scales::col_factor(palette=c("#c9ada7","#9a8c98","#4a4e69"),
+                                       #domain=c("PG","PG-13","R"))) %>%
+  data_color(column=vars(percent),
+             colors=scales::col_numeric(palette=c("#d9ed92","#34a0a4"),
+                                        domain=c(0.41,0.59)))
+  
+```
+
+### Domestic gross by content rating and bechdel test
+
+```{r, warning=FALSE}
+m1 %>%
+  filter(rated == "R"| rated =="PG-13" | rated == "PG") %>% 
+  ggplot(aes(x=rated, y=domgross_2013/1000000, color= binary)) + 
+  geom_boxplot() + 
+  scale_color_manual(values = c("#b7094c","#0091ad")) + 
+  scale_y_continuous(name="Domestic Gross", label=label_number(suffix="M")) + 
+  theme_light(base_size=10) + 
+  theme(plot.title=element_text(face="bold")) +
+  labs(x="Content Rating",
+       color="Bechdel Test", 
+       title="Domestic Gross by Content Rating and Bechdel Test Outcome",
+       subtitle="Movies from 1970 to 2013, values normalised to 2013 dollars")
+```
+
+
+
+
+
+

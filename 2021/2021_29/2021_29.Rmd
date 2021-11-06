@@ -1,0 +1,599 @@
+---
+title: "Tidy Tuesday Week 29/2021"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 29 [Scooby Doo Episodes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-13/readme.md), data from [Kaggle](https://www.kaggle.com/williamschooleman/scoobydoo-complete) and aggregated by  [plummye](https://www.kaggle.com/williamschooleman).
+
+
+```{r}
+# load libaries
+library(tidyverse)
+library(scales)
+library(lubridate)
+library(skimr)
+library(tidytext)
+library(ggtext)
+library(ggpubr)
+library(colorspace)
+library(ggsci)
+library(viridis)
+library(gggrid) 
+library(packcircles)
+library(ggmosaic)
+library(ggbump)
+library(ggsankey)
+```
+
+```{r, message=F}
+# import data
+scoobydoo <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-13/scoobydoo.csv')
+
+# import data (change NULL to NA)
+scoobydoo1 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-13/scoobydoo.csv', na="NULL")
+```
+
+```{r}
+# summary
+
+# numeric variables
+scoobydoo1 %>% 
+  select_if(is.numeric) %>%
+  skim()
+
+# logical variables
+scoobydoo1 %>% 
+  select_if(is.logical) %>%
+  skim()
+
+# character variables
+scoobydoo1 %>% 
+  select_if(is.character) %>%
+  mutate_if(is.character,as.factor) %>%
+  skim()
+```
+
+
+#### Main character action count in TV series
+* shared on [Twitter](https://twitter.com/leeolney3/status/1414843982874648577)
+
+```{r}
+# tv series: action count by character
+table1 = scoobydoo %>% 
+  filter(format=="TV Series") %>%
+  select(index,caught_fred:snack_scooby) %>%
+  pivot_longer(!index) %>%
+  extract(name, c("type", "char"), "(.*)_(.*)") %>%
+  filter(value=="TRUE") %>%
+  group_by(type, char) %>% 
+  tally() 
+
+p1 = table1 %>% 
+  mutate(char=str_to_title(char)) %>%
+  ggplot(aes(x=type, y=n, fill=type)) + 
+  geom_bar(stat="identity",width=0.9, alpha=0.95) + 
+  facet_wrap(~char, ncol=5) + 
+  scale_fill_manual(values=c("#76a2ca","#cd7e05","#b2bb1b","#7c68ae")) +
+  scale_x_discrete(expand=c(.3,.3)) +
+  theme_minimal() + 
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor.y=element_blank(),
+        plot.subtitle=element_markdown(size=10, face="bold", hjust=0.5),
+        axis.text.x=element_blank(),
+        strip.text=element_text(face="bold", size=8),
+        legend.position="none",
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=0.5, face="bold",size=12),
+        axis.title=element_blank(),
+        #plot.background = element_rect(fill="#f5f7f5", color=NA),
+        plot.margin=unit(c(1,1,0.5,1),"cm"),
+        axis.text.y=element_text(size=7),
+        panel.grid=element_line(color="#bccbc0", linetype = 3)) + 
+  labs(subtitle= "<span style = 'color:#76a2ca'><b>Captured</b></span>, 
+       <span style = 'color:#cd7e05'><b>Caught</b></span>,
+       <span style = 'color:#b2bb1b'><b>Snack eaten</b></span>, and
+       <span style = 'color:#7c68ae'><b>Unmask</b></span><br>",
+       title="Scooby Doo TV Series")
+```
+
+```{r}
+# tv series: captured vs caught
+d1 = scoobydoo %>% 
+  filter(format=="TV Series") %>%
+  select(index,caught_fred:captured_scooby) %>%
+  pivot_longer(!index) %>%
+  extract(name, c("type", "char"), "(.*)_(.*)") %>%
+  filter(value=="TRUE") %>%
+  group_by(type, char) %>% 
+  tally() %>%
+  ungroup() 
+
+d2 = d1 %>% 
+  group_by(char) %>%
+  mutate(diff= n-lag(n),
+         diff2=ifelse(is.na(diff),mean(diff,na.rm=T),diff),
+         cat = ifelse(diff2>0,"Caught > Captured","Captured > Caught")) %>%
+  arrange(char, type) %>%
+  select(-diff) %>%
+  ungroup() %>%
+  mutate(char=str_to_title(char),
+         type=str_to_title(type))
+
+d3 = d2 %>% group_by(char) %>% mutate(mea= median(n)) %>% filter(type=="Caught")
+
+p2 = d2 %>%
+  ggplot(aes(y=fct_rev(char), x=n)) + 
+  geom_point(aes(shape=type),size=3) + 
+  geom_line(aes(group=char, color=cat)) + 
+  scale_shape_manual(values=c(1,19)) + 
+  scale_color_manual(values =c("#76a2ca","#cd7e05")) + 
+  scale_x_continuous(limits=c(0,120), breaks=seq(30,120,20)) +
+  geom_text(data = d3, 
+            aes(x=mea, y= char, label=abs(diff2)),size=3, color="black", vjust=-0.9) + 
+  geom_text(data =d3, aes(x=0, y=char, label=char, color=cat), size=4, hjust=0, fontface="bold",
+            show.legend = F) + 
+  theme(legend.position = "top",
+        axis.text.y=element_blank(),
+        axis.title=element_blank(),
+        plot.margin=unit(c(1,1,0.5,1),"cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", hjust=0.5,size=12),
+        panel.grid.minor=element_blank()) + 
+  labs(x="Count", y="Character", shape="", color="",
+       title="Scooby Doo TV Series: Captured vs. Caught",
+       caption="\nTidy Tuesday Week 29 | Data from Kaggle")  + 
+  guides(shape = guide_legend(order = 1),color = guide_legend(order = 2, override.aes = list(size = 2)))
+```
+
+```{r,fig.width=4, fig.height=3.5}
+# combine p1 and p2
+ggarrange(p1,p2,nrow=2)
+```
+
+ALT text: Bar plot and dot plot showing the action count of main characters in Scooby Doo TV series. Bar plot shows count of captured, caught, snack eaten and unmask by main characters, where Daphnie has more snacks eaten than caught. Dot plot shows the count of captured vs. caught, where Fred and Scooby has more caught than captured while the others (Daphnie, Shaggy and Velma) has more captured than caught. 
+
+
+
+#### Proportion of real monsters by format
+
+```{r}
+# packing circles chart
+
+data2a = scoobydoo %>% 
+  group_by(format,monster_real) %>% tally() %>% 
+  mutate(prop=n/sum(n),prop = round(prop*100)) %>% ungroup()
+
+data2b = data2a %>% group_by(format) %>% count(wt=prop) %>% ungroup()
+
+data2c = data2b %>% 
+  pmap_df(
+  .f = ~circleProgressiveLayout(rep(0.5, ..2))) %>% 
+  mutate(format = rep(data2a$format, data2a$prop),
+         monster_real = rep(data2a$monster_real, data2a$prop)
+  )
+
+# graphic params
+my_gpar <- gpar(
+  col = "black",
+  fontsize = 7
+)
+
+# plot
+p3 =plot2 = data2c%>% 
+    ggplot(aes(x, y, fill = monster_real)) + 
+    geom_point(size = 2.75,pch = 21, color="white") + 
+  facet_wrap(~format) + 
+  scale_fill_manual(values=c("#128a84","#D0D61B","#F7921E")) +
+  scale_y_continuous(expand=c(.1,.1)) +
+  scale_x_continuous(expand=c(.2,.2)) +
+  theme_void() +
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, face="bold", size=12),
+        plot.subtitle=element_text(hjust=0.5, size=8),
+        strip.text.x=element_text(size=8,face="bold", margin=margin(b=5,t=5)),
+        plot.caption=element_text(size=8),
+        legend.text = element_text(size=8),
+        plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+        legend.margin=margin(t = 0, unit='cm'),
+        legend.box.margin=margin(t=-10, b=0)) +
+  guides(fill=guide_legend(ncol=3,title.position = "top", 
+                           title.hjust = .5, override.aes = list(size=3))) + 
+  labs(subtitle="(Proportion of real monsters, where each dot represents 1%)", fill="",
+       title="Real Monsters in Scooby Doo, by Format")
+p3
+```
+
+#### Proportion of monster type 
+
+```{r}
+# proportion of monster type
+scoobydoo1 %>% separate_rows(monster_type,sep=",", convert=T) %>%
+  select(index, monster_type) %>%
+  drop_na(monster_type) %>%
+  mutate(monster_type=str_trim(monster_type),
+         monster_type=recode(monster_type, 
+                             Disguised = "Disguise",
+                             Disguised = "Disugised",
+                             Possessed="Possessed Object"
+                             )) %>%
+  #count(monster_type, sort=T) %>%
+  filter(monster_type!="NULL") %>%
+  mutate(mt = fct_lump(monster_type, 10)) %>%
+  count(mt, sort=T) %>%
+  mutate(perc= paste0(sprintf("%2.1f", n/sum(n)*100),"%"),
+         mt = fct_rev(fct_inorder(mt)),
+         mt = fct_relevel(mt, "Other",after=0),
+         col=case_when(row_number()==1 ~ "#76a2ca", 
+                         row_number()==2 ~ "#cd7e05",
+                         row_number()==3 ~ "#b2bb1b",
+                         row_number()==4 ~ "#7c68ae",
+                         mt =="Other" ~"grey70",
+         TRUE~"grey55")) %>%
+  ggplot(aes(y=mt, x=n, fill=col)) + 
+  geom_col(width=0.7, show.legend = F, alpha=0.95) +
+  scale_fill_identity() + 
+  scale_color_identity() + 
+  geom_text(aes(label=perc), size=3, color="white", hjust=1.3,fontface="bold") + 
+  geom_text(aes(x=-5, label=mt, color=col),size=3.5, hjust=1, fontface="bold") + 
+  scale_x_continuous(expand=expansion(mult=c(.3,.1))) +
+  theme_void() + 
+  theme(plot.subtitle=element_text(hjust=0.06),
+        plot.margin=unit(c(1,1,1,1),"cm")) +
+  labs(subtitle="Proportion of monster types in Scooby Doo\n")
+```
+
+
+
+#### Proportion of monster gender by format
+
+```{r}
+# monster gender
+scoobydoo1 %>% select(index, format, monster_gender) %>%
+  drop_na(format, monster_gender) %>%
+  separate_rows(monster_gender,sep=",", convert=T) %>%
+  filter(monster_gender!="",monster_gender!="None") %>%
+  group_by(format, monster_gender) %>% tally() %>%
+  mutate(prop=round(n/sum(n),3)) %>%
+  ggplot(aes(y=fct_rev(format), x=prop, fill=monster_gender)) + 
+  geom_col(position=position_dodge2(width=0.2,preserve = "single"), width=0.5,alpha=0.8) + 
+  scale_fill_manual(values=c("#ee9b00","#005f73")) +
+  scale_x_continuous(labels=scales::percent_format(),position="top") +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 10)) + 
+  theme_minimal() +
+  theme(legend.position="top",
+        panel.grid.minor=element_blank(),
+        axis.title=element_blank(),
+        legend.justification = "left",
+        legend.margin = margin(l=15),
+        plot.title.position = "plot",
+        axis.text.x.top = element_text(margin = margin(b = -10, unit = "pt")),
+        axis.text.y.left = element_text(margin = margin(r = -10, unit = "pt")),
+        plot.margin=unit(c(1,1,1,1),"cm")) + 
+  guides(fill=guide_legend(keyheight = 1, keywidth = 0.4, reverse=T)) + 
+  labs(fill="",
+       subtitle="Proportion of monster gender by format") 
+```
+
+
+```{r}
+# percentage of female monsters by monster amount
+gender_amount = scoobydoo1 %>% 
+  drop_na(monster_gender,monster_amount) %>%
+  #mutate(ma = fct_lump(factor(monster_amount),5, other_level = "5 and above")) %>%
+  select(index, monster_amount, monster_gender) %>%
+  separate_rows(monster_gender,sep=",", convert=T) %>%
+  group_by(index,monster_amount) %>% 
+  count(monster_gender) %>%
+  ungroup() %>%
+  filter(monster_gender!="",
+         monster_gender!="None") %>%
+  group_by(monster_amount, monster_gender) %>% tally(n) %>%
+  mutate(prop=round(n/sum(n),3))
+  
+gender_amount %>% filter(monster_gender=="Female") %>% arrange(desc(prop))
+```
+
+#### Monster gender and amount
+
+```{r}
+# mosiac plot: monster gender and monster amount
+x= scoobydoo1 %>% 
+  drop_na(monster_gender,monster_amount) %>%
+  #mutate(ma = fct_lump(factor(monster_amount),4, other_level = "5 and above")) %>%
+  select(index, monster_amount, monster_gender) %>%
+  separate_rows(monster_gender,sep=",", convert=T) %>%
+  filter(monster_gender!="",
+         monster_gender!="None")
+
+ggplot(data = x) + geom_mosaic(aes(x=product(monster_gender,monster_amount), fill=monster_gender)) + 
+  scale_fill_manual(values=c("#ee9b00","#005f73")) + 
+  theme(panel.grid=element_line(size=.3),
+        plot.margin=unit(c(1,2,1,2),"cm"),
+        legend.position = "none",
+        axis.title=element_text(size = 9),
+        plot.title.position = "plot") + 
+  labs(x="Monster amount", y="Monster gender",
+       subtitle="Monster amount and gender")
+```
+
+#### Monster count, imdb score, format
+
+```{r, warning=F}
+# monster count, imdb score, format
+scoobydoo %>% 
+  mutate(imdb2 = parse_number(imdb)) %>%
+  drop_na(imdb2) %>%
+  filter(format!="Movie (Theatrical)") %>%
+  ggplot(aes(x=monster_amount, y=imdb2, color=format)) + 
+  geom_point(alpha=0.5) +
+  scale_color_npg() + 
+  theme_light(base_size=10) +
+  theme(legend.position = "none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major=element_line(size=.3),
+        strip.text=element_text(size = 9),
+        strip.background = element_rect(fill="slategrey")) + 
+  facet_wrap(~format) + 
+  labs(x="Monster count", y="IMDB rating",
+       subtitle = "Monster count and IMDB rating, by format")
+```
+
+#### TV series: monster_amount and imdb score
+
+```{r}
+# TV series: monster_amount and imdb score 
+scoobydoo1 %>% drop_na(imdb,monster_amount) %>%
+  mutate(ma = fct_lump(factor(monster_amount),5, other_level = "5 and above")) %>%
+  filter(format=="TV Series") %>%
+  ggplot(aes(x=ma, y=imdb,color=ma)) + 
+  geom_half_boxplot(outlier.size=-1) + 
+  geom_half_point(alpha=0.7) + 
+  theme(legend.position = "none",
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        panel.grid.minor=element_blank(),
+        axis.text=element_text(size=9),
+        axis.title.x=element_text(margin=margin(t=10),size=9),
+        axis.title.y = element_text(margin=margin(r=10),size=9),
+        plot.title.position = "plot") + 
+  scale_color_npg() + 
+  labs(x= "Monster amount", y="IMDB score",
+       subtitle="IMDB score by monster amount\n")
+```
+
+#### Monster amount and network
+
+```{r, warning=F, message=F}
+# monster amount ny network
+scoobydoo %>% 
+  mutate(network2 = fct_lump(network,7)) %>%
+  ggplot(aes(y=fct_rev(network2), x=monster_amount, color=network2, fill=network2)) + 
+  geom_density_ridges(
+    jittered_points = TRUE,
+    position = position_points_jitter(width = 0.05, height = 0),
+    point_shape = '|', point_size = 3, point_alpha = 0.7, alpha = 0.3,
+  ) +
+  scale_fill_d3() +
+  scale_color_d3() +
+  scale_y_discrete(expand=expansion(mult=c(0.1,0.25))) +
+  theme(panel.grid.minor=element_blank(),
+        legend.position="none",
+        plot.title.position = "plot",
+        axis.title=element_text(size=9)) + 
+  labs(y="Network", x="Monster amount", subtitle="Monster amount by network")
+```
+
+### Date aired and snacks rank
+* reference: https://twitter.com/isitmanu/status/1415058405811646465/photo/1
+
+```{r}
+# most unmask by
+as_decade <- function(year) {
+  return(round(year / 10) * 10)
+}
+
+`%not_in%` <- Negate(`%in%`)
+
+unmask_rank <-
+  scoobydoo1 %>%
+  select(starts_with('unmask'), date_aired) %>%
+  mutate(across(where(is.character),
+                as.logical)) %>%
+  mutate(year = year(date_aired),
+         decade = as_decade(year)) %>%
+  pivot_longer(where(is.logical),
+               names_to = 'unmask_by',
+               names_prefix = 'unmask_') %>%
+  mutate(unmask_by = str_to_title(unmask_by)) %>%
+  filter(unmask_by %not_in% c('Other', 'Not')) %>%
+  count(unmask_by, decade, wt = value) %>%
+  arrange(desc(n)) %>%
+  group_by(decade) %>%
+  mutate(rank = rank(n, ties.method = 'first')) %>%
+  ungroup()
+
+unmask_rank %>%
+  ggplot(aes(x = decade, y = rank, color = unmask_by)) +
+  geom_bump(smooth = 8) +
+  geom_point() +
+  geom_text(data =  unmask_rank %>% filter(decade == min(decade)),
+            aes(x = decade - 1, label = unmask_by), size = 3.5, hjust = 1, fontface = 'bold')  +
+  geom_text(data =  unmask_rank %>% filter(decade == max(decade)),
+            aes(x = decade + 1, label = unmask_by), size = 3.5, hjust = 0,fontface = 'bold') +
+  geom_bump(size = 1.5, smooth = 8) +
+  geom_point(size = 3) +
+  #scale_y_reverse(breaks = seq(1, 5, 1), expand=c(0.05,0.05)) +
+  #scale_y_discrete(breaks = seq(1, 5, 1), expand=c(0.05,0.05)) +
+  scale_x_continuous(limits = c(1965, 2025),breaks = seq(1970, 2020, 10), expand=c(0.05,0.05)) + 
+  scale_color_manual(values=c("#966a00","#79af30","#622486","#F7801E","#76a2ca")) +
+  scale_shape_manual(values=c(21:25)) +
+  theme_light(base_size = 10) +
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        panel.border=element_blank(),
+        axis.title=element_blank(),
+        plot.title.position="plot",
+        plot.margin=unit(c(1.5,2,1.5,2),"cm")
+        ) + 
+  labs(subtitle="Characters with most unmask by decade\n")
+```
+
+### Date aired, cumulative snacks, cumulative caught
+* reference: https://twitter.com/etmckinley/status/1415015967957176329/photo/1
+
+```{r,fig.width=4, fig.height=2}
+# date aired
+theme_set(theme_minimal(base_size = 10)) 
+theme_update(legend.position = "none", 
+        axis.title = element_text(size=9),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        plot.title.position = "plot",
+        panel.grid.minor=element_blank())
+
+# cumulative snack (date_aired)
+snack_tab = scoobydoo %>%
+  select(index,
+         series_name,
+         season,
+         title,
+         date_aired,
+         starts_with("snack")) %>%
+  pivot_longer(starts_with("snack")) %>%
+  group_by(name) %>%
+  arrange(date_aired) %>%
+  mutate(cumulative = ifelse(value == TRUE, 1, 0),
+         cumulative = cumsum(cumulative),
+         name = str_to_title(gsub("snack_", "", name)),
+         name=case_when(name == "Daphnie"~"Daphne",
+                        TRUE ~ name))
+
+plot1 = snack_tab %>% 
+  arrange(date_aired) %>% 
+  ggplot(aes(x=date_aired, y=cumulative))+
+  geom_path(aes(color=name), size=1)+
+  geom_text(data=. %>% group_by(name) %>% arrange(date_aired) %>% slice(n()) ,
+                  aes(color=name, label=name), hjust=0, nudge_x = 100, size=3, fontface="bold")+
+  scale_x_date(limits=c(min(unmask$date_aired), max(unmask$date_aired)+3000)) + 
+  scale_color_manual(values=c("#966a00","#79af30","#622486","#F7801E","#76a2ca")) +
+  labs(x="Date aired", y="Cumulative", subtitle="Snack eaten by\n")
+
+
+# cumulative snack (date_aired)
+caught_tab = scoobydoo %>%
+  select(index,
+         series_name,
+         season,
+         title,
+         date_aired,
+         starts_with("caught")) %>%
+  select(-caught_not,-caught_other) %>%
+  pivot_longer(starts_with("caught")) %>%
+  group_by(name) %>%
+  arrange(date_aired) %>%
+  mutate(cumulative = ifelse(value == TRUE, 1, 0),
+         cumulative = cumsum(cumulative),
+         name = str_to_title(gsub("caught_", "", name)),
+         name=case_when(name == "Daphnie"~"Daphne",
+                        TRUE ~ name))
+
+plot2 = caught_tab %>%
+  arrange(date_aired) %>% 
+  ggplot(aes(x=date_aired, y=cumulative))+
+  geom_path(aes(color=name), size=1)+
+  geom_text(data=. %>% group_by(name) %>% arrange(date_aired) %>% slice(n()) ,
+                  aes(color=name, label=name), hjust=0, nudge_x = 100, size=3, fontface="bold")+
+  scale_x_date(limits=c(min(unmask$date_aired), max(unmask$date_aired)+3000)) + 
+  scale_color_manual(values=c("#966a00","#79af30","#622486","#F7801E","#76a2ca")) +
+  labs(x="Date aired", y="Cumulative",subtitle="Caught by\n")
+
+ggarrange(plot1,plot2, ncol=2)
+```
+
+
+#### Sankey chart
+* reference: https://twitter.com/allisonkoh_/status/1414925075439099909/photo/1
+
+```{r}
+stab <- scoobydoo %>% 
+  filter(format != c("Crossover", "Movie", "Movie (Theatrical)")) %>% 
+  select(
+    c("index"), 
+    starts_with(c("caught", "captured", "unmask","snack")), 
+    -ends_with(c("other", "not"))) %>% 
+  pivot_longer(
+    cols = starts_with(c("caught", "captured", "unmask","snack")),
+    names_to = c("action", "character"), 
+    names_sep = "_",
+    values_to = "value") %>% 
+  mutate(character=case_when(character == "daphnie"~"daphne",
+                        TRUE ~ character)) %>%
+  mutate(
+    value = as.integer(as.logical(value)), 
+    action = recode(
+      action, 
+      unmask = "unmasked\nmonster",
+      caught = "caught\nmonster",
+      captured = "was captured",
+      snack = "snack"),
+    character = unlist(TC(character))) %>% 
+  filter(value != 0) 
+
+stab_long<- stab  %>% 
+  make_long(character, action) 
+```
+
+
+```{r}
+stab_long %>% 
+  ggplot(aes(x = x, next_x = next_x, node = node, next_node = next_node, fill = factor(node), label = node)) + 
+  geom_sankey(flow.alpha = .6) +
+  geom_sankey_label(size = 3, color = "black", fill = "white") + 
+  scale_fill_manual(values=c("grey20","#ea7317","#119da4","#ffc857","#4b3f72",
+                             "grey40","grey60","#90be6d","grey")) + 
+  theme_void() + 
+  theme(legend.position = "none")
+```
+
+
+```{r}
+# amount
+amount = scoobydoo %>% 
+  filter(format=="TV Series") %>%
+  select(date_aired, suspects_amount, culprit_amount, monster_amount) %>%
+  mutate(Suspect = cumsum(suspects_amount),
+         Culprit = cumsum(culprit_amount),
+         Monster = cumsum(monster_amount)) %>%
+  select(-suspects_amount,-culprit_amount, -monster_amount) %>%
+  pivot_longer(!date_aired) 
+
+amount %>%
+  ggplot(aes(x=date_aired, y=value)) + 
+  geom_path(aes(color=name), size=1) + 
+  geom_text(data=. %>% group_by(name) %>% arrange(date_aired) %>% slice(n()) ,
+                  aes(color=name, label=name), hjust=0, nudge_x = 100, size=3.5, fontface="bold")+
+  scale_color_manual(values=c("#b2bb1b","#cd7e05","#76a2ca")) + 
+  scale_x_date(limits=c(min(unmask$date_aired), max(unmask$date_aired)+3000)) + 
+  theme(plot.margin=unit(c(1,2,1,2),"cm")) +
+  labs(x="Date aired", y="Cumulative amount", subtitle="Scooby Doo TV Series (1969 to 2021)\nCumulative suspect, monster and culprit amount\n")
+```
+
+#### Phrase, monster subtype, motive
+```{r}
+# phrase count
+scoobydoo1 %>% 
+  select(index,jeepers:rooby_rooby_roo) %>%
+  pivot_longer(!index) %>%
+  filter(value!=0) %>%
+  mutate(phrase= str_replace_all(name, "_"," "),
+         phrase = str_to_title(phrase)) %>%
+  group_by(phrase) %>% tally(value, sort=T) 
+
+# monster subtype count
+scoobydoo1 %>% 
+  separate_rows(monster_subtype,sep=",", convert=T) %>%
+  drop_na(monster_subtype) %>%
+  count(monster_subtype, sort=T)
+
+# motive count
+scoobydoo1 %>% 
+  count(motive, sort=T)
+```

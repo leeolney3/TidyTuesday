@@ -1,0 +1,67 @@
+---
+title: "TidyTuesday Week 52/2020"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 52 [The Big Mac Index](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-12-22/readme.md) data from [TheEconomist](https://github.com/TheEconomist/big-mac-data). 
+
+
+```{r, message=FALSE, warning=FALSE}
+# Load libraries 
+library(tidyverse)
+library(lubridate)
+library(Hmisc)
+library(wesanderson)
+library(ggsci)
+library(ggdark)
+```
+
+```{r}
+# Import data
+bigmac <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-12-22/big-mac.csv')
+dim(bigmac)
+```
+
+```{r}
+#year and quarter
+bigmac <- bigmac %>%
+  mutate(qtr = paste0(substring(year(date),1,4),"/0",quarter(date))) 
+
+#drop obs without adj_price
+bigmac <- bigmac %>% filter(!is.na(adj_price))
+dim(bigmac)
+
+#difference between adj_price and local price
+bigmac <- bigmac %>% mutate(difference= round((adj_price - dollar_price),2))
+summary(bigmac$difference)
+
+#countries and quarters
+unique(bigmac$name) #37 countries 
+unique(bigmac$qtr) #19 quarters 
+#bigmac %>% group_by(name) %>% tally() 
+
+```
+
+```{r}
+#2020 3rd quarter
+bigmac_203 = bigmac %>% filter(qtr=="2020/03") 
+bigmac_203$positive= ifelse(bigmac_203$difference>0,"1","0")
+Hmisc::describe(bigmac_203$positive) #18 lower and 19 higher 
+bigmac_203 %>% filter(difference==0) %>% tally() #no obs with difference ==0
+```
+
+### Difference between adjusted price and local price   
+* shared on [Twitter](https://twitter.com/leeolney3/status/1341364544116043777)
+
+```{r, fig.width=7, fig.height=7}
+#lollipop chart 
+p1 = bigmac_203 %>% ggplot(aes(x=name, y=difference)) + geom_segment(aes(x=reorder(name,difference), xend=name, y=0, yend=difference,color=positive)) + geom_point(aes(x=name, y=difference,color=positive)) + coord_flip() + dark_theme_minimal() + theme(panel.grid.major.y=element_blank(), panel.border=element_blank(),legend.position="none", plot.title=element_text(size=14), axis.title=element_text(size=10)) + scale_color_manual(values=wes_palette("Moonrise2")) + labs(x="", y="Adjusted price minus local price in dollars", title = "Big Mac Index", subtitle = "Difference between adjusted price (in dollars) and local price (in dollars)\non 01 July 2020", caption= "Data from The Economist (economist.com)") + scale_y_continuous(limits=c(-1.5,2), breaks=c(-1.5,-1,-0.5,0,0.5,1,1.5,2))
+
+p1
+```
+
+
+
+
+
+

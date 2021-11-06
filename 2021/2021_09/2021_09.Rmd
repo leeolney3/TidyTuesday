@@ -1,0 +1,165 @@
+---
+title: "Employment and Earnings"
+date: "2021/02/24"
+output: html_notebook
+---
+
+## Data Visualization Exercise 
+
+TidyTuesday week9/2021 [Employment and Earnings](https://github.com/rfordatascience/tidytuesday/tree/master/data/2021), data from [BLS](https://www.bls.gov/cps/tables.htm#charemp_m)
+
+```{r}
+# load libaries
+library(tidyverse)
+library(ggtext)
+```
+
+```{r}
+# import data
+employed <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-23/employed.csv')
+
+earn <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-23/earn.csv')
+```
+
+
+```{r, message=FALSE}
+# plot 1
+p1 = earn %>%
+	group_by(year, sex) %>%
+	filter(sex!="Both Sexes") %>%
+	summarise(med = median(median_weekly_earn)) %>%
+	ggplot(aes(x=year, y=med)) +
+	geom_line(aes(group=year), color="#3d405b", size=0.7) + 
+	geom_point(aes(color=sex), size=8, show.legend=FALSE) + 
+	geom_text(aes(label=paste0("$",round(med))), size=2.2, color="white") +
+	scale_color_manual(values=c("#668586","#9E8FB2")) + 
+  scale_x_continuous(breaks=(seq(2010,2020,1))) +
+  theme_minimal() + 
+  theme(plot.title = ggtext::element_markdown(size=17, face="bold"),
+        axis.title.y=element_markdown(size=10),
+        axis.title.x=element_markdown(size=10),
+        plot.caption=element_markdown(),
+        panel.grid.minor.x=element_blank()) +
+  labs(x="__Year__",
+       y="__Median Weekly Earn__ (current dollars)",
+       title= "Median Weekly Earn of <span style = 'color:#668586'><b>Men</b></span> and <span style = 'color:#9E8FB2'><b>Women</b></span> in the U.S.",
+       caption="TidyTuesday Week 9 | Data from _BLS_"
+       )
+p1
+```
+
+
+```{r, fig.height=3, fig.width=4, warning=FALSE, message=FALSE}
+e1 = employed %>% 
+  filter(year=="2020") %>% filter(race_gender=="Women"|race_gender=="Men") %>% 
+  filter(!is.na(employ_n)) %>%
+  group_by(industry, race_gender) %>% 
+  summarise(industry_total=max(industry_total)) %>%
+  pivot_wider(names_from=race_gender, values_from=industry_total) %>%
+  mutate(pct = Women/(Men+Women)) %>% 
+  arrange(desc(pct))
+
+e1 %>% 
+  ggplot(aes(y=reorder(industry,pct), x=pct)) +
+  geom_point() + 
+  #geom_segment(aes(x=0, xend=pct, y=industry, yend=industry)) + 
+  geom_label(aes(label=paste(industry, round(pct*100,1),"%")), size=2) + 
+  scale_y_discrete(labels=function(x) str_wrap(x,25)) +
+  scale_x_continuous(labels=scales::percent, limits=c(0,1),breaks=seq(0,1,0.2),expand=c(0,0)) +
+  theme_light() + 
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.title=element_markdown(size=16,face="bold")) + 
+  labs(x="Percent", y="Industry",
+       title="Percentage of <span style = 'color:#0091ad'><b>Women</b></span> Employed in the U.S., by Industry in 2020",
+       caption="TidyTuesday Week 9 | Data from BLS")
+```
+
+```{r}
+e2 = employed %>% 
+  filter(year=="2020") %>% filter(race_gender=="Women"|race_gender=="Men") %>% 
+  filter(!is.na(employ_n)) %>%
+  group_by(industry, race_gender) %>% 
+  summarise(industry_total=max(industry_total/1000)) 
+e2
+```
+
+
+```{r, fig.width=4, fig.height=3}
+p3 = e2 %>% 
+  ggplot(aes(y=reorder(industry, industry_total), x=industry_total)) + 
+  geom_line(aes(group=industry), color="#778da9") +
+  geom_point(aes(color = race_gender)) + 
+  scale_y_discrete(labels=function(x) str_wrap(x,25)) +
+  scale_color_manual(values=c("#A23E48","#FF8C42")) + 
+  theme_light() + 
+  theme(legend.position="none",
+        plot.title = ggtext::element_markdown(size=16, face="bold"),
+        axis.title.y=element_markdown(size=10),
+        axis.title.x=element_markdown(size=10),
+        plot.caption=element_markdown(),
+        ) + 
+  labs(x="__Employed Number__ (in thousands)", y="__Industry__", 
+       caption="TidyTuesday Week 9 | Data from BLS",
+       title="Employed <span style = 'color:#A23E48'><b>Men</b></span> and <span style = 'color:#FF8C42'><b>Women</b></span> in the U.S., by Industry in 2020")
+p3  
+```
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# women in major occupation
+p4_data = employed %>% 
+  filter(year=="2020") %>% 
+  filter(race_gender=="Women"|race_gender=="Men") %>% 
+  filter(!is.na(employ_n))%>%
+  group_by(major_occupation, race_gender) %>%
+  summarise(employ_n = sum(employ_n))
+
+p4 = ggplot(p4_data, aes(y=reorder(major_occupation,employ_n), x=employ_n, fill=fct_rev(race_gender))) +
+  geom_col(position="dodge", show.legend = F) + 
+  geom_text(aes(x=employ_n+2200000,label=scales::comma(employ_n)), color="black", size=3,position=position_dodge(0.9)) +
+  scale_y_discrete(labels=function(x) str_wrap(x,20)) +
+  scale_fill_manual(values=c("#6a6b83","#86bbbd")) + 
+  scale_x_continuous(expand=c(0,0), labels=comma, limits=c(0,42000000)) + 
+  theme_light() + 
+  theme(plot.title=element_markdown()) + 
+  labs(y="Major Occupation", x= "Employed number",
+       title= "Major Occupation of <span style = 'color:#86bbbd'><b>Men</b></span> and <span style = 'color:#6a6b83'><b>Women</b></span> in 2020.",
+       subtitle="U.S. Employed Numbers",
+       caption= "TidyTuesday Week 9 | Data from BLS")
+
+p4
+```
+
+```{r, warning=FALSE, message=FALSE, fig.height=2.7, fig.width=4}
+# Minor occupations
+p5_data = employed %>% 
+  filter(year=="2020") %>% 
+  filter(race_gender=="Women"|race_gender=="Men") %>% 
+  filter(!is.na(employ_n))%>%
+  group_by(minor_occupation, race_gender) %>%
+  summarise(employ_n = sum(employ_n)) %>%
+  mutate(pct= employ_n/sum(employ_n)) %>%
+  filter(race_gender!="Men")
+
+p5 = p5_data %>% 
+  ggplot(aes(y=reorder(minor_occupation,pct), x=pct)) + 
+  geom_col(aes(fill=I(ifelse(pct==max(pct),"#4281a4","#9cafb7"))), width=0.85) + 
+  geom_text(aes(label=percent(round(pct,3)), color= I(ifelse(pct==max(pct),"white","black"))), size=2.9, hjust=1.1) + 
+  scale_y_discrete(labels=function(x) str_wrap(x,28)) + 
+  scale_x_continuous(labels=percent, limits=c(0,0.80), expand=c(0,0)) + 
+  theme_light() + 
+  theme(plot.margin=ggplot2::margin(0,10,0,0),
+        plot.title=element_text(face="bold", size=15)) +
+  theme(axis.ticks.y=element_blank()) + 
+  labs(y="Minor Occupation", x="Percent", 
+       title= "Percentage of Women in Minor Occupations",
+       subtitle="U.S. Employed Numbers in 2020", 
+       caption="TidyTuesday Week 9 | Data from BLS")
+
+p5
+```
+
+
+

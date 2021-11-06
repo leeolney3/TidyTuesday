@@ -1,0 +1,244 @@
+---
+title: "Washington Trails"
+output: html_notebook
+---
+
+**Notebook description**: Basic data wrangling and visualization practice 
+
+**Data source**: TidyTuesday [Washington Hiking](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-11-24/readme.md) from [Washington Trails Association](https://www.wta.org/go-outside/hikes?b_start:int=1)
+
+### Load packages
+```{r, message = FALSE, warning = FALSE}
+library(rvest)
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(plotly)
+library(Hmisc)
+library(ggsci)
+```
+
+### Get data
+```{r}
+scrape_trails <- function(start_int){
+  page_url <- paste0(
+    "https://www.wta.org/go-outside/hikes?b_start:int=",
+    start_int
+  )
+  
+  page_html <- read_html(page_url)
+  
+  page_html %>% 
+    
+    html_nodes(".search-result-item") %>% 
+    
+    map(
+      function(hike){
+        
+        hike_name <- hike %>% html_nodes(".listitem-title") %>% html_nodes("span") %>%  html_text()
+        hike_location <- hike %>% html_node("h3") %>% html_text()
+        
+        hike_stats <- hike %>% html_node(".hike-stats")
+        
+        hike_length <- hike_stats %>% html_nodes(".hike-length") %>%html_nodes("span") %>%  html_text()
+        hike_gain <- hike_stats %>% html_nodes(".hike-gain") %>%html_nodes("span") %>%  html_text()
+        hike_highpoint <- hike_stats %>% html_nodes(".hike-highpoint") %>%html_nodes("span") %>%  html_text()
+        hike_rating <- hike_stats %>% html_nodes(".hike-rating") %>%html_nodes(".current-rating") %>%  html_text()
+        
+        hike_desc <- hike %>% html_nodes(".listing-summary") %>% html_text()
+        
+        hike_features <- hike %>% html_nodes(".trip-features") %>% html_nodes("img") %>% html_attr("title") %>% list()
+        
+        tibble(
+          name = hike_name,
+          location = hike_location,
+          length = hike_length,
+          gain = hike_gain,
+          highpoint = hike_highpoint,
+          rating = hike_rating,
+          features = hike_features,
+          description = hike_desc
+        )
+      }) %>% 
+    bind_rows() %>% 
+    mutate(description = str_remove(description, "\n") %>% str_squish())
+}
+
+start_int <- c(1, seq(30, 3840, by = 30))
+
+hike_data <- start_int %>% 
+  map_dfr(scrape_trails)
+
+saveRDS(hike_data,file = "/hike_data.rds")
+```
+
+
+```{r}
+clean_hike_data <- hike_data %>% 
+  mutate(
+    trip = case_when(
+      grepl("roundtrip",length) ~ "roundtrip",
+      grepl("one-way",length) ~ "one-way",
+      grepl("of trails",length) ~ "trails"),
+    
+    length_total = as.numeric(gsub("(\\d+[.]\\d+).*","\\1", length)) * ((trip == "one-way") + 1),
+    
+    gain = as.numeric(gain),
+    highpoint = as.numeric(highpoint),
+    
+    location_general = gsub("(.*)\\s[-][-].*","\\1",location)
+  )
+
+```
+
+```{r, fig.show='hide', message=FALSE}
+hike_plot <- ggplot(clean_hike_data) + 
+  geom_rect(aes(
+    xmin = 0,
+    xmax = length_total,
+    ymin = 0,
+    ymax = gain,
+    label = name
+  ),
+  alpha = .4,
+  fill = "#228B22",
+  color = "#765C48"
+  ) + 
+  facet_wrap(
+    ~ location_general,
+    scales = "free_x"
+  ) +
+  labs(
+    title = "Washington State Hikes",
+    x = "Hike Length (miles)",
+    y = "Hike Elevation Gain (ft)",
+    caption = "Data from Washingon Trails Association (wta.org) | Viz by @ellis_hughes"
+  )
+
+ggplotly(hike_plot)
+```
+
+
+```{r}
+dim(clean_hike_data)
+colnames(clean_hike_data)
+```
+
+### Dog friendly trails 
+
+```{r}
+clean_hike_data$dogs = ifelse(grepl("leash", clean_hike_data$features), "Yes","No")
+Hmisc::describe(clean_hike_data$dogs)
+```
+*1044 out of 1957 trails allow dogs on leash 
+
+```{r}
+clean_hike_data %>% group_by(location_general,dogs) %>% tally() %>% ggplot(aes(x=dogs, y=n, fill=dogs)) + geom_col() + facet_wrap(~location_general) + theme_minimal() + theme(
+    panel.grid.major.x = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.text.x=element_blank(),
+    plot.title = element_text(size=12, face="bold"),
+    plot.subtitle = element_text(size=10, color="#343a40"),
+    legend.title=element_text(size=9),
+    legend.position = "top") + scale_fill_jama() + 
+    labs(y="", x="", fill="Dogs allowed on leash", title = "Dog Friendly Trails In Washington", subtitle="1044 out of 1957 trails allow dogs on leash", caption="Data from Washingon Trails Association (wta.org)")
+```
+
+### Ratings
+```{r}
+summary(as.numeric(clean_hike_data$rating))
+sum(is.na(clean_hike_data$rating))
+```
+
+```{r, message = FALSE, warning = FALSE}
+median_values <- clean_hike_data %>%
+  group_by(location_general) %>%
+  summarise(
+    med = median(as.numeric(rating))) %>% ungroup()
+
+ggplot(clean_hike_data, aes(x = reorder(location_general, rating, FUN = median), y = rating)) +
+  geom_boxplot(aes(color = location_general)) +
+  geom_point(data = median_values, aes(x = location_general, y = med, fill = location_general), shape = 23, size = 5, color = "grey") +
+  guides(fill = FALSE, color = FALSE) +
+  coord_flip() +
+  labs(y = "Rating", x = "General Location", title = "Washington Trail Ratings by General Location", caption = "Data from Washingon Trails Association (wta.org)") +
+  theme_light() +
+  scale_color_futurama() +
+  scale_fill_futurama() +
+ theme(
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(size=12, face="bold"),
+    axis.title = element_text(size=10),
+    panel.border = element_blank(),
+    legend.position="none"
+  ) 
+```
+
+### One-way vs Roundtrip trails 
+```{r}
+clean_hike_data %>% group_by(location_general,trip) %>% tally() %>% filter(trip !="trails") %>% ggplot(aes(x=location_general, y=n, fill=trip)) + geom_col(position="dodge") + coord_flip() + theme_light() + theme(
+    panel.grid.major.x = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size=12, face="bold"),
+    plot.subtitle = element_text(size=10, color="#343a40"),
+    legend.title=element_text(size=9),
+    legend.position = "right") +
+    labs(y="", x="", fill="", title = "One-way vs Roundtrip trails in Washington", caption="Data from Washingon Trails Association (wta.org)") +
+    scale_fill_jama()
+```
+
+### Features 
+```{r}
+#cleaning script from @alexcookson
+hike_data_raw <- read_rds(url('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-11-24/hike_data.rds'))
+
+hike <- hike_data_raw %>%
+  distinct(name, location, .keep_all = TRUE) %>%
+  mutate(trail_id = row_number()) %>%
+  relocate(trail_id) %>%
+  mutate(across(.cols = c(length, gain, highpoint, rating), parse_number)) %>%
+  rename(length_miles = length,
+         gain_ft = gain,
+         highpoint_ft = highpoint) %>%
+  mutate(rating = ifelse(rating == 0, NA, rating))
+
+features <- hike %>%
+  select(trail_id, features) %>%
+  unnest(features) %>%
+  rename(feature = features)
+```
+
+```{r}
+features %>% group_by(feature) %>% tally(sort=T) %>% 
+  ggplot(aes(x=reorder(feature,n), y=n)) +
+  geom_segment(aes(x=reorder(feature,n), xend=feature, y=0, yend=n), color="#084c61") +
+  geom_point(color="#4f772d", size=3, alpha=0.9) + scale_color_viridis() +
+  theme_light() +
+  coord_flip() + 
+  theme(
+    panel.border = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size=12, face="bold"),
+    axis.title= element_text(size=10),
+    legend.position = "right") +
+    labs(y="Number of Trails", x="Feature", fill="", title = "Washington Trails Features", caption="Data from Washingon Trails Association (wta.org)")
+```
+

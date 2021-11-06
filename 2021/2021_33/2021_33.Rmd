@@ -1,0 +1,392 @@
+---
+title: "Tidy Tuesday Week 33/2021"
+date: "2021/08/10"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 33
+[BEA Infrastructure Investment](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-10/readme.md), data from [Bureau of Economic Analysis](https://www.bea.gov/system/files/papers/BEA-WP2020-12.pdf).
+
+```{r}
+# Load libraries 
+library(tidyverse)
+library(scales)
+library(ggstream)
+library(colorspace)
+library(waffle)
+library(wesanderson)
+library(patchwork)
+library(ggrepel)
+```
+
+
+```{r}
+# Import data
+investment <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-10/investment.csv')
+chain_investment <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-10/chain_investment.csv')
+ipd <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-10/ipd.csv')
+```
+
+### Category count by investment group
+```{r}
+# category by meta_cat
+investment %>% group_by(meta_cat) %>%
+  summarise(category_n=n_distinct(category)) %>%
+  arrange(desc(category_n)) %>%
+  mutate(meta_cat= fct_rev(fct_inorder(meta_cat))) %>%
+  ggplot(aes(y=meta_cat, x=category_n, fill=category_n))+ 
+  geom_col(width=0.7, show.legend = F) + 
+  geom_text(aes(label=category_n), size=3, color="white", hjust=2, fontface="bold") +
+  coord_cartesian(expand=F) + 
+  scale_fill_gradientn(colours = wes_palette("Zissou1", 21, type = "continuous")) +
+  theme_minimal(base_size=10) + 
+  theme(panel.grid=element_blank(),
+        axis.text.x=element_blank(),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        axis.title=element_text(size=8.5),
+        plot.title.position="plot") + 
+  labs(x="Category count", y="Group category",
+       subtitle="Category count by investment group\n")
+```
+
+### Electric Power
+* shared on [Twitter](https://twitter.com/leeolney3/status/1424947959356182529)
+
+```{r}
+investment %>% filter(meta_cat=="Electric power") %>%
+  ggplot(aes(x=year, y= gross_inv, fill=category)) + 
+  geom_stream(bw = 0.5) +
+  scale_fill_npg() + 
+  theme_minimal(base_size=10) +
+  scale_x_continuous(breaks=c(1947, 1960, 1980, 2000, 2017)) +
+  scale_y_continuous(expand=c(0,0))+
+  theme(legend.position = "top",
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor=element_blank(),
+        axis.title=element_blank(),
+        axis.text.y=element_blank(),
+        panel.grid.major.x = element_line(size=.3),
+        plot.title=element_text(hjust=0.5, face="bold"),
+        plot.subtitle=element_text(hjust=0.5),
+        plot.caption=element_text(color="grey30", size=7),
+        plot.background = element_rect(fill="#fdfff8", color=NA),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        legend.text = element_text(size=7.5)
+        ) + 
+  guides(fill = guide_legend(override.aes = list(size = 2))) +
+  labs(fill="",
+       title="Electric Power: Gross investment in millions of USD",
+       subtitle="(1947 to 2017)",
+       caption="\nData from Bureau of Economic Analysis")
+```
+
+
+
+
+### Most spent category, by group
+```{r}
+investment %>% 
+  filter(!str_detect(category, 'Total')) %>% 
+  group_by(meta_cat, category) %>% 
+  tally(gross_inv) %>%
+  mutate(proportion = round(n/sum(n)*100,3)) %>%
+  arrange(meta_cat, -n) %>%
+  ungroup() %>%
+  group_by(meta_cat) %>%
+  slice(1)
+```
+
+### Investment distribution waffle plot
+* reference: https://twitter.com/issa_madjid/status/1425159543873548291   
+* reference: https://indescribled.wordpress.com/2021/08/13/infrastructure-investments-tidy-tuesday/
+
+```{r}
+top_cat <- chain_investment %>% 
+  group_by(meta_cat) %>% 
+  summarise(sum(gross_inv_chain)) %>% 
+  rename(gross_inv_chain = 2) %>% 
+  arrange(-gross_inv_chain) %>% 
+  filter(!str_detect(meta_cat, "Total")) %>% 
+  pull(meta_cat)
+
+waffle_df <- chain_investment %>% 
+  filter(meta_cat %in% top_cat) %>% 
+  group_by(meta_cat) %>% 
+  summarise(sum(gross_inv_chain)) %>% 
+  rename(gross_inv_chain = 2) %>% 
+  ungroup() %>% 
+  mutate(meta_cat = fct_reorder(meta_cat, -gross_inv_chain, .fun = sum),
+         prop = round(prop.table(gross_inv_chain),2)*100,
+         remaining_prop = 100-prop) %>% 
+  pivot_longer(cols = c("prop", "remaining_prop"), 
+               names_to = "proportions", 
+               values_to = "prop")
+```
+
+```{r}
+waffle_df %>% 
+  ggplot(aes(fill = proportions, values = prop)) +
+    geom_waffle(
+      size = .75,
+      color = "white",
+      n_rows = 10,
+      flip = TRUE
+    ) + 
+    scale_fill_manual(
+      values = c(
+        "prop" = "#e85d04",
+        "remaining_prop" = "grey95"),
+      guide = "none"
+    ) +
+    facet_wrap(~meta_cat,
+               labeller = label_wrap_gen(18),
+               ncol=5) +
+    theme_minimal(base_size = 10) +
+    coord_equal(expand = F) +
+    labs(
+      title = "Investment distribution",
+      subtitle = "One colored square represents $1 spending per $100"
+    ) +
+    theme(
+      panel.border = element_rect(color = "black", size = 0.5, fill = NA),
+      axis.text = element_blank(),
+      text = element_text(size = 9)
+    )
+```
+
+### Gross investments area plot
+* reference: https://indescribled.wordpress.com/2021/08/13/infrastructure-investments-tidy-tuesday/   
+* reference: https://twitter.com/CedScherer/status/1425398691175751692
+
+```{r}
+col <- colorRampPalette(wes_palette(14, name = "IsleofDogs1", type = "continuous"))
+col(14)
+```
+
+```{r, warning=F, message=F}
+chain_investment %>% 
+  filter(meta_cat %in% top_cat) %>% 
+  group_by(meta_cat, year) %>% 
+  summarise(sum(gross_inv_chain)) %>% 
+  rename(gross_inv_chain = 3) %>% 
+  ungroup() %>% 
+  mutate(meta_cat = fct_reorder(meta_cat, -gross_inv_chain, .fun = sum)) %>% 
+  ggplot(aes(year, gross_inv_chain, fill = meta_cat)) +
+  geom_area(position = "stack") +
+  scale_y_continuous(
+    # breaks = seq(0,1,.1),
+    labels = dollar) +
+  scale_x_continuous(breaks = seq(1950,2020,10)) +
+  scale_fill_manual(values = col(14),
+                    name = "Category") +
+  theme_bw(base_size = 10) +
+  labs(
+    x = "Year",
+    y = "Gross inv",
+    title = "Gross annual infrastructure investments"
+  ) +
+  theme(
+    panel.grid = element_blank()
+  )
+```
+
+### Gross investment facetted area plot
+* reference: https://bjnnowak.netlify.app/2021/08/10/r-labelling-area-plots/
+* reference: https://github.com/BjnNowak/TidyTuesday/blob/main/SC_BEA_Clean.R
+
+```{r}
+whole <- chain_investment%>%
+  filter(group_num==1)%>%
+  mutate(lab=case_when(
+    category=="Total basic infrastructure"~"Basic",
+    category=="Total digital infrastructure"~"Digital",
+    category=="Total social infrastructure"~"Social"
+  ))%>%
+  mutate(
+    col_cat=case_when(
+      lab=="Basic"~"#0091ad",
+      lab=="Social"~"#fd9e02",
+      lab=="Digital"~"#b7094c"
+    ))
+
+whole$lab<-factor(
+  whole$lab,
+  c(
+    "Digital",
+    "Social",
+    "Basic"
+  ))
+
+final<-whole%>%
+  filter(year=="2017")%>%
+  arrange(desc(lab))%>%
+  mutate(ypos=cumsum(gross_inv_chain))
+
+pal_basic <- c(
+  "#61a5c2",
+  "#62b6cb",
+  "#4cc9f0",
+  "#007ea7",
+  "#1b4965"
+)
+
+pal_social <- c(
+  "#ac7830",
+  "#ff6000",
+  "#ffb703"
+)
+
+pal_digital <- c(
+  "#3C010C",
+  "#9A031E",
+  "#FA0F3A",
+  "#FC738C"
+)
+
+multiple <- chain_investment%>%
+  filter(group_num==4|group_num==17|group_num==22)%>%
+  mutate(lab=case_when(
+    category=="Conservation and development"~"Conservation",
+    category=="Private computers in NAICS 515, 517, 518, and 519"~"Computers",
+    category=="Private software in NAICS 515, 517, 518, and 519"~"Software",
+    category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Com. equipment",
+    category=="Private communications structures"~"Com. structures",
+    TRUE~category
+  ))%>%
+  mutate(col_pal=case_when(
+    lab=="Water"~pal_basic[1],
+    lab=="Transportation"~pal_basic[2],
+    lab=="Sewer"~pal_basic[3],
+    lab=="Power"~pal_basic[4],
+    lab=="Conservation"~pal_basic[5],
+    lab=="Public safety"~pal_social[1],
+    lab=="Health"~pal_social[2],
+    lab=="Education"~pal_social[3],
+    lab=="Software"~pal_digital[1],
+    lab=="Computers"~pal_digital[2],
+    lab=="Com. structures"~pal_digital[3],
+    lab=="Com. equipment"~pal_digital[4]
+  ))
+
+final_mult<-multiple%>%
+  filter(year=="2017")%>%
+  group_by(group_num)%>%
+  arrange(desc(category))%>%
+  mutate(ypos=cumsum(gross_inv_chain))%>%
+  ungroup()
+```
+
+```{r}
+A = ggplot(
+  whole,
+  aes(x=year,y=gross_inv_chain,fill=lab)
+  )+
+  annotate(
+    geom = "segment",
+    x=1947,xend=2017,
+    y=600000,yend=600000,
+    color="#343a40")+
+  annotate(
+    geom = "segment",
+    x=1947,xend=2017,
+    y=300000,yend=300000,
+    color="#343a40")+
+  annotate(
+    geom = "text",
+    x=1947,
+    y=630000,
+    label="600 billions $",
+    color="#343a40",hjust=0,
+    size=3)+
+  annotate(
+    geom = "text",
+    x=1947,
+    y=330000,
+    label="300 billions $",
+    color="#343a40",hjust=0,
+    size=3)+
+  geom_area(color="white")+
+  scale_fill_manual(breaks=whole$lab,values=whole$col_cat)+
+  scale_color_manual(breaks=whole$lab,values=whole$col_cat)+
+  coord_cartesian(clip = "off")+
+  scale_x_continuous(limits = c(1945,2020),breaks=c(1950,1970,1990,2010) )+
+  guides(
+    fill="none",
+    color="none"
+  )+
+  theme_minimal()+
+  theme(
+    text = element_text(),
+    axis.text.x = element_text(size=8, margin=margin(t=-10)),
+    axis.text.y=element_blank(),
+    axis.title=element_blank(),
+    panel.grid = element_blank()
+  )
+
+B = ggplot(
+  multiple,
+  aes(x=year,y=gross_inv_chain,fill=lab)
+  )+
+  geom_area(col='white')+
+  facet_grid(meta_cat~.)+
+  geom_text_repel(
+    data=final_mult,
+    aes(y=ypos-20000,label=lab,color=lab),
+    x=2019,hjust=0,
+    direction='y',
+    min.segment.length = Inf,
+    size=2.2
+  )+
+  coord_cartesian(clip = "off")+
+  scale_y_continuous(
+    limits = c(-20000,350000),
+    breaks=c(100000,300000),
+    labels=c("100","500"))+
+  scale_x_continuous(limits = c(1947,2035),breaks=c(1950,1970,1990,2010) )+
+  guides(
+    fill="none",
+    color="none"
+    )+
+  scale_fill_manual(breaks=multiple$lab,values=multiple$col_pal)+
+  scale_color_manual(breaks=multiple$lab,values=multiple$col_pal)+
+  theme_minimal()+
+  theme(
+    axis.text=element_blank(),
+    axis.title=element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+    panel.grid = element_blank()
+  )
+```
+
+```{r}
+ggdraw() +
+  draw_plot(A, x = 0, y = 0, width = 0.5, height = 0.9) +
+  draw_plot(B, x = 0.48, y = 0, width = 0.51, height = 1)+ 
+  draw_plot_label(
+    label = "Investments in US infrastructures from 1947 to 2017",  
+    size = 10,hjust=0,color="#343a40",
+    x = 0.04, y = 0.97)+
+  draw_plot_label(
+    label = "Gross investment in 2012 dollars",  
+    size = 9,hjust=0,color="#343a40",
+    x = 0.04, y = 0.92)+
+  draw_text(
+    text = "Digital",  
+    size = 9,,hjust=0,color="#9A031E",
+    x = 0.47, y = 0.85)+
+  draw_text(
+    text = "Social",  
+    size = 9,,hjust=0,color="#fd9e02",
+    x = 0.47, y = 0.55)+
+  draw_text(
+    text = "Basic",  
+    size = 9,,hjust=0,color="#0F4C5C",
+    x = 0.47, y = 0.25)+
+  draw_text(
+    text = "Data: Bureau of Economic Analysis",  
+    size = 7,,hjust=0,color="#343a40",angle=90,
+    x = 0.025, y = 0.08,vjust=0)
+
+```
+

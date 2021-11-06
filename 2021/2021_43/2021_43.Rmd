@@ -1,0 +1,370 @@
+---
+title: "TidyTuesday Week 43/2021"
+output: html_notebook
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday/) week 43/2021 [Giant Pumpkins](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-19/readme.md), data from  [BigPumpkins.com](BigPumpkins.com).
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(ggridges)
+library(ggdist)
+```
+
+```{r}
+library(showtext)
+font_add_google("Roboto Mono","Roboto") ## Google fonts (https://fonts.google.com/)
+showtext_auto()
+```
+
+```{r}
+pumpkins <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-19/pumpkins.csv')
+```
+
+
+### Long Gourd, Giant Watermelon and Field Pumpkin
+* size distribution of top 100 from 2013 to 2021   
+* shared on [Twitter](https://twitter.com/leeolney3/status/1450369677067276292)   
+
+```{r, warning=F}
+df1 = pumpkins %>% filter(place!="EXH") %>%
+  mutate(weight = parse_number(weight_lbs), place= as.numeric(place)) %>%
+  drop_na(place) %>%
+  mutate(id2 = id) %>% separate(id2, c("year", "type"), sep="-") %>% 
+  filter(place<=100) 
+```
+
+```{r, warning=F, message=F}
+df1 %>% filter(type %in% c("L","F","W")) %>%
+  mutate(type= recode(type, "L"="**Long Gourd**<br>(length in inches)", "F"="**Field Pumpkin**<br>(weight in pounds)","W"="**Giant Watermelon**<br>(weight in pounds)")) %>%
+  ggplot(aes(y=type, x=weight,fill = factor(stat(quantile)))) +
+  stat_density_ridges(
+    geom = "density_ridges_gradient", calc_ecdf = TRUE,
+    quantiles = 4, quantile_lines = TRUE,
+    jittered_points = TRUE,position = position_raincloud(adjust_vlines = TRUE),
+    point_size = 0.4, point_alpha = .2, vline_size = 0
+  ) +
+  scale_fill_manual("Quantile",values=c("#94B1BF","#0A5133","#C08573","#DAB8B6")) +
+  theme_minimal(9) +
+  theme(axis.text.y=element_markdown(color="black", size=8, hjust=.5, lineheight = 1.2),
+        axis.title=element_blank(),
+        plot.margin = unit(c(.5, 1, .5, 1), "cm"),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.title=element_text(size=11, face="bold",family="Roboto Mono"),
+        plot.subtitle=element_markdown(size=8, margin=margin(b=15)),
+        plot.caption=element_text(hjust=0, size=7, margin=margin(t=15)),
+        plot.background = element_rect(fill="#fafafa", color=NA)
+        ) +
+  labs(title="Long Gourd, Giant Watermelon and Field Pumpkin",
+       subtitle="Size of the top 100 from 2013 to 2021, according to *Great Pumpkin Commonwealth (GPC)*",
+       caption="#TidyTuesday week 43 | Data from BigPumpkins.com")
+```
+ALT text: TidyTuesday week 43, data from BigPumpkins.com. Ridge and dot plot of the top 100 Long Gourd, Giant Watermelon and Field Pumpkin sizes, from 2013 to 2021, according to the Great Pumpkin Commonwealth (GPC). The plot shows the distribution of Long Gourd length in inches, Giant Watermelon and Field Pumpkin weight in pounds.
+
+### Size over time
+
+```{r}
+df = pumpkins %>%
+  separate(id, into = c("year", "type")) %>%
+  filter(
+    !stringr::str_detect(weight_lbs, "exhibition only"),
+    !(place %in% c("EXH", "DMG"))
+  ) %>%
+  mutate(
+    year = readr::parse_number(year),
+    place = parse_number(place),
+    weight = parse_number(weight_lbs),
+    name = type,
+    name=recode(type, "F"="Field Pumpkin", "P"="Giant Pumpkin", "S"="Giant Squash", "W"="Giant Watermelon","T"="Tomato","L"="Long Gourd"),
+    name_long = recode(type,"F" = "Field Pumpkin (weight lbs.)", "P" = "Giant Pumpkin (weight lbs.)", 
+                     "S" = "Giant Squash (weight lbs.)", "W" = "Giant Watermelon (weight lbs.)", 
+                     "L" = "Long Gourd (length in)", "T" = "Tomato (weight lbs.)")
+  ) %>%
+  drop_na(year, place)
+```
+
+```{r}
+df %>% filter(place <= 100) %>%
+  ggplot(aes(x=year, y=weight)) +
+  stat_interval(.width=c(.25, .5,.95,1), size=3) + 
+  scale_color_manual(name="Level:",values=c("#CBCFD1","#B0B6BA","#6A736F","black"),
+                     labels = function(x) paste0(as.numeric(x)*100, "%")) +
+  stat_summary(geom="point", fun=median, shape=18, stroke=1, color="#ffee32", size=1.5) +
+  scale_x_discrete(breaks=c(2013,2017,2021)) +
+  facet_wrap(~name_long, scales="free_y") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom",
+        legend.key.height = unit(.4, 'cm'),
+        legend.margin=margin(t=-4, b=0),
+        legend.title=element_text(size=8),
+        legend.text=element_text(size=8),
+        plot.title.position = "plot",
+        strip.text=element_text(size=8.2),
+        plot.subtitle=element_text(size=8, margin=margin(b=7)),
+        axis.title=element_text(size=7.5, face="italic"),
+        axis.text=element_text(size=6),
+        panel.spacing.x = unit(1.5, "lines"),
+        panel.spacing.y = unit(.5, "lines"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major=element_line(size=.3),
+        plot.margin = margin(rep(20, 4)),
+        plot.title=element_text(face="bold", family="Roboto Mono")
+        ) +
+  labs(x="Year", y="Size", 
+       title="Size of large produce over the years",
+       subtitle="Size (lbs/in) of the top 100 by year and type, according to Great Pumpkin Commonwealth")
+```
+
+### Giant pumpkin, giant squash and field pumpkin (barcode)   
+* inspired by https://twitter.com/alyssastweeting/status/1450270826347913220   
+
+```{r}
+df %>%
+  filter(place <= 100, type %in% c("F", "P", "S")) %>%
+  ggplot(aes(x=type, y=weight, color=factor(type, levels=c("P","S","F")))) +
+  geom_hline(yintercept = 0, size=.7) +
+  geom_point(shape=95, alpha=.4, size = 8) +
+  scale_y_continuous(breaks=seq(0,2500,500), labels=scales::comma, expand = expansion(mult = c(0, .02))) +
+  geom_text(data = df1 %>% filter(type=="P"|type=="F") %>% group_by(type) %>% arrange(desc(weight)) %>% slice(1:2), 
+            aes(label=weight, y=weight+50), size=1.9, color="black") +
+  geom_text(data= df1 %>% filter(type=="S") %>% group_by(type) %>% arrange(desc(weight)) %>% slice(1:2),
+            aes(label=weight, y=weight+50), size=1.9, color="black", nudge_x = .12) +
+  scale_color_manual("Type",values=c("#ca6702","#296F8F","#606c38"),
+                     labels=c("Giant Pumpkin","Giant Squash","Field Pumpkin")) +
+  guides(color = guide_legend(override.aes = list(shape=15, alpha=1, size=4))) +
+  facet_wrap(~year,nrow=1, strip.position = "bottom") +
+  theme_minimal(base_size = 8) +
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_line(linetype = "dashed", color="grey85", size=.2),
+        axis.text.x=element_blank(),
+        axis.title.x=element_text(size=7, margin=margin(t=-3)),
+        axis.title.y=element_text(size=7),
+        axis.text.y=element_text(color="grey30"),
+        strip.text=element_text(color="grey30"),
+        legend.text=element_text(size=6.5),
+        legend.title=element_text(size=6.5, face="bold"),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.subtitle = element_markdown(size=7.5),
+        plot.title=element_markdown(size=11.5, family="Roboto Mono"),
+        plot.caption=element_text(size=6.5, hjust=0, margin=margin(t=9)),
+        plot.margin = unit(c(.5, .5, .5, 1), "cm")) +
+  labs(x="Year", y="Weight (in pounds)",
+       title="<span style = 'color:#ca6702;'>**Giant Pumpkin**</span>, <span style = 'color:#296F8F;'>**Giant Squash**</span> and <span style = 'color:#606c38;'>**Field Pumpkin**</span>",
+       subtitle="Weight (in pounds) of the top 100 by year, according to *Great Pumpkin Commonwealth (GPC)*.")
+```
+
+ALT text: The chart shows that in the period 2013 to 2021, the year 2021 recorded the heaviest giant pumpkin at 2702.9 lbs and heaviest giant squash at 2164 lbs; and the heaviest field pumpkin at 211 lbs was recorded in 2014.
+
+### Giant pumpkin, giant squash and field pumpkin (dot)    
+* inspired by https://twitter.com/minebocek/status/1450574198922006530    
+
+```{r}
+pumpkins_to_plot <- df %>% filter(place <= 100, type %in% c("F", "P", "S"))
+
+medians_to_plot <- pumpkins_to_plot %>%
+  group_by(year, name) %>%
+  summarise(median_weight_lbs = median(weight), .groups = "drop")
+
+maxs_to_plot <- medians_to_plot %>% 
+  filter(year == 2021)
+```
+
+```{r}
+ggplot(pumpkins_to_plot,
+       aes(x = year, y = weight,color = name, shape = name)) +
+  geom_line(data = medians_to_plot,
+    aes(x = year, y = median_weight_lbs, group = name),
+    size = 1,show.legend = FALSE) +
+  geom_jitter(aes(size = name), alpha = 0.5, show.legend = FALSE) +
+  scale_color_manual(values = c("Giant Pumpkin" = "#FF881F","Giant Squash"  = "#70703C","Field Pumpkin" = "#A33B24")) +
+  scale_shape_manual(values = c( "Giant Pumpkin" = "circle", "Giant Squash"  = "diamond","Field Pumpkin" = "square")) +
+  scale_size_manual(values = c("Giant Pumpkin" = 2,"Giant Squash"  = 2,"Field Pumpkin" = 1)) +
+  scale_x_continuous(breaks = 2013:2021, minor_breaks = NULL) +
+  scale_y_continuous(breaks = c(0, 1000, 2000),minor_breaks = NULL,labels = scales::label_number(suffix = "\nlbs")) +
+  geom_text(data = medians_to_plot %>% filter(year == 2021),
+    aes(x = year + 0.55, y = median_weight_lbs+20, label = str_replace(name, " ", "\n")),
+    show.legend = FALSE, hjust = 0,fontface = "bold", size = 3, family = "Roboto") +
+  coord_cartesian(
+    xlim = c(2012.75, 2021.75),
+    ylim = c(0, 2600),
+    clip = "off"
+  ) +
+  theme_void(base_family="Roboto", base_size = 8) +
+  theme(axis.text=element_text(face="bold"),
+        plot.margin = margin(rep(20, 4)),
+        plot.title.position = "plot",
+        plot.title=element_markdown(size=11, margin=margin(l=-5), face="bold"),
+        plot.subtitle=element_markdown(size=8.5, margin=margin(l=-5, t=5, b=10)),
+        ) +
+  annotate(geom = "text",x = c(2012,2013), y = c(2230,-320),label = c("Weight","Year"),
+           color = "#adb5bd", fontface = "bold", size = 3, family = "Roboto") +
+  annotate(geom="segment", y=seq(0,2000,1000), yend=seq(0,2000,1000), x=2012.35, xend = 2021.5, linetype = "dotted", size=.18) +
+  labs(title="Weight of Giant Pumpkin, Giant Squash and Field Pumpkin",
+       subtitle = "Top 100 by weight between 2013 and 2021")
+```
+
+### 2021 results    
+* inspired by https://twitter.com/issa_madjid/status/1450597463342129153    
+
+```{r}
+library(packcircles)
+library(ggtext)
+```
+
+```{r}
+df2 = df %>%
+  filter(type !="L",year ==2021,place<=150) %>%
+  arrange(weight) %>% 
+  mutate(id = row_number()) %>% 
+  relocate(id) %>%
+  mutate(name=recode(type, "F"="Field Pumpkin", "P"="Giant Pumpkin", "S"="Giant Squash", "W"="Giant Watermelon","T"="Tomato"))
+
+set.seed(1234)
+packing1 <- circleProgressiveLayout(df2$weight)
+```
+
+```{r}
+packing1 %>% 
+  arrange(radius) %>% 
+  mutate(id = row_number())  %>% 
+  left_join(df2,by = "id") %>% 
+  ggplot() + 
+  ggforce::geom_circle(aes(x0= x, y0=y, r = radius, fill = name)) + 
+  annotate(geom = "text", x = -455, y = -400, label = "The lightest are in the center \nand the heaviest at the edges.",
+             fontface = "italic", size = 2.2, hjust = 0) + 
+  annotate(geom = "richtext", x = 0, y = 480, label = "**Great Pumpkin Commonwealth's Weigh-off Results 2021**<br><span style = 'font-size:8.00pt;'>Heaviest to lightest weight of the top 150 of each type in 2021, as reported in GPC</span>",
+           size = 3.8,fill = NA, label.color = NA) + 
+  scale_fill_manual(name="", values=c("#E6AF21", "#E57A23", "#606c38","#F8F0A8", "#C93920")) +
+  theme_void(base_size = 9) + 
+  theme(
+    legend.margin=margin(l=20),
+    legend.text=element_text(face="bold"),
+    legend.key.height = unit(.55,"cm"),
+    legend.key.width = unit(.55,"cm"),
+    plot.margin = unit(c(.75, 0, .75, 0), "cm"),
+    ) + 
+  coord_fixed(expand = F, clip = "off") 
+```
+
+### Size distribution (histogram)
+* inspired by https://twitter.com/dikbrown/status/1450827051309674504
+
+```{r}
+obj = ggplot(df, aes(x=weight, fill=name)) + 
+  geom_histogram(bins=20) +
+  facet_wrap(~name_long, scales="free") 
+
+ylims = purrr::map_df(.x=ggplot_build(obj)$layout$panel_params, .f=function(a) {setNames(object=c(a$x.range, a$y.range), nm=c("xMin", "xMax", "yMin", "yMax"))}) %>% mutate(id=row_number())
+
+df_summary = df %>% 
+  group_by(name_long) %>%
+  summarise(mx = max(weight),
+            mn = mean(weight)) %>%
+  ungroup() %>%
+  mutate(id=row_number()) %>% 
+  left_join(ylims, by="id")
+```
+
+```{r}
+df %>% 
+  ggplot(aes(x=weight, fill=name_long)) + 
+  geom_histogram(bins=20, show.legend=F, color="black", size=.2) +
+  facet_wrap(~name_long, scales="free") +
+  geom_vline(data = df_summary, aes(xintercept=mn), size=.3) +
+  geom_segment(data = df_summary, aes(x=mx, xend=mx, y=yMin, yend=yMax/3), size=.3) +
+  geom_richtext(data=df_summary, aes(x=mn, y=yMax, label=glue::glue("avg = {round(mn)} lbs")), size=2.3, fill="white",
+                family="Roboto",label.color = NA) +
+  geom_richtext(data=df_summary, aes(x=mx, y=yMax/3, label=glue::glue("max<br>{round(mx)} lbs")), size=2.3, fill="white",
+                label.padding = unit(c(0.1, 0.1, 0.1, 0.1), "lines"), family="Roboto",label.color = NA) +
+  scale_y_continuous("Count",expand = expansion(mult = c(.005, .05))) +
+  scale_x_continuous("Size",expand = expansion(mult = c(.02, .1))) +
+  theme_minimal(base_size = 9, base_family = "Roboto") +
+  theme(panel.grid=element_blank(),
+        axis.line = element_line(size=.3),
+        axis.ticks=element_line(size=.3),
+        strip.text=element_text(size=8.5, face="bold"),
+        panel.spacing.x = unit(1.3, "lines"),
+        plot.title.position = "plot",
+        plot.margin = unit(c(.5, .5, .5, .5), "cm")) +
+  labs(title="Size distribution of produce as reported in GPC, from 2013 to 2021") +
+  scale_fill_manual(values=c("#f8e16c","#fa9500","#b79492","#babd8d","#96873a","#eb6424"))
+```
+### Long Gourd, Giant Watermelon and Field Pumpkin
+* raincloud plot of all places from 2013 to 2021   
+* inspired by https://www.cedricscherer.com/2021/06/06/visualizing-distributions-with-raincloud-plots-and-how-to-create-them-with-ggplot2/   
+```{r}
+rc = df %>%
+  filter(type %in% c("L","F","W")) %>%
+  mutate(type2= recode(type, "L"="**Long Gourd**<br><span style = 'font-size:7.8pt'>(Length in inches)</span>", "F"="**Field Pumpkin**<br><span style = 'font-size:7.8pt'>(weight in pounds)</span>","W"="**Giant Watermelon**<br><span style = 'font-size:7.8pt'>(weight in pounds)</span>"))
+
+rc_lab = rc %>%
+  group_by(type2) %>%
+  summarise(md = median(weight),
+            mx = max(weight),
+            n = n())
+```
+
+```{r}
+rc %>%
+  ggplot(aes(x=fct_rev(type2), y=weight, color=type2, fill=type2)) +
+  ggdist::stat_halfeye(adjust = .5, width = .6, justification = -.2,.width = 0, point_colour = NA, alpha=.5) + 
+  geom_boxplot(width = .12, outlier.color = NA, alpha=.2) +
+  ggdist::stat_dots(side = "left", justification = 1.1) + 
+  geom_text(data=df_lab %>% filter, aes(x=fct_rev(type2), y=md,label=round(md)), size=3, color="black", nudge_x = .175) +
+  geom_text(data=df_lab, aes(x=fct_rev(type2), y=mx+5,label=glue::glue("max=\n{mx}")), 
+            size=2.5, color="black", nudge_x = -.2, lineheight=.8, hjust=0, vjust=0) +
+  geom_text(data=df_lab, aes(x=fct_rev(type2), y=mx,label=glue::glue("n={n}")), size=2.5, color="black", nudge_x = .2, lineheight=.8, vjust=0) +
+  coord_flip() +
+  scale_color_manual(values=c("#D97925","#7c836b","#abb557")) +
+  scale_fill_manual(values=c("#D97925","#7c836b","#abb557")) +
+  theme_void(base_size = 9) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(color = "black", face = "bold", margin = margin(t = 6)),
+        axis.text.y = element_markdown(color = "black", hjust = .5, lineheight = 1.2,family="Roboto"),
+        panel.grid.major.x = element_line(color = "grey90",),
+        plot.margin = margin(rep(20, 4)),
+        plot.title=element_text(family="Roboto Mono", size=11, face="bold"),
+        plot.subtitle=element_text(family="Roboto", size=8, margin=margin(t=4, b=10)),
+        plot.title.position = "plot"
+        ) +
+  labs(title="Field Pumpkin, Giant Watermelon and Long Gourd",
+       subtitle="Size of produce from 2013 to 2021, according to Great Pumpkin Commonwealth (GPC)") 
+  
+```
+
+### Weight and country of the top giant squash and giant pumpkin
+
+```{r}
+df %>% 
+  filter(type %in% c("P","S"), place<=100) %>% 
+  mutate(country2 = fct_lump(country,4)) %>%
+  ggplot(aes(x=weight, y=name, color=country2)) +
+  scale_x_continuous(expand=c(0.01,0.01), breaks=seq(500,2500,500), label = scales::unit_format(unit = "lbs.")) +
+  scale_y_discrete(expand=c(0.25,0.25)) +
+  geom_jitter(alpha=.7, size=1) +
+  scale_color_manual(values=c("#f6bd60","#f7ede2","#f5cac3","#84a59d","#f28482")) +
+  theme_void() +
+  theme(legend.position="top", 
+        legend.title=element_text(size=8),
+        legend.text=element_text(size=8),
+        legend.margin=margin(t=7, b=0),
+        text=element_text(color="white"),
+        plot.background=element_rect(fill="#0a0908", color=NA),
+        axis.text=element_text(color="white",size=7.8),
+        axis.title.x=element_text(size=7.5, margin=margin(t=5)),
+        plot.title.position="plot",
+        plot.title=element_text(size=11, family="Roboto"),
+        plot.margin = unit(c(.5, 1.5, .5, .5), "cm"),
+        panel.grid.major= element_line(color="#343a40")) +
+  labs(x="Weight", y="Type", color="Country:",
+       title=expression(paste("Weight and country of the top 100 ",underline("Giant Squash")," and ",underline("Giant Pumpkin")," from 2013 to 2021"))) +
+  guides(color=guide_legend(override.aes = list(shape=15, size=4))) 
+```
+
+
+

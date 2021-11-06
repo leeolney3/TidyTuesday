@@ -1,0 +1,478 @@
+---
+title: "Tidy Tuesday Week 34/2021"
+date: "2021/08/17"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 34
+[Star Trek Voice Commands](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-17/readme.md), data from [SpeechInteraction.org](http://www.speechinteraction.org/TNG/).
+
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(colorspace)
+library(patchwork)
+library(ggmosaic)
+library(ggpubr)
+library(ggparallel)
+library(ggdist)
+library(glue)
+library(ggsci)
+library(ggparallel)
+library(scales)
+
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r}
+# Import data
+computer <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-17/computer.csv')
+```
+
+```{r}
+# Missing data
+colSums(is.na(computer))
+```
+
+```{r}
+# variable unique value count 
+computer %>% summarise_all(n_distinct)
+```
+
+### Character type, interaction type, domain
+* shared on [Twitter](https://twitter.com/leeolney3/status/1427541971678212112)
+
+```{r, include=FALSE}
+theme_set(theme_minimal(base_size = 10))
+theme_update(panel.grid=element_blank(),
+             text=element_text(family="mono"),
+             axis.text.x=element_blank(),
+             axis.text.y=element_text(size=9, margin=margin(r=5), family="mono"),
+             axis.title=element_blank(),
+             plot.title=element_markdown(size=16),
+             plot.subtitle=element_text(size=10, margin=margin(t=-3, b=-3)))
+
+# bar plot
+p1 = computer %>% 
+  mutate(type=str_to_title(type)) %>%
+  filter(char_type=="Computer") %>%
+  count(char_type, type, sort=T) %>%
+  mutate(type=fct_rev(fct_inorder(type))) %>%
+  ggplot(aes(x=n, y=type, fill=n)) + 
+  geom_col(width=.5, show.legend = F) + 
+  geom_text(aes(label=n), hjust=-0.3, size=2.7, family="mono") +
+  scale_x_continuous(limits=c(0,580), expand=c(0,0)) + 
+  scale_fill_continuous_sequential(palette="Hawaii") + 
+  labs(subtitle="Computer")
+
+p2 = computer %>% 
+  mutate(type=str_to_title(type)) %>%
+  filter(char_type=="Person") %>%
+  count(char_type, type, sort=T) %>%
+  mutate(type=fct_rev(fct_inorder(type))) %>%
+  ggplot(aes(x=n, y=type, fill=n)) + 
+  geom_col(width=.5, show.legend = F) +
+  geom_text(aes(label=n), hjust=-0.3, size=2.7, family="mono") +
+  scale_x_continuous(limits=c(0,580), expand=c(0,0)) + 
+  scale_fill_continuous_sequential(palette="Batlow") + 
+  labs(subtitle="Person")
+
+p3 = p1|p2 
+p4 = p3 + plot_annotation(
+  title = "<b>Star Trek Commands<b><br><br><span style = 'color:#495057; font-size:11pt'>Interaction type count by Computer and Person</span>",
+  ) & theme(plot.title=element_markdown(hjust=0.5),plot.margin=unit(c(0.8,0.5,0.5,0.5),"cm"))
+
+# mosiac plot
+p5 = computer %>% 
+  mutate(domain= str_to_title(domain)) %>%
+  filter(!is.na(domain)) %>%
+ #count(char_type, domain) %>%
+  ggplot() + 
+  geom_mosaic(aes(x=product(char_type,domain), fill=char_type),size=0.7) + 
+  coord_flip() +
+  theme_minimal() +
+  scale_fill_manual(values=c("#2b53a7","#c1c730")) + 
+  theme(legend.position = "none",
+        text=element_text(family="mono"),
+        panel.grid=element_line(size=.3),
+        axis.title=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        plot.subtitle = element_markdown(hjust=0.5),
+        plot.margin=unit(c(0,0.5,0.5,0.5),"cm"),
+        plot.caption=element_text(size=7.5),
+        ) +
+  labs(subtitle="Domain of interaction by <span style = 'color:#2b53a7'><b>Computer</b></span> and <span style = 'color:#c1c730'><b>Person</b></span>",
+       caption = "\n#TidyTuesday Week 34 | Data from SpeechInteraction.org")
+```
+
+
+```{r,fig.height=4, fig.width=4}
+# combine plot
+ggarrange(p4,p5, ncol=1)
+```
+
+ALT text: Bar plot showing the count of interaction type by character type (human and computer) where the highest interaction type for computer is response and person is command. Mosaic plot showing the domain of interaction by computer and person, where human have higher proportions than computer across domains, with the exception of the emergency domain. 
+
+### Word count
+
+```{r}
+theme_set(theme_minimal(base_size = 10))
+theme_update(plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+             plot.title.position="plot",
+             panel.grid=element_line(size=.2))
+```
+
+```{r}
+# top 4 domains 
+d = computer %>% filter(!is.na(domain)) %>% count(domain, sort=T) %>% slice(1:4)
+
+c1 = computer %>% mutate(word_count = str_count(computer$interaction, "\\w+")) %>%
+  filter(domain %in% d$domain) %>%
+  filter(!is.na(domain)) 
+
+# stat df
+stat = c1 %>%
+  group_by(domain,char_type) %>%
+  summarise(median = median(word_count),
+            max=max(word_count),
+            n=n())
+
+# plot
+computer %>% mutate(word_count = str_count(computer$interaction, "\\w+")) %>%
+  filter(domain %in% d$domain) %>%
+  filter(!is.na(domain)) %>%
+  ggplot(aes(x=char_type, y=word_count, fill=char_type)) + 
+  #stat_interval(show.legend=F)+
+  stat_halfeye(alpha=0.8) + 
+  geom_text(data=stat, aes(y=median, x=char_type, label=median), color="white",
+                           fontface="bold", size=3, nudge_x=.2) +
+  geom_text(data=stat, aes(y=max, x=char_type, label = glue::glue("n = {n}"), color=char_type), 
+                          size=2.5, nudge_x=.2)+
+  coord_flip() + 
+  scale_fill_aaas() + 
+  scale_color_aaas() +
+  facet_wrap(~domain, ncol=2, labeller = label_both) + 
+  scale_y_continuous(breaks=seq(0,50,10)) +
+  theme(legend.position = "none",
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        axis.title=element_blank(),
+        axis.text.x=element_text(size=7)) + 
+  labs(title="Word count by interaction domain and character type")
+
+```
+
+### Character type and domain parallel plot
+
+```{r, message=F}
+# parallel plot
+dfc=as.data.frame(computer %>%
+                    drop_na(domain) %>% 
+                    mutate(domain= str_to_title(domain),
+                           domain=fct_lump(domain,4)))
+ggparallel(list('domain','char_type'), data=dfc, label=T, text.angle=0, label.size=3.2) + 
+  #geom_text(aes(label=dfc$domain)) +
+  scale_fill_aaas()+ 
+  scale_color_aaas() + 
+  scale_x_discrete(label=c("Domain","Character Type"), expand=c(0,0)) +
+  theme(axis.text=element_blank(),
+        axis.text.y=element_text(size=9, margin=margin(r=-10)),
+        axis.title=element_blank(),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        legend.position = "none") + 
+  coord_flip() + 
+  labs(title="Character type and interaction domain\n")
+```
+
+
+
+### Proportion of character type by sub domain
+
+```{r}
+# y axis labels
+lab1 = computer %>% 
+  drop_na(sub_domain) %>% 
+  mutate(sub_domain= ifelse(sub_domain=="Holodeck?","Holodeck",sub_domain)) %>%
+  count(sub_domain, sort=T) %>%
+  mutate(sub_domain=fct_rev(fct_inorder(sub_domain)),
+         label=paste0("<b>",sub_domain,"</b>"," ","(n=",n,")"))
+
+# plot
+computer %>% 
+  drop_na(sub_domain) %>%
+  mutate(sub_domain= ifelse(sub_domain=="Holodeck?","Holodeck",sub_domain)) %>%
+  group_by(sub_domain, char_type) %>%
+  tally() %>%
+  mutate(prop=n/sum(n),
+         col=ifelse(lead(n)>n,"Person > Computer","Computer > Person"),
+         col=ifelse(is.na(col),"Computer > Person","Person > Computer")) %>%
+  ggplot(aes(y=reorder(sub_domain,n), x=prop)) + 
+  geom_line(aes(group=sub_domain, color=col)) +
+  geom_point(aes(shape=char_type), size=2.2)+ 
+  scale_y_discrete(labels=rev(lab1$label)) + 
+  scale_shape_manual(values=c(1,19)) + 
+  scale_color_manual(values=c("#3366CC","#AD722C")) + 
+  scale_x_continuous(limits=c(0,1.05), label=scales::percent_format(), expand=c(0,0)) +
+  theme(legend.position = "top",
+        legend.justification = "left",
+        panel.grid.minor=element_blank(),
+        axis.title=element_text(size=8.5),
+        axis.text.y=element_markdown(),
+        plot.margin=unit(c(.5,1.5,.5,.5),"cm")
+        ) + 
+  guides(col = guide_legend(order = 2),shape = guide_legend(order = 1)) + 
+  labs(color="", shape="",
+       x="Proportion",y="Sub Domain",
+       title= "Proportion of character type by interaction sub domain") 
+```
+```{r}
+computer %>% count(pri_type, sort=T)
+```
+### Sentiment analysis 
+```{r, fig.height=3, fig.width=4}
+# reference: https://twitter.com/neuroandstats/status/1427733648086814725
+cdf = computer %>% 
+  mutate(pri_type2 = fct_lump(pri_type, 6)) %>%
+  select(char_type, line, pri_type2) %>%
+  mutate(id=row_number()) %>%
+  get_sentences() %$%
+  sentiment_by(line, list(char_type, pri_type2, id)) %>%
+  unite("char_pri", char_type:pri_type2, remove=FALSE) 
+
+cdf %>%
+  ggplot(aes(reorder(char_pri,ave_sentiment),ave_sentiment)) +
+  #geom_hline(yintercept=0) +
+  ggdist::stat_halfeye(aes(fill=char_pri, color=char_pri),
+    adjust = .5, 
+    #width = .6, 
+    justification = -.2, 
+    .width = 0, 
+    point_colour = NA
+  ) +
+  geom_point(aes(color=char_pri),
+    size = 1,
+    alpha = .3,
+    position = position_jitter(
+      seed = 1, width = .1
+    )) +
+  #geom_half_point(range_scale=0.5, alpha=0.5, shape=21) + 
+  #geom_half_boxplot(width=0.5, outlier.size = -1) 
+  coord_flip() +
+  stat_summary(fun="mean", geom="point",size=3.5, shape=18, color="black",
+               position=position_nudge(x=-0,y=0)) +
+  scale_color_futurama() + 
+  scale_fill_futurama() +
+  theme(legend.position = "none",
+        axis.title=element_text(size=8.5)) + 
+  labs(y="Average sentiment score", x="Character type, Primary interaction type",
+       title = "Sentiment analysis of lines by character type and primary interaction type")
+```
+
+### Prediction
+This section follows [Modeling human/computer interactions on Star Trek from #TidyTuesday with workflowsets](https://juliasilge.com/blog/star-trek/) tutorial from [Julia Silge](https://juliasilge.com/), to to predict which computer interactions from Star Trek were spoken by a person and which were spoken by the computer.    
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(tidytext)
+library(tidylo)
+library(tidymodels)
+library(textrecipes)
+library(themis)
+library(discrim)
+library(ggsci)
+library(hrbrthemes)
+library(LiblineaR)
+library(naivebayes)
+
+theme_set(theme_ipsum())
+```
+
+
+```{r}
+computer_raw <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-17/computer.csv")
+```
+```{r}
+# which words are more likely to be spoken by computer vs. person
+computer_counts <-
+  computer_raw %>%
+  distinct(value_id, .keep_all = TRUE) %>%
+  unnest_tokens(word, interaction) %>%
+  count(char_type, word, sort = TRUE)
+
+computer_counts %>%
+  bind_log_odds(char_type, word, n) %>%
+  filter(n > 10) %>%
+  group_by(char_type) %>%
+  slice_max(log_odds_weighted, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(log_odds_weighted,
+    fct_reorder(word, log_odds_weighted),
+    fill = char_type
+  )) +
+  geom_col(alpha = 0.8, show.legend = FALSE, width=.6) +
+  scale_fill_d3() +
+  facet_wrap(vars(char_type), scales = "free_y") +
+  labs(y = NULL, subtitle="Which words are more likely to be spoken by computer vs. person?") 
+```
+
+```{r}
+# build model
+set.seed(123)
+
+comp_split <-
+  computer_raw %>%
+  distinct(value_id, .keep_all = TRUE) %>%
+  select(char_type, interaction) %>%
+  initial_split(prop = 0.8, strata = char_type)
+
+comp_train <- training(comp_split)
+comp_test <- testing(comp_split)
+
+set.seed(234)
+comp_folds <- bootstraps(comp_train, strata = char_type)
+comp_folds
+```
+```{r}
+# feature engineering 
+rec_all <-
+  recipe(char_type ~ interaction, data = comp_train) %>%
+  step_tokenize(interaction) %>%
+  step_tokenfilter(interaction, max_tokens = 80) %>%
+  step_tfidf(interaction)
+
+rec_all_norm <-
+  rec_all %>%
+  step_normalize(all_predictors())
+
+rec_all_smote <-
+  rec_all_norm %>%
+  step_smote(char_type)
+
+prep(rec_all_smote) #check
+```
+
+```{r}
+# remove stop words
+rec_stop <-
+  recipe(char_type ~ interaction, data = comp_train) %>%
+  step_tokenize(interaction) %>%
+  step_stopwords(interaction) %>%
+  step_tokenfilter(interaction, max_tokens = 80) %>%
+  step_tfidf(interaction)
+
+rec_stop_norm <-
+  rec_stop %>%
+  step_normalize(all_predictors())
+
+rec_stop_smote <-
+  rec_stop_norm %>%
+  step_smote(char_type)
+
+prep(rec_stop_smote) #check
+```
+
+```{r}
+# naive Bayes
+nb_spec <-
+  naive_Bayes() %>%
+  set_mode("classification") %>%
+  set_engine("naivebayes")
+
+nb_spec
+
+# SVM
+svm_spec <-
+  svm_linear() %>%
+  set_mode("classification") %>%
+  set_engine("LiblineaR")
+
+svm_spec
+```
+
+```{r}
+# workflow set
+comp_models <-
+  workflow_set(
+    preproc = list(
+      all = rec_all,
+      all_norm = rec_all_norm,
+      all_smote = rec_all_smote,
+      stop = rec_stop,
+      stop_norm = rec_stop_norm,
+      stop_smote = rec_stop_smote
+    ),
+    models = list(nb = nb_spec, svm = svm_spec),
+    cross = TRUE
+  )
+
+comp_models
+```
+
+```{r}
+# evaluate
+set.seed(123)
+doParallel::registerDoParallel()
+
+computer_rs <-
+  comp_models %>%
+  workflow_map(
+    "fit_resamples",
+    resamples = comp_folds,
+    metrics = metric_set(accuracy, sensitivity, specificity)
+  )
+```
+
+```{r}
+# visualize results
+autoplot(computer_rs) + 
+  scale_color_d3() +
+  theme(legend.position = "bottom") + 
+  labs(subtitle = "naive Bayes and SVM linear comparision")
+```
+```{r}
+# results
+rank_results(computer_rs) %>%
+  filter(.metric == "accuracy")
+```
+```{r}
+# final model 
+comp_wf <- workflow(rec_all, svm_spec)
+
+comp_fitted <-
+  last_fit(
+    comp_wf,
+    comp_split,
+    metrics = metric_set(accuracy, sensitivity, specificity)
+  )
+
+comp_fitted
+
+collect_metrics(comp_fitted)
+```
+
+```{r}
+# confusion matrix
+collect_predictions(comp_fitted) %>%
+  conf_mat(char_type, .pred_class) #%>% autoplot()
+```
+
+```{r}
+# coefficients for words in the model
+extract_workflow(comp_fitted) %>%
+  tidy() %>%
+  group_by(estimate > 0) %>%
+  slice_max(abs(estimate), n = 10) %>%
+  ungroup() %>%
+  mutate(term = str_remove(term, "tfidf_interaction_")) %>%
+  ggplot(aes(estimate, fct_reorder(term, estimate), fill = estimate > 0)) +
+  geom_col(alpha = 0.8, width=.8) +
+  scale_fill_d3(labels = c("people", "computer")) +
+  labs(y = NULL, fill = "More from...",
+       subtitle="Coefficients for words in the model") 
+```
+
+

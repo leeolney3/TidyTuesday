@@ -1,0 +1,116 @@
+---
+title: "TidyTuesday Week19/2021"
+output: html_notebook
+---
+
+TidyTuesday week 19 [Water Access Points](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-04/readme.md), data from [WPDX](https://www.waterpointdata.org/). 
+
+```{r, warning=F, message=F}
+# Load libraries 
+library(tidyverse)
+library(scales)
+library(countrycode)
+library(lubridate)
+library(ggtext)
+
+theme_set(theme_minimal(base_size = 10)) 
+theme_update(plot.margin=ggplot2::margin(1,2,1,1,"cm"),
+             plot.title.position = "plot")
+```
+
+
+```{r}
+# Import data
+water <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-04/water.csv')
+```
+
+```{r, warning=F, message=F}
+# get un.regionsub.name and year of report 
+water$regionint = countrycode(water$country_name, origin ="country.name", destination="un.regionintermediate.name")
+water$regionsub = countrycode(water$country_name, origin ="country.name", destination="un.regionsub.name")
+
+unique(water$regionint)
+unique(water$regionsub)
+
+water %>% mutate(rdate=mdy(report_date),
+                 ryear=year(rdate)) -> water
+```
+
+
+
+```{r}
+# summary
+#water %>% mutate(across(where(is.character), as.factor)) %>% summary()
+```
+
+
+```{r}
+# missing values
+water %>% summarise(across(everything(), ~mean(!is.na(.)))) %>% 
+  gather() %>%
+  mutate(key= fct_reorder(key, value)) %>%
+  mutate(col=ifelse(value==1, "1","0")) %>%
+  ggplot(aes(key, value)) +
+  geom_segment( aes(x=key, xend=key, y=0, yend=value), color="slategrey") + 
+  geom_point(aes(color=col),size=3) +
+  geom_text(aes(label= scales::percent(value, accuracy=0.1)),
+            nudge_y=0.07, size=3) + 
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position="none"
+  ) +
+  theme(axis.text.x=element_blank()) +
+  labs(x="Feature", y="% of data present") + 
+  coord_flip() + 
+  scale_color_manual(values=c("#e09f3e","#2a6f97")) + 
+  labs(title ="Missing data")
+```
+
+### Water sources in Sub-Saharan Africa
+```{r}
+water %>% filter(regionsub=="Sub-Saharan Africa") %>% group_by(water_source) %>% tally(sort=T) %>%
+  ggplot(aes(y=reorder(water_source,n), x=n)) +
+  geom_point(aes(color=I(ifelse(n==max(n),"#2a6f97","#e09f3e"))),size=2.5) + 
+  geom_segment(aes(x=0, xend=n, y=water_source, yend=water_source), color="slategrey",size=1,alpha=0.7) + 
+  scale_y_discrete(labels=label_wrap(25)) + 
+  labs(x="Count",y="Water sources", title="Water Sources in Sub-Saharan Africa") + 
+  theme(plot.title.position = "plot")
+```
+
+### Boreholde vs other water sources in Sub-Saharan Africa 
+  * shared on [Twitter](https://twitter.com/leeolney3/status/1389498477227413504)
+
+```{r, fig.width=3.5, fig.height=2.5}
+water %>% filter(regionsub=="Sub-Saharan Africa") %>% filter(!is.na(water_source)) %>%
+  filter(ryear<=2020) %>% filter(ryear>=1980) %>%
+  group_by(ryear,water_source) %>% tally() %>%
+  mutate(ws = ifelse(water_source=="Borehole","Borehole","Other")) %>% 
+  group_by(ryear, ws) %>% tally(n) %>% mutate(prop=n/sum(n)) %>%
+  ggplot(aes(x=ryear, y=prop, fill=fct_rev(ws))) + 
+  geom_col(alpha=0.85) +
+  scale_fill_manual(values=c("#e09f3e","#2a6f97")) +
+  scale_y_continuous(label=scales::percent_format()) +
+  theme_minimal() +
+  theme(plot.margin=ggplot2::margin(1,2,1,1,"cm"),
+        plot.title=element_text(face="bold"),
+        plot.subtitle = element_markdown(),
+        plot.caption=element_markdown(size=7, hjust=0, color="#363636"),
+        plot.caption.position = "plot",
+        plot.title.position = "plot",
+        legend.position="none",
+        axis.title=element_text(size=9, face="bold")) +
+  coord_cartesian(expand=FALSE, clip="off") +
+  labs(x="Report Year", y="Percentage",
+      title ="Sources of Water Access Points in Sub-Saharan Africa",
+       caption="<br>TidyTuesday week 19 | Data from Water Point Data Exchange",
+       subtitle="Percentage of <span style = 'color:#2a6f97'><b>Borehole</b></span> compared to <span style = 'color:#e09f3e'><b>Other</b></span> water sources, from 1980 to 2020<br>")
+
+```
+
+
+
+
+
+

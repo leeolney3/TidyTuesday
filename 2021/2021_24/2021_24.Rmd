@@ -1,0 +1,296 @@
+---
+title: "TidyTuesday Week 24/2021"
+output: html_notebook
+---
+
+TidyTuesday week 24 [Commerical Fishing](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-08/readme.md), data from[Great Lakes Fishery Commission](http://www.glfc.org/great-lakes-databases.php). 
+
+```{r, warning=F, message=F}
+# Load libraries
+library(tidyverse)
+library(ggtext)
+library(scales)
+library(ggsci)
+library(gghighlight)
+library(colorspace)
+library(patchwork)
+library(janitor)
+```
+
+
+```{r, warning=F}
+# Import data
+fishing <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-08/fishing.csv')
+stocked <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-08/stocked.csv')
+```
+
+
+```{r}
+# find top 5 most produced species in US, year 2015
+fishing %>% filter(!is.na(values)) %>% filter(values!=0) %>% 
+  filter(region=="U.S. Total") %>%
+  group_by(year,species) %>% tally(values) -> fish
+
+
+fish %>% filter(year==2015) %>% arrange(desc(n)) %>% slice(1:5) -> fish1
+fish1
+```
+
+#### Fish production 1915 vs 2015
+* shared on twitter https://twitter.com/leeolney3/status/1402186336535257091/photo/1
+
+```{r, fig.width=4, fig.height=3.5}
+fish %>% filter(year==1915 | year==2015 ) %>% 
+  pivot_wider(names_from = year, values_from=n) %>% na.omit() %>% 
+  pivot_longer(cols=`1915`:`2015`, names_to="year", values_to="prod_amt") %>%
+  mutate(col= case_when(species=="Cisco"~"3",
+                        species=="Lake Whitefish" ~"2",
+                        TRUE ~"1"))  -> pdata
+
+pdata %>%  ggplot(aes(x=factor(year),y=prod_amt, color=col)) + 
+  geom_line(aes(group=species)) + 
+  geom_point(alpha=0.8) + 
+  theme_minimal() + 
+  theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        axis.title.x.top=element_markdown(size=10),
+        axis.title.y=element_markdown(size=10),
+        plot.title.position="plot",
+        plot.title=element_text(face="bold",size=22),
+        plot.subtitle=element_text(color="#2f3e46"),
+        plot.margin=ggplot2::margin(0.5,0.5,0.5,0.5,"cm"),
+        plot.caption=element_text(color="#2f3e46")) +
+  scale_y_continuous(labels=scales::comma) + 
+  scale_x_discrete(position="top") + 
+  geom_text(data = pdata %>% filter(year=="1915" & col!="1"), aes(x=year, y=prod_amt, color=col,
+                label=paste0(species,":"," ",comma(prod_amt))), 
+                hjust=1.2, size=3.5, fontface="bold") + 
+  geom_text(data = pdata %>% filter(year=="2015" & col!="1"), aes(x=year, y=prod_amt, color=col,
+                label=paste0(species,":"," ",comma(prod_amt))), 
+            hjust=-.22, size=3.5,fontface="bold") + 
+  scale_color_manual(values=c("#ddd8c4","#00509d","#f3722c")) + 
+  labs(x="**Year**", y="**Production amount** (in thousand pounds)",
+       title="Commercial Fish Production in the U.S.",
+       subtitle="The production amount of eleven fish species in the U.S. have decreased from 1915 to 2015\nwith the exception of Lake Whitefish, where the Cisco species have decreased the most.\n",
+       caption="Tidy Tuesday Week 24 | Data from Great Lakes Fishery Commission")
+```
+
+
+
+#### Fish production by year and species (north america)
+
+```{r, warning=F, message=F}
+# fish production by year and species (north america)
+# top 10 species with highest total production
+# reference: https://twitter.com/geokaramanis/status/1402623427840823297/photo/1
+
+fish2 = fishing %>% 
+  select(species,year,values) %>% drop_na() %>%
+  #tidyr::separate_rows(species, sep = " and ") %>%
+  mutate(species = stringr::str_to_title(species) %>%
+            stringr::str_replace("Chubs", "Chub") %>%
+            stringr::str_replace("Crappies", "Crappie") %>%
+            stringr::str_replace("Bullheads", "Bullhead") %>%
+            stringr::str_replace("Amercian Eel", "American Eel") # clean species name
+    ) %>%
+  filter_at(.vars= vars(species), all_vars(!grepl('And',.)))  %>% # drop combinations
+  mutate(species2 = fct_reorder(species,values,.fun=sum, desc=TRUE)) # relevel factor
+
+fishing10 = fish2 %>% group_by(species) %>% summarise(val=sum(values)) %>% arrange(desc(val)) %>% 
+  mutate(rank=row_number()) %>% filter(rank<=10) # get top 10 species by total production
+
+fish3 = fish2 %>% 
+  group_by(species2, year) %>% summarise(val=sum(values)) %>%
+  filter(species2 %in% fishing10$species) %>%
+  filter(val!=0) 
+
+# plot
+fish3 %>%
+  ggplot(aes(x=year, y=species2, fill=val)) + 
+  geom_tile(height=0.6) + 
+  theme_minimal(base_size=10) + 
+  scale_fill_continuous_sequential(palette="batlow",
+                                   limits=c(min(fish3$val),max(fish3$val)),
+                                   breaks=ceiling(seq(min(fish3$val),max(fish3$val),
+                                        (max(fish3$val)-min(fish3$val))/4)),
+                                   label = label_number(suffix = " M", scale = 1e-3)) + 
+  theme(legend.position="top",
+        legend.title = element_markdown(),
+        axis.title.x=element_markdown(),
+        axis.title.y=element_markdown(),
+        plot.title=element_markdown(size=12),
+        plot.title.position = "plot",
+        #legend.justification = "left",
+        #panel.grid.minor=element_blank()
+        ) + 
+  guides(fill=guide_colorbar(title.position="top",
+                             title.hjust=0.5,
+                             barwidth=unit(20,"lines"),
+                             barheight=unit(.5,"lines"))) + 
+  scale_x_continuous(limits=c(min(fish3$year),max(fish3$year)),
+                     breaks=seq(1900,2015,50),
+                     expand=c(0,0)) +
+  labs(fill="**Production amount** (in pounds)",
+       x="**Year**",
+       y="**Species**",
+       title="Great Lakes Fish Production by Species, from 1867 to 2015")
+
+```
+
+#### Comparing Alewife and Cisco production to other species
+
+```{r, warning=F, message=F}
+# compare alewife to other fishes 
+p1 = fish2 %>% 
+  mutate(species_1 = ifelse(species=="Alewife","Alewife","All Other Species")) %>%
+  group_by(species_1,year) %>% summarise(val=sum(values)) %>%
+  ggplot(aes(x=year,y=val, color=species_1)) + 
+  geom_line(alpha=0.8) + 
+  scale_color_manual(values=c("#f95738","#6c757d")) + 
+  theme_minimal(base_size=10) + 
+  theme(panel.grid=element_blank(),
+        legend.position="none",
+        axis.ticks=element_line(),
+        axis.title.y=element_markdown(size=9),
+        axis.title.x=element_markdown(size=9)) + 
+  geom_text(aes(x=1935, y=100000, label="All Other Species"), 
+            color="#6c757d",size=3) + 
+  geom_text(aes(x=1973, y=50000, label="Alewife"), 
+            color="#f95738",size=3.5) + 
+  scale_y_continuous(breaks=c(0,100000,200000),
+                     limits=c(0,260000),
+                     label = label_number(suffix = " M", scale = 1e-3)) +
+  scale_x_continuous(breaks=seq(1875,2015,25)) + 
+  labs(x="**Year**",y="**Production** (in pounds)")
+
+# compare cisco to other fishes 
+p2 = fish2 %>% 
+  mutate(species_1 = ifelse(species=="Cisco","Cisco","All Other Species")) %>%
+  group_by(species_1,year) %>% summarise(val=sum(values)) %>%
+  ggplot(aes(x=year,y=val, color=species_1)) + 
+  geom_line(alpha=0.8) + 
+  scale_color_manual(values=c("#0096c7","#808180FF")) + 
+  theme_minimal(base_size=10) + 
+  theme(panel.grid=element_blank(),
+        legend.position="none",
+        axis.ticks=element_line(),
+        axis.title.y=element_markdown(size=9),
+        axis.title.x=element_markdown(size=9)) + 
+  geom_text(aes(x=1935, y=20000, label="All Other Species"), 
+            color="#808180FF",size=3) +
+  geom_text(aes(x=1975, y=95000, label="Cisco"), 
+            color="#0096c7",size=3.5) + 
+  scale_y_continuous(breaks=c(0,100000,200000),
+                     limits=c(0,260000),
+                     label = label_number(suffix = " M", scale = 1e-3)) +
+  scale_x_continuous(breaks=seq(1875,2015,25)) + 
+  labs(x="**Year**",y="**Production** (in pounds)")
+
+p1/p2
+```
+
+
+#### U.S Production by year for top three species in Lake Erie, Michigan and Superior
+```{r}
+fishing %>% select(species,year,values,lake) %>% filter(lake=="Erie") %>% 
+  group_by(species) %>% tally(values,sort=T) %>% top_n(3,n) ->e1
+```
+     
+
+```{r}
+fishing %>% filter(region=="U.S. Total") %>% 
+  filter(lake=="Erie"|lake=="Michigan"|lake=="Superior") %>%
+  group_by(species, lake, year) %>% summarise(yp=sum(values,na.rm=T)) %>% ungroup() %>%
+  group_by(lake, species) %>% mutate(tsp=sum(yp,na.rm=T)) %>% ungroup() %>%
+  group_by(lake) %>% mutate(rank=dense_rank(desc(tsp))) %>%
+  filter(rank<=3) -> ems1
+
+ems1 %>% group_by(species, lake, rank) %>% slice(1) -> ems2 
+summary(ems1$year)
+```
+
+```{r, warning=F, message=F, fig.width=4, fig.height=3}
+ems1 %>% 
+  ggplot(aes(x=year, y=reorder(species,-rank),fill=yp)) + 
+  geom_tile(height=0.5) + 
+  facet_wrap(~lake, scales="free_y", ncol=1, labeller=label_both, strip.position = c("left")) +
+  theme_light() + 
+  scale_fill_continuous_sequential(palette="batlow", label = label_number(scale = 1e-3)) +
+  #scale_fill_gradientn(colours=wes_palette("Zissou1", 21, type = "continuous"),
+                       #label = label_number(scale = 1e-3)) +
+  scale_x_continuous(breaks=seq(1875,2015,25)) + 
+  guides(fill=guide_colorbar(title.position="top",
+                             title.hjust=0.5,
+                             barwidth=unit(20,"lines"),
+                             barheight=unit(.5,"lines"))) +
+  theme(panel.grid.minor=element_blank(),
+        legend.position="top",
+        panel.border = element_blank(),
+        strip.placement="outside",
+        plot.margin=ggplot2::margin(0.5,1,0.5,0.5,"cm"),
+        axis.title.y=element_text(vjust=5,size=9.5),
+        axis.title.x=element_text(vjust=-1.5,size=9.5),
+        legend.title = element_text(size=9.5),
+        strip.background=element_rect(fill="slategrey"),
+        panel.grid.major.y=element_blank(),
+        plot.title.position = "plot") + 
+  geom_text(data=ems2, aes(x=1855, y=species,label=paste(round(tsp/1000,1),"M")),size=3)+
+    labs(y="Species, Total production in pounds",x="Year",
+       fill="Production amount (in million pounds)",
+       title="Commerical fish production 1867-2015",
+       subtitle="U.S Production by year for top three species in Lake Erie, Michigan and Superior") 
+```
+
+     
+
+#### Number of fish stocked by lake
+
+```{r}
+# missing in stocked.csv 
+sapply(stocked, function(x) sum(is.na(x)))
+```
+
+```{r}
+# clean stocked data
+stocked_clean = stocked %>%
+  clean_names() %>%
+  select(-longitude,-latitude,-tag_no,-tag_ret,-ls_mgmt,-mark_eff) #drop variables
+```
+
+
+```{r, warning=F, message=F}
+# plot number of fish stocked by lake (year)
+stocked_clean %>%
+  select(year, lake, no_stocked) %>% drop_na() %>%
+  group_by(lake, year) %>% summarise(val=sum(no_stocked)) %>%
+  ggplot(aes(x=lake, y=val, color=year)) + 
+  geom_jitter(width=0.2) + 
+  scale_color_gradientn(colours=wes_palette("Zissou1", 21, type = "continuous"), 
+                        limits=c(min(stocked_clean$year),max(stocked_clean$year)),
+                                   breaks=ceiling(seq(min(stocked_clean$year),max(stocked_clean$year),
+                                        (max(stocked_clean$year)-min(stocked_clean$year))/4))) + 
+  theme_minimal(base_size=10) + 
+  scale_y_continuous(labels=label_number(suffix = " M", scale = 1e-6, accuracy=1), 
+                     limits=c(0,25000000)) + 
+  theme(panel.grid.minor=element_blank(),
+        legend.position="top",
+        plot.title.position = "plot") + 
+  guides(color=guide_colorbar(title.position="top",
+                             title.hjust=0.5,
+                             barwidth=unit(20,"lines"),
+                             barheight=unit(.5,"lines"))) + 
+  coord_flip() + 
+  labs(x="Lake",y="Number of fish stocked", color="Year",
+       title="Number of Fish Stocked by Lake")
+```
+
+
+
+
+
+
+
+
+
+
+

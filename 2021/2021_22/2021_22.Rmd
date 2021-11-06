@@ -1,0 +1,581 @@
+---
+title: "Tidy Tuesday 2021/22"
+output: html_notebook
+date: "2021/05/26"
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) Week 22 [Mario Kart 64 World Records](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-25/readme.md), data from [Mario Kart World Records](https://mkwrs.com/) 
+
+
+```{r}
+# Load libraries 
+library(tidyverse)
+library(ggtext)
+library(ggpubr)
+library(ggstatsplot)
+library(gt)
+library(ggsci)
+library(wesanderson)
+library(RColorBrewer)
+theme_set(theme_minimal())
+```
+
+
+
+```{r}
+# Import data
+records <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-25/records.csv')
+drivers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-25/drivers.csv')
+```
+
+## Data visualization 
+
+```{r, warning=F, message=F, fig.height=3.5, fig.width=4.5}
+# Which Mario Kart Track Is The Fastest?
+# shared on [Twitter](https://twitter.com/leeolney3/status/1396980461134614528/photo/1)
+
+table1 = records %>% 
+  group_by(track, type, shortcut) %>%
+  summarise(time_min=min(time)) %>%
+  ungroup() %>%
+  mutate(type_sc= ifelse(shortcut=="Yes", paste(type, "with","Shortcut"),type))
+
+# dot plot
+table1 %>% 
+  ggplot(aes(x=fct_rev(fct_reorder(track, time_min, .fun='min')), y=time_min, 
+             color=factor(type_sc, levels=c("Three Lap with Shortcut",
+                                            "Single Lap with Shortcut",
+                                            "Single Lap",
+                                            "Three Lap")))) +
+  geom_line(aes(group=track), color="grey",size=2,alpha=0.4) +
+  #geom_point(position=position_dodge(0.4),size=2.2) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.5, jitter.height = 0.5),size=2.7)  +
+  theme(legend.position="top",
+        legend.justification = "left",
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=0.5, face="bold",size=18),
+        plot.margin=ggplot2::margin(1,1,0.5,1,"cm"),
+        axis.title.x=element_markdown(size=10.5),
+        axis.title.y=element_markdown(size=10.5)) + 
+  labs(color="", x="**Track**",y="**Minimum Time** (in seconds)<br>",
+       title="Which Mario Kart Track Is The Fastest?",
+       caption="Tidy Tuesday Week 22 | Data from Mario Kart World Records") + 
+  scale_color_manual(values=c("#f95738","#ffa62b","#0091ad","#43B047")) + 
+  coord_flip() 
+```
+
+```{r}
+# For how many tracks have shortcuts been discovered?
+records %>% 
+  count(track, shortcut) %>%
+  count(shortcut)
+```
+
+```{r}
+# For which track did the world record improve the most?
+records %>% 
+ group_by(track) %>% 
+  summarise(min_time = min(time), max_time=max(time), improved=max_time-min_time) %>%
+  arrange(desc(improved)) %>%
+  mutate(improved_pct= round(improved/max_time*100,3)) %>%
+  arrange(desc(improved_pct)) %>% slice(1)
+```
+
+
+```{r, warning=F, message=F}
+# On which track the shortcut saves the most time 
+table2 = records %>% 
+  group_by(track, type, shortcut) %>%
+  summarise(time=mean(time)) %>%
+  pivot_wider(names_from = shortcut,values_from=time) %>%
+  filter(!is.na(Yes)) %>%
+  mutate(time_saved=No-Yes) %>% 
+  arrange(desc(time_saved))
+
+# time saved by race type
+by(table2$time_saved, table2$type, summary) #no difference in Single lap with and without shortcut
+```
+
+
+```{r,warning=F, message=F, fig.width=3.75, fig.height=2.75}
+# On which track the shortcut saves the most time 
+# dot plot: three lap
+table4 = records %>% 
+  group_by(track, type, shortcut) %>%
+  summarise(time=mean(time)) %>% 
+  filter(type=="Three Lap") %>%
+  filter(track!="Banshee Boardwalk",track!="Bowser's Castle",
+         track!="Koopa Troopa Beach",track!="Moo Moo Farm") %>%
+  mutate(time_saved=lag(time)-time) %>%
+  mutate(pct = round(time_saved/lag(time),3)) 
+
+table5 = table4 %>% filter(shortcut=="Yes")
+
+table5 %>%
+  ggplot(aes(y=reorder(track,pct), x=time)) + 
+  geom_text(aes(label=paste0("-",scales::percent(pct,accuracy=0.1L))),size=2.9, hjust=1.2, color="#3C5488FF") +
+  geom_point(data=table4, aes(color=shortcut),size=2,show.legend = F) + 
+  geom_line(data=table4, aes(group=track), alpha=0.3,size=1) + 
+  scale_x_continuous(limits=c(0,370)) + 
+  theme(panel.grid.major.x=element_blank(),
+       panel.grid.minor.x=element_blank(),
+       axis.title.x=element_markdown(size=10),
+       axis.title.y=element_markdown(size=10),
+       plot.title.position = "plot",
+       plot.subtitle=element_markdown(size=10)) + 
+  labs(x="**Average time** (in seconds)",
+       y="**Track**",
+       title="On which track the shortcut saves the most time for 3-lap?",
+       subtitle="Percentage is expressed as (<span style = 'color:#E64B35FF'>No Shortcut</span> - <span style = 'color:#3C5488FF'>With Shortcut</span>) / <span style = 'color:#E64B35FF'>No Shortcut</span><br>") + 
+  scale_color_manual(values=c("#E64B35FF","#3C5488FF"))
+``` 
+
+
+```{r, warning=F, message=F}
+# On which track the shortcut saves the most time 
+# highlighted slope chart: three lap
+table2 %>%
+  filter(type=="Three Lap") %>%
+  pivot_longer(No:Yes) %>%
+  mutate(name=ifelse(name=="No","No Shortcut","With Shortcut")) %>%
+  mutate(value=round(value,1), time_saved=round(time_saved,1)) -> table3
+
+table3 %>%
+  ggplot(aes(x=name, y=value, group=track)) + 
+  geom_line(aes(color=I(ifelse(track=="Wario Stadium", '#E64B35FF', '#8491b4FF')))) + 
+  geom_point(aes(color=I(ifelse(track=="Wario Stadium", '#E64B35FF', '#8491b4FF')))) + 
+  theme(legend.position = "none") + 
+  scale_x_discrete(position="top") +
+  geom_text(data= table3 %>% filter(track=="Wario Stadium") %>% filter(name=="No Shortcut"), 
+            aes(label=paste0(value,"s")), size=3, color="#E64B35FF", hjust=1.2) +
+  geom_text(data= table3 %>% filter(track=="Wario Stadium") %>% filter(name=="With Shortcut"), 
+            aes(label=paste0(value,"s")), size=3, color="#E64B35FF", hjust=-0.5) + 
+  geom_text(aes(x="No Shortcut",y=265.2, label="Wario Stadium"),size=3, color="#E64B35FF",hjust=1.7) + 
+  theme(axis.text.x=element_text(face="bold",size=10, color="black"),
+        axis.title.y=element_markdown(size=10),
+        plot.title.position = "plot") +
+  labs(x="",y="**Average time saved** (in seconds)",
+       title="On which track the shortcut saves the most time for 3-lap?")
+```
+
+
+```{r, warning=F, message=F}
+# When were shortcuts discovered?
+records %>% group_by(track, shortcut) %>%
+  summarise(sc_dis=min(date)) %>%
+  filter(shortcut=="Yes") %>%
+  mutate(shortcut=ifelse(shortcut=="Yes",1,"")) %>%
+  ggplot(aes(y=shortcut,x=sc_dis)) + 
+  geom_segment(aes(x=min(sc_dis), xend=max(sc_dis), y=shortcut, yend=shortcut)) +
+  geom_point(aes(color=factor(sc_dis)),size=6,show.legend=F, shape=18) + 
+  geom_text(aes(label=sc_dis), size=3, vjust=3, color="black") + 
+  geom_text(aes(x=min(sc_dis),label="Luigi Raceway",y=1.03), size=3, color="#E64B35FF") + 
+  geom_text(aes(x=as.Date(c("1997-03-07")),label="Rainbow Road\nYoshi Valley",y=1.048), 
+            size=3, color="#00A087FF", hjust=0,nudge_x=-1.6) +
+  geom_text(aes(x=as.Date(c("1997-03-10")),label="Choco Mountain\nD.K.'s Jungle Parkway\nFrappe Snowland\nKalimari Desert\nMario Raceway\nRoyal Raceway\nSherbet Land\nToad's Turnpike\nWario Stadium",y=1.125), size=3,hjust=0,nudge_x=-1.1, color="#3C5488FF") +
+  scale_y_continuous(limits=c(0.85,1.35)) +
+  scale_x_date(labels=scales::date_format("%d-%m-%Y"), limits=as.Date(c('1997-02-13','1997-03-14')),
+               expand = c(0, 0), breaks = "1 week") +
+  theme(axis.text=element_blank(),
+        axis.title = element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        panel.grid.major.x=element_line(size=0.35)) + 
+  geom_bracket(xmin=as.Date(c("1997-02-16")), xmax=as.Date(c("1997-03-07")), y.position=1.1, 
+               label="19 days", label.size=3) +
+  geom_bracket(xmin=as.Date(c("1997-03-07")), xmax=as.Date(c("1997-03-10")), y.position=1.25, 
+               label="3 days", label.size=3) + 
+  scale_color_manual(values=c("#E64B35FF","#00A087FF","#3C5488FF")) + 
+  labs(title="When were shortcuts discovered?")
+  
+```
+
+
+```{r}
+# Which is the longest standing world record?
+records %>% arrange(desc(record_duration)) %>% slice(1)
+```
+
+```{r, message=F}
+# Distribution of record duration across race types
+ggbetweenstats(data=records, x=type, y=record_duration,
+               title="Distribution of record duration across race types",
+               type="np",
+               plotgrid.args=list(nrow=1),
+               messages=FALSE,
+               results.subtitle = FALSE,
+               xlab="Type",
+               ylab="Record duration",
+               point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), 
+                                 alpha= 0.4, size = 2, stroke = 0)) + 
+  ggplot2::scale_color_manual(values=c("#4DBBD5FF","#00A087FF"))
+```
+
+```{r}
+# How did the world records develop over time?
+# count of world records over time
+#records %>% 
+  #mutate(type_sc= ifelse(shortcut=="Yes", paste(type, "with","Shortcut"),type)) %>%
+  #group_by(date) %>% tally() %>% ggscatterhist(x="date",y="n", size=1, margin.plot="density")
+
+
+# How did the world records develop over time?
+# count of records over time by type and shortcut 
+records %>% 
+  mutate(type_sc= ifelse(shortcut=="Yes", paste(type, "with","Shortcut"),type)) %>%
+  group_by(date) %>% count(type_sc) %>%
+  ggplot(aes(x=date, y=n, color=type_sc)) + 
+  geom_point(size=1,show.legend=F, alpha=0.9) + 
+  facet_wrap(~type_sc,ncol=2) + 
+  scale_color_npg() + 
+  theme(panel.grid.minor = element_blank(),
+        axis.title.x=element_markdown(size=10),
+        axis.title.y=element_markdown(size=10),
+        plot.title.position="plot",
+        strip.text = element_text(face="bold",color="#343a40")
+        ) + 
+  labs(x="**Date**",y="**Record count**", title="Records over time by lap type and shortcut")
+```
+
+```{r}
+# How are the world records distributed over time, for the various tracks?
+# reference: https://www.r-bloggers.com/2013/09/how-to-expand-color-palette-with-ggplot-and-rcolorbrewer/
+# reference: https://juliasilge.com/blog/mario-kart/
+
+# expand color palette (12 levels)
+colourCount = length(unique(records$track))
+getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
+# plot
+records %>%
+  ggplot(aes(date, time, color = track)) +
+  geom_point(alpha = 0.5, show.legend = FALSE) +
+  facet_grid(rows = vars(type), cols = vars(shortcut), scales = "free_y") + 
+  theme_light() + 
+  scale_color_manual(values = getPalette(colourCount))
+```
+
+
+```{r}
+# Which is the longest standing world record?
+records %>% filter(record_duration==max(record_duration))
+# Who is the player with the most world records?
+drivers %>% distinct(player, total) %>% slice(1)
+# Who are recent players? (players in 2021)
+records %>% filter(date>"2020-12-31") %>% 
+  group_by(player) %>% 
+  summarise(latest_date=max(date), record_count=length(player)) 
+```
+
+
+
+
+```{r, warning=F, message=F}
+# Unique and new player count across the years
+# reference:https://jack-davison.github.io/posts/2021-05-25-exploring-fun-questions-tidytuesday-2021-week-22-mario-kart-64/
+
+d1 = drivers %>% distinct(player, year, records) %>%
+  drop_na() %>% group_by(year) %>% summarise(unique_player=n_distinct(player))
+
+d2 = drivers %>% distinct(player, year, records) %>%
+  drop_na() %>% group_by(player) %>%
+  filter(year==min(year)) %>% 
+  ungroup() %>% count(year) %>% rename(new_player=n)
+
+d1 %>% left_join(d2) %>% replace(is.na(.), 0) %>%
+  pivot_longer(unique_player:new_player) %>%
+  mutate(name=ifelse(name=="unique_player","Unique Player","New Player")) %>%
+  ggplot(aes(x=year, y=value, fill=value)) + 
+  geom_col() + 
+  facet_grid(~fct_rev(name)) + 
+  scale_x_continuous(
+    breaks = seq(min(drivers$year), max(drivers$year), 4)) + 
+  scale_fill_gradientn(colours = wes_palette("Zissou1", 25, type = "continuous")) + 
+  theme(panel.grid.minor = element_blank(),
+        axis.title.x=element_markdown(size=10),
+        axis.title.y=element_markdown(size=10),
+        plot.title.position="plot",
+        legend.position="none",
+        strip.text=element_text(face="bold",size=10),
+        axis.text.x = element_text(vjust =5)) + 
+  labs(x="**Year**",y="**Count**",
+       title="Unique and new player count across the years\n")
+```
+
+```{r, warning=F, message=F}
+# Which is the fastest track?
+records %>% group_by(type,track) %>% summarise(min_time=min(time)) %>% 
+  pivot_wider(names_from=type, values_from=min_time) %>% 
+  rename(Track=track) %>% 
+  ungroup() %>% 
+  DT::datatable(rownames=FALSE,options = list(order = list(list(1, 'asc'))))
+```
+
+```{r, message=F}
+# Maximum Record by track and lap type  
+# reference: https://twitter.com/Juanma_MN/status/1397249648931360768/photo/1
+records %>% group_by(track, type) %>% summarise(max_duration=max(record_duration)) %>%
+  ggplot(aes(y=reorder(track,max_duration, max), x=max_duration, color=type)) + 
+  geom_point(size=2) + 
+  geom_line(aes(group=track), color="grey") + 
+  scale_color_manual(values=c("#E64B35FF","#3C5488FF")) + 
+  theme(axis.title.x=element_markdown(size=10),
+        axis.title.y=element_markdown(size=10),
+        plot.title = element_markdown(),
+        plot.title.position="plot",
+        legend.position="none") + 
+  labs(y="**Track**",x="**Maximum record duration** (in days)",
+       title="Maximum record duration of <span style = 'color:#E64B35FF'>Single Lap</span> and <span style = 'color:#3C5488FF'>Three Lap</span> races, by Track",
+       subtitle="")
+```
+
+
+```{r}
+# three-lap latest vs first record by track and shortcut
+# reference: https://twitter.com/CedScherer/status/1398355141686931458/photo/1
+
+sc = records %>% 
+  filter(type=="Three Lap") %>%
+  mutate(year = lubridate::year(date)) %>% 
+  group_by(track, shortcut) %>%
+  filter(time == min(time) | time == max(time)) %>%
+  mutate(year = lubridate::year(date)) %>%
+  mutate(grp = if_else(time == min(time), "min", "max")) %>%
+  mutate(timediff=lag(time)-time) %>% 
+  select(track, type, shortcut, year, grp, timediff, time) 
+
+sc1 = sc %>% filter(shortcut=="Yes")
+sc0 = sc %>% filter(shortcut=="No")
+cat = sc %>% filter(grp=="min") %>% group_by(track) %>% summarise(mintime=min(time)) %>% arrange(mintime)
+cat_order = cat$track
+```
+
+```{r, fig.width=4.5, fig.height=3.5}
+sc %>%  mutate(grp2= case_when(
+               shortcut=="No" & grp=="max" ~"First record w/o shortcut",
+               shortcut=="No" & grp=="min"~ "Lastest record w/o shortcut",
+               shortcut=="Yes" & grp=="max"~ "First record with shortcut",
+               shortcut=="Yes" & grp=="min"~ "Lastest record with shortcut")) -> sc4
+
+sc4 %>%
+  ggplot(aes(x=time, y=track)) + 
+  geom_line(data=sc0, aes(group=track), color="slategrey", size=1.1) +
+  geom_line(data=sc0, aes(group=track), color="white", size=0.5) +
+  geom_line(data=sc1, aes(group=track), color="grey",size=1.1) +
+  geom_point(data=sc4, aes(color=factor(grp2,levels=c("Lastest record with shortcut",
+                                            "First record with shortcut",
+                                            "Lastest record w/o shortcut",
+                                            "First record w/o shortcut"), ordered=T), 
+                 shape=factor(grp2,levels=c("Lastest record with shortcut",
+                                            "First record with shortcut",
+                                            "Lastest record w/o shortcut",
+                                            "First record w/o shortcut"), ordered=T)),
+             size=3,stroke=.7, alpha=0.9) + 
+  scale_shape_manual(values=c(16,16,21,21)) + 
+  scale_color_manual(values=c("#b7094c","#0091ad","#b7094c","#0091ad")) + 
+  labs(color="",shape="") + 
+  scale_y_discrete(limits=rev(cat_order)) + 
+  scale_x_continuous(sec.axis = dup_axis()) +
+  theme(legend.position="top",
+        #legend.box.margin = ggplot2::margin(0, 0, 0, 0, "cm"),
+        panel.grid.minor= element_blank(),
+        axis.text.x.top= element_text(size=8, vjust=5),
+        axis.text.x.bottom= element_text(size=8, vjust=-2),
+        plot.margin=ggplot2::margin(1,1.5,0.5,1,"cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        ) +
+  labs(x="", y="", title="Three-Lap Mario Kart World Records")
+```
+
+
+```{r}
+# plot
+sc1 %>% ggplot(aes(x=time, y=track, color=grp)) + 
+  geom_point(size=2.5,alpha=0.8) +
+  geom_line(aes(group=track), color="grey") + 
+  scale_color_aaas() + 
+  geom_point(data=sc0, aes(x=time, y=track, shape=shp, fill=grp),shape=21, color="white",size=2.75,alpha=0.8) +
+  geom_line(data=sc0, aes(group=track), color="slategrey") +
+  scale_fill_d3() +
+  theme(legend.position="none") +
+  scale_y_discrete(limits=rev(cat_order))
+
+sc1 %>% ggplot(aes(x=time, y=track, color=grp)) + 
+  geom_line(aes(group=track), color="grey", size=1.1) +
+  geom_point(size=2.5,alpha=0.8,stroke=.7) +
+  geom_line(data=sc0, aes(group=track), color="grey", size=1.1) +
+  geom_line(data=sc0, aes(group=track), color="white", size=0.5) +
+  geom_point(data=sc0, aes(x=time, y=track, color=grp),shape=21,size=2.5,alpha=0.8,stroke=.7) +
+  scale_color_aaas() + 
+  scale_y_discrete(limits=rev(cat_order)) + 
+  scale_x_continuous(sec.axis = dup_axis()) +
+  theme(legend.position="none",
+        panel.grid.minor= element_blank(),
+        axis.text.x.top= element_text(size=8, vjust=5),
+        axis.text.x.bottom= element_text(size=8, vjust=-2)) +
+  labs(x="", y="")
+```
+
+
+## Data modeling     
+Question: What are the important variables for predicting if a Mario Kart world record was achieved with a shortcut or not?    
+Reference: https://juliasilge.com/blog/mario-kart/   
+
+```{r}
+# Load libraries 
+library(Hmisc)
+library(caret)
+library(rattle)
+library(pscl)
+library(pROC)
+library(MLmetrics)
+library(rpart)
+library(DALEXtra)
+```
+
+```{r}
+# target variable
+Hmisc::describe(factor(records$shortcut))
+
+records2 = records %>% 
+  select(shortcut, track, type, date, time) %>% # select variables
+  mutate(shortcut= ifelse(shortcut=="Yes","1","0")) %>% # recode target variable 
+  mutate_if(is.character,as.factor) # change variable types
+
+Hmisc::describe(factor(records2$shortcut))
+
+# check missing values (column wise)
+sapply(records2, function(x) sum(is.na(x))) # no missing values
+glimpse(records2)
+```
+
+```{r}
+# partition data based on shortcut variable
+colnames(records2) <- make.names(colnames(records2)) #make valid col names
+
+set.seed(123)
+train.index <- createDataPartition(records2$shortcut, p = .7, list = FALSE)
+xtrain <- records2[ train.index,]
+xtest  <- records2[-train.index,]
+
+# check distribution after partitioning 
+Hmisc::describe(xtrain$shortcut)
+Hmisc::describe(xtrain$shortcut)
+```
+
+### Logistic regression
+```{r}
+# logistic regression
+# model
+lrmodel = glm(shortcut ~., data=xtrain, family="binomial")
+summary(lrmodel)
+pR2(lrmodel) # mcfadden R2
+anova(lrmodel, test="Chisq")
+```
+
+```{r}
+# predict
+prob=predict(lrmodel,xtest,type="response")
+lr.p=rep(0,547)
+lr.p[prob>0.3]=1
+
+# evaluate
+confusionMatrix(as.factor(lr.p),xtest$shortcut) # confusion matrix
+roc(response= xtest$shortcut, predictor = factor(lr.p, ordered=T), plot=T, print.auc=T) # AUC-ROC
+paste("F1-score: ",(F1_Score(y_pred = lr.p, y_true = xtest$shortcut, positive = "1"))) # F1-score
+```
+
+
+### Decision tree
+
+```{r}
+# decision tree
+# model 
+set.seed(123)
+cvCtrl <- trainControl(method = "repeatedcv", repeats = 10)
+dt <- train(
+  shortcut ~., data = xtrain, method = "rpart",
+  trControl = cvCtrl,
+  tuneLength = 30
+  )
+# plot complexity parameter
+plot(dt)
+# print best cp
+unlist(dt$bestTune)
+```
+
+```{r}
+# tree plot
+par(xpd = NA) # Avoid clipping
+plot(dt$finalModel)
+text(dt$finalModel,  digits = 3)
+#dt$finalModel
+
+dt.p <-predict(dt,xtest) # predict
+confusionMatrix(dt.p,xtest$shortcut) # confusion matrix
+roc(response= xtest$shortcut, predictor = factor(dt.p, ordered=T), plot=T, print.auc=T) # AUC-ROC
+paste("F1-score: ",(F1_Score(y_pred = dt.p, y_true = xtest$shortcut, positive = "1"))) # F1-score
+
+```
+
+
+```{r}
+# variable importance plot
+dt1= dt$finalModel
+dtdf1 <- data.frame(imp = dt1$variable.importance)
+# plot
+dtdf2 <- dtdf1 %>% 
+  tibble::rownames_to_column() %>% 
+  dplyr::rename("variable" = rowname) %>% 
+  dplyr::arrange(imp) %>%
+  dplyr::mutate(variable = forcats::fct_inorder(variable))
+ggplot2::ggplot(dtdf2) +
+  geom_point(aes(x = variable, y = imp), show.legend = F, shape=1, size=3) +
+  coord_flip() +
+  theme_bw() + 
+  theme(axis.ticks.y = element_blank(),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid=element_line(linetype = "dotted",size=0.7, color="grey"),
+        plot.title=element_text(hjust=0.5, face="bold"),
+        plot.margin=ggplot2::margin(10,40,10,30)) +
+  labs(title="dt")
+
+```
+
+```{r}
+# partial dependent plot
+# reference: https://juliasilge.com/blog/mario-kart/
+
+# explainer
+explainer <- explain(dt,
+                     data = xtest,
+                     y = xtest$shortcut,
+                     label = "DT")
+
+# profile
+pdp_time <- model_profile(
+  explainer,
+  variables = "time",
+  N = NULL,
+  groups = "type"
+)
+
+# plot
+as_tibble(pdp_time$agr_profiles) %>%
+  mutate(`_label_` = str_remove(`_label_`, "workflow_")) %>%
+  ggplot(aes(`_x_`, `_yhat_`, color = `_label_`)) +
+  geom_line(size = 1.2, alpha = 0.8) +
+  scale_color_npg() +
+  labs(
+    x = "Time to complete track",
+    y = "Predicted probability of shortcut",
+    color = NULL,
+    title = "Partial dependence plot for Mario Kart world records",
+    subtitle = "Predictions from a decision tree model"
+  )
+```
+
+* Logistic and decision tree models show that time, followed by type (single lap or three lap) are the most important variables in predicting if a Mario Kart world record was achieved with a shortcut or not. 
+

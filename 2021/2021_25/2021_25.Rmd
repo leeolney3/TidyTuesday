@@ -1,0 +1,126 @@
+---
+title: "Tidy Tuesday Week 25/2021"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 25 [Du Bois and Juneteenth Revisited](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-15/readme.md), data from [Anthony Starks](https://twitter.com/ajstarks), [Allen Hillery](https://twitter.com/AlDatavizguy/status/1358454676497313792?s=20) and [Sekou Tyler](https://twitter.com/sqlsekou/status/1360281040657522689?s=20).
+
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(ggtext)
+library(patchwork)
+library(lubridate)
+library(ggsci)
+library(plyr)
+library(countrycode)
+library(sp)
+library(rworldmap)
+library(ggsci)
+```
+
+
+```{r}
+# import data 
+tweets <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-15/tweets.csv')
+
+glimpse(tweets)
+```
+
+
+```{r}
+# clean
+tweets1 = tweets %>% 
+  dplyr::select(long, lat) %>% drop_na()
+tweets1
+
+# function to get country 
+coords2country = function(points)
+{  
+  countriesSP <- getMap(resolution='coarse')
+  pointsSP = SpatialPoints(points, proj4string=CRS(proj4string(countriesSP)))  
+  indices = over(pointsSP, countriesSP)
+
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
+  indices$ADMIN  #returns country name
+  #indices$ISO3 # returns the ISO3 code 
+}
+
+# get country 
+tweets1$country = coords2country(tweets1)
+glimpse(tweets1) 
+```
+
+
+
+```{r}
+# join
+tweets_joined = join(tweets, tweets1,type="left",match="first")
+# get region (7 Regions as defined in the World Bank Development Indicators)
+tweets_joined$region = countryname(tweets_joined$country,destination = "region", warn = FALSE)
+tweets_joined$date = date(tweets_joined$datetime)
+glimpse(tweets_joined)
+```
+
+
+```{r}
+# wrangle 
+plot_data = tweets_joined %>% 
+  group_by(date, region) %>% 
+  dplyr::summarise(unique_users = n_distinct(username),total_tweets=n()) %>% 
+  mutate(region_NA = ifelse(region=="North America", "North America","All other regions")) %>%
+  mutate(region_NA = ifelse(is.na(region_NA),"No location",region_NA)) %>%
+  filter(!is.na(date))
+
+summary(plot_data$unique_users)
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+# plot
+plot_data %>%
+  ggplot(aes(x=date, y=total_tweets, size=unique_users, 
+             color=factor(region_NA,levels=c("No location","All other regions","North America"),ordered=T))) + 
+  geom_jitter(alpha=0.82, width=0.4) + 
+  scale_size_continuous(breaks=c(1,8,18,28)) + 
+  theme_minimal(base_size=10) +
+  guides(color=FALSE) + 
+  scale_color_manual(values =c("#6c77a1","white","#de2d48")) +
+  theme(legend.position="top",
+        panel.grid.minor=element_blank(),
+        panel.grid.major=element_line(linetype = "13", color="grey65"),
+        plot.title=element_text(face="bold",size=24),
+        plot.subtitle=element_markdown(size=13),
+        axis.title=element_text(face="bold", size=9.5),
+        plot.background=element_rect(fill="#ead4bc", color=NA),
+        panel.background = element_rect(fill="#ead4bc", color=NA),
+        plot.margin = ggplot2::margin(20, 30, 20, 20),
+        legend.title=element_text(size=9.5)) +
+  labs(x="Date", y="Tweet Count", size="Unique Users", color="Region",
+       caption="\nTidy Tuesday Week 25 | Data from Anthony Starks, Allen Hillery and Sekou Tyler",
+       title="#DuBoisChallenge Tweets",
+       subtitle="<span style = 'color:#de2d48'><b>North America</b></span>, <span style = 'color:#6c77a1'><b>All other regions</b></span> and <span style = 'color:#FFFFFF'><b>No location</b></span><br>") 
+```
+
+
+ALT text: Scatterplot showing #DuBoisChallenge total tweets count by date, the dot size shows the number of unique users and color indicates location (North America, all other regions and no location). The plot shows that total number of tweets and unique users from North America is consistently higher than all other regions and no location. 
+
+
+```{r, warning=F}
+# region and date
+tweets_joined %>% group_by(date, region) %>% 
+  filter(!is.na(region)) %>%
+  ggplot(aes(y=region, x=date)) + 
+  geom_point(aes(color=region), show.legend=F) + 
+  facet_wrap(~region, ncol=1, scale="free_y") + 
+  theme_minimal(base_size=10) + 
+  theme(strip.text=element_blank(),
+        plot.title.position = "plot") + 
+  scale_color_npg() + 
+  labs(x="Date", y="Region", title = "#DuBoisChallenge tweets by region and date")  
+```
+
+
+

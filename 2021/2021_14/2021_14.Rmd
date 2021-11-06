@@ -1,0 +1,296 @@
+---
+title: "Makeup Shades"
+date: "2021-03-30"
+output: html_notebook
+---
+
+#### Data visualization exercise
+
+This notebook uses [TidyTuesday](https://github.com/rfordatascience/tidytuesday/) week 14 [Makeup Shades](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-30/readme.md), data from [The Pudding data](https://github.com/the-pudding/data/tree/master/foundation-names). And the corresponding article can be found at 
+[The Pudding](https://pudding.cool/2021/03/foundation-names/). 
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# load libraries
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(patchwork)
+
+# set theme
+theme_set(theme_minimal(10))
+```
+
+```{r}
+# import data
+sephora <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/sephora.csv')
+ulta <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/ulta.csv')
+allCategories <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allCategories.csv')
+allShades <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allShades.csv')
+allNumbers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allNumbers.csv')
+```
+
+```{r}
+head(allShades)
+```
+
+#### Boxplot: Foundation lightness of brands with more than 5 foundation products
+* shared on [Twitter](https://twitter.com/leeolney3/status/1376644323991818247/photo/1)
+* alt text: Boxplot showing the makeup foundation shades of fifteen brands that have more than 5 foundation products, where the brand Too Faced has the darkest foundation shade.
+
+```{r}
+allShades %>% group_by(brand) %>% summarise(product_n=n_distinct(product)) %>% arrange(desc(product_n))
+```
+
+```{r}
+# brands with >5 products
+brand_prod = allShades %>% group_by(brand) %>% summarise(product_n=n_distinct(product)) %>% arrange(desc(product_n)) %>% filter(product_n>5)
+brand_names = brand_prod$brand 
+brand_names
+```
+
+
+```{r, fig.height=3.2, fig.width=4}
+allShades %>% 
+  filter(brand %in% brand_names) %>%
+  ggplot(aes(y=fct_reorder(brand,lightness,.fun = median, .desc=TRUE), x=lightness)) + 
+  geom_boxplot() + 
+  theme_minimal(base_size = 10) + 
+  theme(panel.grid.minor.x=element_blank(),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.title=element_text(face="bold",size=15),
+        axis.title=element_text(face="bold"),
+        plot.caption=element_text(hjust=0),
+        plot.margin=margin(1,1,1,1,"cm")) + 
+  labs(x="Lightness", y="Brand",
+       caption="\nTidy Tuesday Week 14 | Data from The Pudding",
+       title="Foundation lightness of brands with more than 5 foundation products",
+       subtitle = "Lightness represented as a decimal from 0 to 1, where 0 is pure black and 1 is pure white\n") 
+```
+```{r, fig.height=3.2, fig.width=4, warning=FALSE, message=FALSE}
+# dot plot
+allShades %>% 
+  filter(brand %in% brand_names) %>%
+  ggplot(aes(y=lightness, x=fct_reorder(brand,lightness,.fun = median, .desc=TRUE))) + 
+  geom_dotplot(fill="slategrey",
+               binaxis = "y",
+               binwidth = 0.005,
+               stackdir="center", show.legend = F, size=1, color=NA, alpha=0.4) +
+  stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,
+                geom = "pointrange", width = 0.5, size=0.2, alpha=0.9, color="#f77f00") +
+  coord_flip() + 
+  theme_minimal(base_size = 10) + 
+  theme(
+    #plot.margin=margin(1,1,1,1,"cm"),
+    axis.title=element_text(face="bold"),
+    plot.title.position = "plot",
+    plot.subtitle=element_markdown()) +
+  labs(y="",x="", title="Foundation lightness by brand",
+       subtitle = "Foundation lightness by brand, from lowest to highest <span style = 'color:#f77f00'><b>Median</b></span> lightness\n")
+
+```
+
+
+```{r}
+# products
+# lightToDark: Whether this product line organizes their colors from light to dark (Note: a value of NA indicates that a product uses a number-based naming system, but not a sequential numbering system)
+
+# number of distinct brands
+n_distinct(allNumbers$brand)
+# lightToDark table
+allNumbers %>% group_by(lightToDark) %>% tally() %>% mutate("%"=round(n/sum(n)*100,2)) #table
+```
+```{r, warning=FALSE, messsage=FALSE}
+# histogram: lightness
+hist = allCategories %>%
+  ggplot(aes(lightness)) +
+  geom_histogram(alpha = 0.7, bins = 100, fill="slategrey") +
+  xlim(0, 1) + 
+  labs(title="Histogram: lightness") + 
+  theme(plot.title.position = "plot")
+
+# density plot: lightness and lightToDark
+dens = allNumbers %>%
+  ggplot(aes(lightness, color=lightToDark)) +
+  geom_density(alpha = 0.6, fill=NA) +
+  xlim(0, 1) + 
+  scale_color_manual(values=c("#577590","#90be6d"), na.value="#f94144") + 
+  labs(title="Density plot: lightness and lightToDark") + 
+  theme(plot.title.position = "plot")
+
+# plot
+(hist/dens)
+```
+
+```{r}
+# brands that uses sequential numbering system (SNS)
+seq = allNumbers %>% 
+  filter(!is.na(lightToDark)) %>% 
+  group_by(brand,product,lightToDark) %>%
+  tally() %>%
+  ungroup() %>%
+  group_by(brand,lightToDark) %>% 
+  summarise(product_n=n_distinct(product))
+
+# brands that uses SNS that have both classes of lightToDark
+seq %>% group_by(brand) %>% summarise(class_n=n_distinct(lightToDark)) %>% filter(class_n==2) %>% count() %>% unlist() #no brands uses both classes
+
+# brand and lightToDark
+seq %>% group_by(lightToDark) %>% tally()
+```
+
+* 61 out of 64 makeup brands in the dataset uses sequential numbering system, of which 57 organizes their colors from light to dark
+
+
+
+
+#### Average product shades by brand
+```{r}
+# number of shades by product
+shades = allShades %>% 
+  group_by(brand, product) %>% 
+  summarise(shades_n = n_distinct(hex))
+
+summary(shades$shades_n)
+
+# products with more than 50 shades
+shades %>% filter(shades_n>=50) %>% arrange(desc(shades_n))
+```
+
+
+```{r}
+# brands, product count and average number of shades
+shades2 = shades %>% 
+  group_by(brand) %>%
+  summarise(product_count=n_distinct(product),
+            avg_shades = (mean(shades_n))) %>%
+  arrange(desc(avg_shades))
+shades2
+```
+
+```{r}
+hist(shades2$product_count)
+```
+
+
+```{r}
+shades2 %>% mutate(cat = ifelse(product_count==1,"1 product",">1 product")) %>% 
+  group_by(cat) %>%
+  summarise(avg1 = mean(avg_shades))
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Brands with 1 product versus Brands with >1 product
+shades2 %>% mutate(cat = ifelse(product_count==1,"1 product",">1 product")) %>%
+  ggplot(aes(x=avg_shades, y= cat)) + 
+  geom_bar(stat="summary",fun.x="mean", width=0.5, alpha=0.5, fill="#b8b8d1") +
+  geom_boxplot(fill=NA, width=0.2, outlier.size=-1, color="#f28f3b") +
+  geom_jitter(height=0.2, size=1.5, alpha=0.8, color="#255f85") + 
+  theme_minimal(base_size = 10) + 
+  theme(panel.grid.minor.x=element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.margin=margin(1,1,1,1,"cm"),
+        plot.title.position = "plot") + 
+  labs(x="Average product shades (brand)",
+       y="",
+       title="Average product shades",
+       subtitle="Brands with 1 product vs. Brands with >1 product")
+```
+
+#### 10 brands with the most shades
+
+```{r}
+# barplot of 10 brands with the most shades, with their palettes
+# code reference: [Richard Vogg](https://t.co/y1IBB3fjMJ?amp=1)
+
+brands_n = allCategories %>% 
+  group_by(brand) %>%
+  tally(sort=T) %>%
+  slice(1:10) %>%
+  .$brand # get brand names
+
+brands_n
+
+# sort 
+sorted <- allCategories %>%
+  group_by(brand) %>%
+  arrange(brand,lightness) %>%
+  mutate(rank=rank(lightness,ties.method = "first"))
+```
+
+
+```{r}
+# function to create plot
+get_brand_colors <- function(brand_name) {
+  sorted %>%
+    filter(brand==brand_name)
+}
+
+plot_brand_colors <- function(brand_data) {
+  title <- brand_data[[1,1]]
+  
+  ggplot(brand_data,aes(x=rank,y=brand,fill=hex)) + geom_tile() +
+    scale_fill_manual(values=brand_data$hex) +
+    scale_x_continuous(limits=c(0,370)) +
+    theme_minimal(base_size=10)+
+    theme(legend.position = "none",
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks = element_blank(),
+          plot.subtitle = element_text(),
+          panel.grid=element_blank()) + 
+    coord_cartesian(expand=FALSE)
+}
+
+plots <- lapply(brands_n,function(x) {
+  x %>% 
+     get_brand_colors() %>% 
+     plot_brand_colors()
+  })
+```
+
+
+```{r}
+# plot
+(plots[[1]]) / (plots[[2]]) / (plots[[3]]) / (plots[[4]]) / (plots[[5]]) / (plots[[6]]) / (plots[[7]]) / (plots[[8]]) / (plots[[9]]) / (plots[[10]]) + 
+  plot_annotation(title = "10 brands with the most foundation shades")
+```
+
+
+
+```{r}
+# get 10 most frequent name (programmatically extracted word-based name of this particular shade) 
+names1 = 
+  allShades %>% 
+  mutate(name=tolower(name)) %>%
+  count(name) %>%
+  drop_na() %>%
+  arrange(desc(n)) %>%
+  mutate(rank=rank(desc(n), ties.method = "first")) #code from [Cal Webb](https://t.co/KrE6NtQPaw?amp=1)
+
+# join rank to data 
+names2 = left_join(allShades %>% mutate(name = tolower(name)), names1, by = c("name")) %>% drop_na()
+
+# shade colors
+shade_col <- names2 %>% 
+  filter(rank<=10) %>% pull(hex, hex) #pull hex code from [Jamie Avendano](https://t.co/hxmx55bxWC?amp=1)
+
+# plot
+names2 %>% filter(rank<=10) %>%
+  ggplot(aes(y=fct_reorder(name,lightness,.fun = median, .desc=TRUE), x= lightness)) + 
+  geom_boxplot(outlier.shape=NA, color="slategrey",width=0.7) + 
+  geom_jitter(aes(color=hex),alpha=0.6, show.legend = F, height=0.2, size=1.5) + 
+  scale_color_manual(values=shade_col) + 
+  theme(plot.margin=margin(1,1,1,1,"cm"),
+        plot.title.position = "plot"
+        #plot.title=element_text(face="bold"),
+        #axis.title=element_text(face="bold")
+        ) + 
+  labs(x="Name", y= "Lightness",
+       title="Lightness of 10 Most Frequent Word-based Shade Name",
+       subtitle="Where Lightness 0 is pure black and 1 is pure white\n")
+
+```
+

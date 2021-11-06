@@ -1,0 +1,70 @@
+---
+title: "TidyTuesday Week 18/2021"
+output: html_notebook
+---
+
+[CEO Departures](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-27/readme.md), data from [Gentry et al.](https://onlinelibrary.wiley.com/doi/abs/10.1002/smj.3278) by way of [DataIsPlural](https://www.data-is-plural.com/archive/2021-04-21-edition/).
+
+
+```{r}
+# Load libaries
+library(tidyverse)
+library(ggtext)
+```
+
+
+```{r}
+# Import data
+departures <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-27/departures.csv')
+```
+
+```{r}
+# Count of departure_code
+departures %>% group_by(departure_code) %>% count()
+```
+
+```{r}
+# Wrangle
+departures %>% 
+  filter(!is.na(departure_code)) %>% 
+  filter(departure_code!=8) %>%
+  filter(departure_code!=9) %>%
+  mutate(code_2= case_when(
+    departure_code<=4 ~ "Involuntary",
+    departure_code<=6 ~ "Voluntary",
+    departure_code==7 ~ "Other")) %>%
+  group_by(fyear, code_2) %>% 
+  filter(between(fyear, 2000, 2018)) %>%
+  tally() %>%
+  mutate(prop=n/sum(n)) -> dep
+dep
+```
+
+
+```{r, fig.width=3.5, fig.height=3.5}
+# Plot
+p1 = dep %>%
+  ggplot(aes(y=fyear, x=n, color=code_2)) + 
+  geom_line(aes(group=fyear), color="grey") +
+  geom_point(size=2.5, alpha=0.7) + 
+  scale_y_reverse() +
+  scale_color_manual(values=c("#4b3f72", "#ff7d00", "#119da4"))+
+  theme_minimal(base_size = 10) + 
+  theme(plot.margin=margin(1,1,1,1,"cm"),
+        axis.title = element_text(face="bold", size=9),,
+        plot.title.position = "plot", 
+        plot.title = element_markdown(face="bold", size=15),
+        plot.subtitle = element_markdown(face="bold", size=13),
+        plot.caption.position = "plot",
+        legend.position="none",
+        plot.caption=element_markdown(hjust=0, color="#6c757d", size=8.8)) + 
+  labs(title="CEO Departure in S&P 1500 Firms, 2000-2018",
+       x="Count",
+       y="Year",
+       subtitle="<b><span style = 'color:#4b3f72'><b>Involuntary</b></span>, <span style = 'color:#ff7d00'><b>Other</b></span>, <span style = 'color:#119da4'><b>Voluntary</b></span> reasons",
+       caption= "<br>Involuntary reasons include CEO dismissal for legal violations/concerns, death or illness.<br>Other reasons include interim CEO, CEO departure following a merger or acquisition, or company ceased to exist.<br> Voluntary reasons include CEO retirement or left for new career opportunity.<br><br>#TidyTuesday Week 18 | Data from Gentry et al. and DataIsPlural")
+p1
+```
+
+
+

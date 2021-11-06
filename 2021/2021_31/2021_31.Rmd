@@ -1,0 +1,402 @@
+---
+title: "Tidy Tuesday Week 31/2021"
+date: "2021/07/27"
+output: html_notebook
+---
+
+Data visualization exercise
+
+This notebook uses [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 30 [Olympic Medals](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-27/readme.md), data from [Kaggle](https://www.kaggle.com/heesoo37/120-years-of-olympic-history-athletes-and-results).
+
+```{r}
+# load libraries 
+library(tidyverse)
+library(ggdark)
+library(patchwork)
+library(scales)
+library(glue)
+library(maps)
+library(mapdata)
+library(countrycode)
+library(geofacet)
+library(colorspace)
+library(ggsci)
+library(ggdist)
+library(gghalves)
+library(tidyquant)
+library(ggtext)
+library(ggmosaic)
+library(ggflags)
+library(DT)
+```
+
+```{r}
+# import data
+olympics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv')
+```
+
+#### Cumulative gold medals, by NOC (country)
+* shared on [Twitter](https://twitter.com/leeolney3/status/1419918423744782379)
+
+```{r}
+gold_cumulative = olympics %>% filter(medal=="Gold") %>% 
+  group_by(noc, year) %>% tally() %>%
+  mutate(cumulative = cumsum(n)) 
+```
+
+```{r}
+summary(gold_cumulative$year)
+```
+
+```{r}
+gold_cumulative %>% 
+  group_by(noc) %>% 
+  summarise(max_n = max(cumulative)) %>%
+  arrange(desc(max_n))
+```
+
+```{r}
+# main plot
+mainplot = gold_cumulative %>% 
+  mutate(color=case_when(noc=="USA" ~ "#e63946",
+                         noc=="URS" ~ "grey70",
+                         noc=="GER" ~ "#fb8500",
+                         noc=="GBR" ~ "#4cc9f0",
+                         noc=="ITA" ~ "#90be6d",
+                         TRUE~"#495057")) %>%
+  ggplot() +
+  aes(x=year, y= cumulative, color=color) + 
+  geom_path() + 
+  scale_color_identity(guide="none") + 
+  scale_x_continuous(limits=c(1896,2030), expand=c(0,0), breaks=seq(1900,2016,25)) +
+  annotate("text", y=2638, x=2017, label="USA: 2638", hjust=0,size=3, color="#e63946") +
+  annotate("text", y=1082, x=1989, label="URS: 1082", hjust=0,size=2.5, color="grey70") +
+  annotate("text", y=745, x=2017, label="GER: 745", hjust=0,size=2.5, color="#fb8500") +
+  annotate("text", y=666, x=2017, label="GBR: 678", hjust=0,size=2.5, color="#4cc9f0") +
+  annotate("text", y=575, x=2017, label="ITA: 575", hjust=0,size=2.5, color="#90be6d") +
+  geom_segment(aes(x = 1900, y = 0, xend = 1900, yend = 200), col = "grey70", linetype = "dotted", size=.2) +
+  geom_segment(aes(x = 1925, y = 0, xend = 1925, yend = 650), col = "grey70", linetype = "dotted", size=.2) +
+  geom_segment(aes(x = 1950, y = 0, xend = 1950, yend = 1000), col = "grey70", linetype = "dotted", size=.2) +
+  geom_segment(aes(x = 1975, y = 0, xend = 1975, yend = 1600), col = "grey70", linetype = "dotted", size=.2) +
+  geom_segment(aes(x = 2000, y = 0, xend = 2000, yend = 2300), col = "grey70", linetype = "dotted", size=.2) +
+  theme_minimal() +
+  theme(panel.grid=element_blank(),
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+        axis.title=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.text.x=element_text(margin=margin(t=-10), size=7, color="grey90"),
+        plot.caption=element_text(size=8, color="grey80"),
+        plot.background = element_rect(fill = "#212529", color=NA),
+        plot.title=element_text(margin=margin(t=15,b=-30),hjust=0,face="bold",size=24,color="grey90"),
+        plot.subtitle=element_text(margin=margin(t=35,b=-10),hjust=0,face="bold",size=8.5,color="grey80")
+        ) +
+  ggtitle("Olympic Gold Medals") + 
+  labs(caption="\n#TidyTuesday Week 31 | Data from Kaggle",
+       subtitle="Cumulative Olympic gold medals won, by National Olympic Committee (NOC) from 1896 to 2016")
+```
+
+
+```{r}
+# map insert
+world <- map_data("world") %>% filter(region != "Antarctica")
+world2 = world %>% mutate(col = case_when(region=="UK"~"#4cc9f0",
+                         region=="Germany"~"#fb8500",
+                         region=="USA"~"#e63946",
+                         region=="Italy"~"#90be6d",
+                         TRUE~"#495057"
+                         ))
+
+map_insert = ggplot() + geom_map(data=world2, map=world2, aes(long, lat, map_id=region, fill=col)) + 
+  scale_fill_identity() + 
+  theme_void() + 
+  theme(plot.background = element_rect(fill = "#212529", color=NA)) +
+  coord_quickmap()
+```
+
+
+```{r}
+# insert map 
+mainplot |inset_element(map_insert ,
+                    align_to = "full",
+                    clip = FALSE,
+                    on_top = TRUE,
+                    ignore_tag = TRUE,
+                    left = 0.01, 
+                    bottom = 0.15, 
+                    right = 0.5, 
+                    top = 1) 
+```
+ALT text: Line plot showing the cumulative gold medals won by respective NOCs from 1896 to 2016, where USA won the most gold medals (n=2638). 
+
+#### Ratio of medals to participation
+```{r}
+# medal (4 levels) ratio
+medal4 = olympics %>% 
+  mutate(country= countrycode(noc, origin='ioc', destination='country.name')) %>% # get country name 
+  count(country, year, medal) %>%
+  group_by(country, year) %>% mutate(sum_medal=sum(n)) %>%
+  ungroup() %>%
+  mutate(ratio = n/sum_medal)
+```
+
+```{r}
+setdiff(medal2$region, world$region)
+```
+
+```{r}
+# medal (2 levels) ratio
+medal2 = olympics %>%
+  mutate(region= countrycode(noc, origin='ioc', destination='country.name')) %>% # get country name
+  mutate(medal2 = ifelse(is.na(medal),"0","1")) %>%
+  group_by(region, noc, medal2) %>% tally() %>%
+  mutate(ratio=n/sum(n)*100) %>%
+  filter(medal2=="1") %>%
+  drop_na() %>%
+  mutate(ratio_cat = cut(ratio, breaks=seq(0,30,10))) %>%
+  mutate(region= case_when(region=="United States"~"USA",
+                            region=="United Kingdom"~"UK",
+                            region=="Côte d’Ivoire"~"Ivory Coast",
+                            region=="Czechia"~"Czech Republic",
+                            TRUE ~ region)) 
+medal2
+```
+
+
+```{r, warning=F}
+joined = left_join(world, medal2, by="region") 
+
+ggplot() + geom_map(data=joined, map=joined, aes(long, lat, map_id=region, fill=ratio_cat)) + 
+  theme_void() + 
+  coord_quickmap() + 
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, size=10, face="bold"),
+        plot.margin=unit(c(0.5,1,0.5,1),"cm"),
+        legend.title=element_text(size=8),
+        legend.text=element_text(size = 8)) + 
+  scale_fill_manual(values=c("#219ebc","#ffb703","#e63946"),na.value="grey",
+                    breaks=c("(0,10]","(10,20]","(20,30]")) + # hide NA in legend
+  guides(fill = guide_legend(title = "Ratio (%)",
+                             title.position = "left",
+                             title.hjust = 0.5,
+                             label.position = "bottom",
+                             label.hjust = 0.5,
+                             nrow = 1,
+                             keyheight = .5,
+                             keywidth = 4)) + 
+  labs(title="Ratio of medals to participation, by country from 1896 to 2016\n")
+```
+
+
+
+
+#### Distribution of medalist height by sport 
+
+```{r}
+sport3 = olympics %>% filter(!is.na(medal)) %>% count(sport, sort=T) %>% slice(1:5)
+
+df_height = olympics %>% 
+  filter(!is.na(medal)) %>%
+  filter(sport %in% sport3$sport) %>%
+  drop_na(height, sport) %>%
+  mutate(sport=fct_infreq(sport)) %>%
+  mutate(sport_num = as.numeric(sport))
+  
+df_height_stat = df_height %>%
+  group_by(sport, sport_num) %>%
+  summarise(median=median(height),
+            max=max(height),
+            n=n())
+```
+
+
+```{r}
+# raincloud v1: stat_half_eye and geom_half_point
+# reference: https://z3tt.github.io/OutlierConf2021/
+df_height %>%
+  ggplot(aes(x=sport_num, y=height, color=sport)) + 
+  geom_half_point(side="l", size=0.7, shape=21, alpha=0.4, range_scale = 0.3) + 
+  stat_summary(
+    geom = "linerange",
+    fun.min = function(x) -Inf,
+    fun.max = function(x) median(x, na.rm = TRUE),
+    linetype = "dotted",
+    orientation = "x",
+    size = .5
+  ) +
+  ggdist::stat_halfeye(
+    aes(x = sport_num,color = sport,fill = after_scale(colorspace::lighten(color, .3))
+    ),shape = 18,point_size = 3,interval_size = 1.8,adjust = .5,.width = c(0, 1)) + 
+  geom_text(data= df_height_stat,
+    aes(y = median, x=sport_num,label = median),
+    color = "white",fontface = "bold",size = 3,nudge_x = .15) +
+  geom_text(data= df_height_stat,
+    aes(y = max, x=sport_num,label = glue::glue("n = {n}")),
+    fontface = "bold",size = 3,nudge_x = .15, hjust=0) +
+  scale_fill_futurama() +
+  scale_color_futurama() +
+  scale_x_continuous(breaks = 1:5, 
+                     labels = c("Athletics","Swimming","Rowing","Gymnastics","Fencing")) +
+  scale_y_continuous(expand=c(.1,.1), breaks=seq(140,210,10)) +
+  coord_flip() + 
+  theme(legend.position="none",
+        panel.grid.minor=element_blank(),
+        panel.grid.major.y=element_blank(),
+        plot.margin=unit(c(0.5,2,0.5,0.5),"cm"),
+        plot.title.position = "plot",
+        axis.title.y=element_blank(),
+        axis.title.x=element_text(size=9),
+        panel.grid.major.x=element_line(size=.3),
+        axis.text.y=element_text(size=9)) +
+  labs(subtitle="Distribution of Olympics medalist height, by sport (5 sports with highest medal count)",
+       y="Height (in cm)")
+```
+
+
+```{r, warning=F, fig.height=3.8}
+# raincloud v2: stat_half_eye, geom_boxplot and stat_dots
+# reference: https://www.r-bloggers.com/2021/07/ggdist-make-a-raincloud-plot-to-visualize-distribution-in-ggplot2/
+df_height %>% 
+  ggplot(aes(x=sport, y=height, fill=sport, color=sport)) + 
+  stat_halfeye(adjust=0.5, justification=-.2, .width=0, point_color=NA) + 
+  geom_boxplot(width=0.1, outlier.color=NA, alpha=0.5) + 
+  stat_dots(side="left", justification=1.1, binwidth=unit(c(0, 0.01), "npc")) + 
+  #gghalves::geom_half_point(side="l", alpha=.3, shape="|", size=5) + #range_scale=.4, 
+  geom_text(data=df_height_stat, aes(y=median, x=sport, label=median), 
+            fontface="bold",color="white",nudge_x = .3,size=4) +
+  geom_text(data=df_height_stat, aes(y=max, x=sport, color=sport, label=glue::glue("n = {n}")), 
+            fontface="bold",nudge_x = .3,size=4, nudge_y=3) +
+  theme_tq(base_size=14) +
+  theme(legend.position = "none",
+        plot.margin=unit(c(0.5,2,0.5,0.5),"cm")) + 
+  scale_fill_futurama() + 
+  scale_color_futurama() +
+  coord_flip() + 
+  labs(title="Distribution of Olympics medalist height by sport",
+       subtitle="Top 5 sports by medal count",
+       x="Sport", y="Height (in cm)")
+  
+```
+
+#### Swimming medals 
+```{r}
+olympics %>% 
+  filter(!is.na(medal)) %>%
+  filter(sport =="Swimming") %>%
+  mutate(event_dist = parse_number(event)) %>%
+  mutate(event=str_to_lower(event)) %>%
+  filter(!str_detect(event, 'yard')) %>%
+  drop_na() %>%
+  mutate(type=case_when(str_detect(event, "relay")~"relay",
+                        TRUE ~ "individual")) %>%
+  mutate(noc=fct_lump(noc, 3)) %>%
+  group_by(type, noc) %>% tally() %>% mutate(prop=round(n/sum(n),3)) %>%
+  arrange(type, desc(n))
+```
+
+#### Female and male athletes
+```{r}
+mdata = olympics %>% 
+  group_by(year, sex) %>%
+  tally() %>% 
+  mutate(prop=n/sum(n)) 
+
+ggplot(olympics) +
+  geom_mosaic(aes(x=product(sex, year), fill=sex), show.legend=F) + 
+  scale_y_continuous(position="right") +
+  theme(axis.text.x=element_text(angle=90, vjust=0.5,size=7, color="black"),
+        axis.text.y=element_text(color="black",size=7),
+        panel.grid.minor=element_blank(),
+        axis.title=element_blank(),
+        axis.ticks=element_line(color="grey"),
+        axis.ticks.length = unit(.4, "cm"),
+        panel.grid.major.x=element_blank(),
+        plot.margin=unit(c(1,1,1,1),"cm"),
+        plot.title=element_markdown(face="bold",size=12),
+        plot.subtitle = element_text(size=8, color="grey30")) + 
+  coord_cartesian(expand = FALSE,clip="off") + 
+  scale_fill_manual(values=c("#ee9b00","#656d4a")) + 
+  labs(title="Olympics <span style = 'color:#ee9b00'>female</span> and <span style = 'color:#656d4a'>male</span> athletes, by year",
+       subtitle="Cross sectional proportion of athletes by gender, from 1896 to 2016. Winter and Summer Games were held in the same year up until\n1992. After that, they staggered them such that Winter Games occur on a four year cycle starting with 1994, then Summer in 1996,\nthenWinter in 1998, and so on.\n")
+
+```
+
+#### Event count by season and year
+
+```{r}
+olympics %>%
+  count(season, year, event) %>%
+  group_by(season, year) %>% tally(n) %>%
+  ggplot(aes(x=year, y=n, fill=season)) + 
+  geom_col() + 
+  scale_x_continuous(breaks=seq(1896,2016,20)) + 
+  scale_y_continuous(labels=scales::comma) + 
+  theme(panel.grid.minor=element_blank(),
+        legend.position = "top",
+        plot.margin=unit(c(1,2,1,1),"cm"),
+        axis.title=element_text(size=9),
+        plot.title.position="plot",
+        legend.justification = "left",
+        legend.margin = margin(l=-45),
+        legend.key.width =unit(.25,"cm"),
+        panel.grid.major=element_line(size=.3)) + 
+  scale_fill_npg() + 
+  labs(fill="", x="Year", y="Event count",
+       subtitle="Olympic event count, by season and year") 
+```
+
+
+#### 10 countries with most summer olympics medal
+
+```{r}
+s10 = olympics %>% 
+  filter(season=="Summer",year>1990,!is.na(medal)) %>% 
+  count(noc, sort=T) %>%
+  slice(1:10)
+```
+
+```{r}
+# reference: https://kpress.dev/blog/2021-07-26-tidy-tuesday-olympic-medals/
+# reference: https://github.com/davidsjoberg/ggbump
+df_rank = olympics %>% 
+  filter(season=="Summer",year>1990,!is.na(medal)) %>%
+  filter(noc %in% s10$noc) %>%
+  mutate(region= countrycode(noc, origin='ioc', destination='genc2c')) %>% 
+  mutate(region= str_to_lower(region)) %>%
+  group_by(year, region) %>% tally() %>%
+  arrange(year, -n) %>%
+  mutate(rank = dense_rank(desc(n)))
+
+df_rank %>%
+  ggplot(aes(year, rank, color=region)) + 
+  geom_point(size=2) +
+  geom_bump(size=1) + 
+  geom_flag(data= df_rank %>% filter(year==2016),aes(country=region),size=8) +
+  #geom_text(data= df_rank %>% filter(year==2016), aes(x=year+0.5, y=rank, label=country, hjust=0),size=3) +
+  scale_y_reverse(breaks=seq(1,10,1)) + 
+  scale_x_continuous(breaks=seq(1992, 2016,4)) + 
+  scale_color_d3() +
+  theme(panel.grid.minor=element_blank(),
+        panel.grid.major=element_blank(),
+        plot.margin=unit(c(.5,1,.5,.5),"cm"),
+        legend.position="none",
+        plot.background=element_rect(fill="#e9ecef", color="NA"),
+        axis.title=element_text(size=8.5),
+        plot.title.position = "plot",
+        axis.text=element_text(color="black")) + 
+  labs(x="Year", y="Rank",
+       subtitle="Countries with most summer Olympics medals\n") 
+```
+
+
+#### Sport: min year, max year, event count
+  
+```{r}
+olympics %>% group_by(sport) %>%
+  summarise(min_year= min(year), max_year=max(year), year_count = n_distinct(year)) %>%
+  arrange(min_year, max_year) %>%
+  ungroup() %>%
+  DT::datatable(rownames=FALSE,options = list(order = list(list(1, 'asc'))))
+```
+
+

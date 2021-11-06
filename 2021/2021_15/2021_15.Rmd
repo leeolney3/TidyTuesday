@@ -1,0 +1,177 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Tidy Tuesday week 15 | Data from Our World in Data
+
+[Deforestation](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-06/readme.md), data from [Our World in Data](https://ourworldindata.org/forests-and-deforestation) with the [corresponding article](https://ucsdnews.ucsd.edu/feature/deforestation-drives-disease-climate-change-and-its-happening-at-a-rapid-rate)
+
+Datasets
+
+* Deforestation
+* Share of forest area
+* Drivers of deforestation
+* Deforestation by commodity
+  + Soybean production and use
+  + Palm oil production
+  
+```{r}
+# load library
+library(tidyverse)
+library(countrycode)
+library(colorspace)
+library(animation)
+```
+
+
+```{r}
+# read data
+forest <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-06/forest.csv')
+forest_area <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-06/forest_area.csv')
+brazil_loss <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-06/brazil_loss.csv')
+soybean_use <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-06/soybean_use.csv')
+vegetable_oil <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-06/vegetable_oil.csv')
+```
+
+```{r}
+glimpse(vegetable_oil)
+```
+
+```{r}
+brazil_loss %>% 
+  pivot_longer(cols=commercial_crops:small_scale_clearing) %>%
+  ggplot(aes(x=factor(year), y=value, color=I(ifelse(name=="pasture","red","grey")),group=name)) +
+  geom_line() + 
+  scale_y_continuous(labels=scales::comma) + 
+  theme_minimal(base_size = 10) + 
+  theme(
+    legend.position="none",
+    panel.grid.minor.y=element_blank(),
+    #plot.title.position = "plot",
+    plot.margin=margin(1,1,1,1,"cm")
+    ) +
+  labs(y="Loss", x="Year",
+       caption="Tidy Tuesday week 15 | Data from Our World in Data",
+       title="Loss of Brazillian Forest due to Pasture",
+       subtitle="From 2001 to 2013, pasture for livestock resulted in the highest loss of Brazillan forest,\ncompared to the other categories (mining, fire, roads etc.)\n") +
+  coord_cartesian(expand=FALSE, clip="off")
+```
+
+```{r}
+summary(soybean_use$year)
+soy13 = soybean_use %>% filter(year==2013) %>%
+  filter(!is.na(code))
+```
+
+```{r}
+world = map_data("world")
+joined = soy13 %>%
+  left_join(world, by=c('entity'='region'))
+head(joined)
+```
+
+```{r, warning=FALSE, message=FALSE}
+p1 = ggplot() + 
+  geom_map(data = world, map = world,
+           aes(long, lat, group = group,  map_id = region),
+           fill = "white", color = "#889696", size=0.1) +
+  geom_map(data =joined, map = world,
+           aes(fill = human_food, map_id = entity),
+           color = "#889696", size = 0.1, alpha = .9) + 
+  scale_fill_continuous_sequential(palette = "DarkMint", trans="log10", na.value = 'lightgrey',labels=scales::comma) +
+  theme_void() + 
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        legend.title=element_text(size=9.5),
+        plot.margin=margin(1,2.5,1,2.5,"cm"),
+        plot.caption=element_text(size=7)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                barwidth = unit(20, "lines"), 
+                                barheight = unit(.5, "lines"))) + 
+  labs(fill="Used for human food",
+       title="Soy Bean Uses in 2013",
+       subtitle="",
+       caption="Tidy Tuesday week 15 | Data from Our World in Data")
+ 
+p1
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+p2 = ggplot() + 
+  geom_map(data = world, map = world,
+           aes(long, lat, group = group,  map_id = region),
+           fill = "white", color = "#889696", size=0.1) +
+  geom_map(data =joined, map = world,
+           aes(fill = animal_feed, map_id = entity),
+           color = "#889696", size = 0.1, alpha = .9) + 
+  scale_fill_continuous_sequential(palette = "Peach", trans="log10", na.value = 'lightgrey',labels=scales::comma) +
+  theme_void() + 
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        legend.title=element_text(size=9.5),
+        plot.subtitle=element_text(hjust=0.5),
+        plot.margin=margin(1,2.5,1,2.5,"cm"),
+        plot.caption=element_text(size=7)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                barwidth = unit(20, "lines"), 
+                                barheight = unit(.5, "lines"))) + 
+  labs(fill= "Used for animal food",
+       title="Soy Bean Uses in 2013",
+       subtitle="",
+       caption="Tidy Tuesday week 15 | Data from Our World in Data")
+ 
+p2
+```
+
+```{r, warning=FALSE, message=FALSE}
+p3 = ggplot() + 
+  geom_map(data = world, map = world,
+           aes(long, lat, group = group,  map_id = region),
+           fill = "white", color = "#889696", size=0.1) +
+  geom_map(data =joined, map = world,
+           aes(fill = processed, map_id = entity),
+           color = "#889696", size = 0.1, alpha = .9) + 
+  scale_fill_continuous_sequential(palette = "Burg", trans="log10", na.value = 'lightgrey',labels=scales::comma) +
+  theme_void() + 
+  theme(legend.position="top",
+        plot.title=element_text(hjust=0.5, face="bold"),
+        legend.title=element_text(size=9.5),
+        plot.subtitle=element_text(hjust=0.5),
+        plot.margin=margin(1,2.5,1,2.5,"cm"),
+        plot.caption=element_text(size=7)) + 
+  guides(fill = guide_colorbar(title.position = "top", 
+                                title.hjust = .5, 
+                                barwidth = unit(20, "lines"), 
+                                barheight = unit(.5, "lines"))) + 
+  labs(fill= "Processed into vegetable oil, biofuel, processed animal feed",
+       title="Soy Bean Uses in 2013",
+       subtitle="",
+       caption="Tidy Tuesday week 15 | Data from Our World in Data")
+ 
+p3
+```
+
+```{r}
+# animation
+animation::saveGIF(
+  expr = {
+    plot(p1)
+    plot(p2)
+    plot(p3)
+  }, ani.height=500, ani.width=800,
+  movie.name = "deforestation.gif"
+)
+```
+
+
+
+```{r, fig.width=3.2, fig.height=6, warning=FALSE, message=FALSE}
+#p1/
+  #p2/
+    #p3 + plot_annotation(caption="Tidy Tuesday week 15 | Data from Our World in Data",title="Soybean Uses in 2015") & theme(plot.title = element_text(face="bold", size=20, hjust=0.5),plot.margin=margin(1,1,1,1,"cm"))
+```
+

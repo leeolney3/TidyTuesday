@@ -1,0 +1,700 @@
+---
+title: "Tidy Tuesday Week 37/2021"
+date: "2021/09/07"
+output: html_notebook
+---
+
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) week 37 [Formula 1 Races](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-07/readme.md), data from [ergast.com/mrd/db](https://ergast.com/mrd/db/)
+
+```{r}
+# load libraries 
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(ggstream)
+library(rcartocolor)
+library(ggdist)
+library(maps)
+library(countrycode)
+library(glue)
+library(gt)
+library(colorspace)
+```
+
+```{r}
+# import data
+circuits <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/circuits.csv')
+constructor_results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_results.csv')
+constructor_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_standings.csv')
+constructors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructors.csv')
+driver_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/driver_standings.csv')
+drivers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/drivers.csv')
+lap_times <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/lap_times.csv')
+pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv')
+qualifying <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/qualifying.csv')
+races <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/races.csv')
+results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/results.csv')
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/seasons.csv')
+status <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/status.csv')
+
+# download.file("http://ergast.com/downloads/f1db_ansi.sql.gz", destfile = "f1db-mysql.zip"
+```
+
+
+
+### Wins 
+* shared on [Twitter](https://twitter.com/leeolney3/status/1435033728498208780)
+
+```{r}
+# https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-07/readme.md
+driver_results_df <- driver_standings %>% 
+  left_join(races, by = "raceId") %>% 
+  rename(driver_url = url) %>% 
+  left_join(drivers, by = "driverId")
+```
+
+```{r}
+# missing data
+colSums(is.na(driver_results_df))
+
+# unique value count
+driver_results_df %>% summarise_all(n_distinct)
+```
+
+
+```{r}
+dr = driver_results_df %>% 
+  filter(wins==1) %>% 
+  count(nationality, sort=T) %>%
+  filter(n>100) %>%
+  mutate(nationality=(fct_inorder(nationality))) %>%
+  mutate(lab = paste0(nationality," ","(",n,")")) %>%
+  mutate(lab = (fct_inorder(lab)))
+
+dr2 = driver_results_df %>% filter(wins==1) %>%
+  filter(nationality %in% dr$nationality) %>%
+  filter(year<2021) %>%
+  group_by(nationality, year) %>% 
+  tally(wins) 
+```
+
+
+```{r}
+ggplot(dr2, aes(year, n, fill=factor(nationality, levels=dr$nationality))) +
+  geom_stream(bw=.5) +
+  scale_fill_carto_d(palette = "Prism", labels=dr$lab, direction=-1) +
+  scale_x_continuous(breaks=c(1950,1965,1980,1995,2010,2020),
+                     expand=c(0.01,0.01)) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top",
+        legend.key.height=unit(.5,"lines"),
+        legend.key.width = unit(3.75,"lines"),
+        axis.title=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid=element_line(size=.2),
+        #plot.background = element_rect(fill="#fdfff8", color=NA),
+        axis.text=element_text(color="#6c757d"),
+        plot.margin=unit(c(.5,1,.3,.5),"cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold", size=14, color="#343a40"),
+        plot.subtitle = element_text(color="#343a40", size=9),
+        plot.caption = element_text(color="#343a40",size=7.2, margin=margin(t=20)),
+        legend.title=element_text(size=8.5, color="#343a40"),
+        legend.text=element_text(color="#343a40", size=7.3),
+        legend.margin=margin(c(7,0,0,0)),
+        legend.justification = "left"
+        ) +
+  guides(fill=guide_legend(nrow=1,byrow=TRUE, title.position = "left", title.hjust=0.5,
+                           label.position = "bottom")) +
+    labs(fill="Nationality",
+         title="Formula 1 Races Wins",
+         subtitle="Count of wins by 7 nationalites with the highest total wins, from 1950 to 2020",
+         caption="#TidyTuesday Week 37 | Data source: ergast.com/mrd/db") 
+```
+
+### Cumulative wins by nationality
+```{r}
+dr3 = driver_results_df %>% 
+  filter(wins==1) %>% 
+  filter(nationality!="Monegasque") %>% 
+  group_by(nationality, year) %>% 
+  tally(wins) %>%
+  mutate(cs= cumsum(n)) %>%
+  ungroup() %>%
+  mutate(col= case_when(nationality=="British"~"#e71d36",
+                        nationality=="Italian"~"#ff9f1c",
+                        nationality=="French" ~"#2ec4b6",
+                        nationality=="German" ~"#ac46a1",
+                        TRUE ~"grey70"))
+
+lab = dr3 %>% 
+  group_by(nationality) %>%
+  filter(year==max(year)) %>%
+  filter(col!="grey70") %>%
+  mutate(lab = paste(nationality, cs))
+```
+
+```{r}
+ggplot(dr3, aes(x=year, y=cs, fill=nationality)) +
+  geom_step(aes(x=year-0.5, color=col)) +
+  geom_segment(aes(x=year-0.5, xend=year+0.5, y=cs, yend=cs, color=col)) +
+  geom_text(data =lab, aes(x=year+1, y=cs, label=lab, color=col),size=3, hjust=0, fontface="bold") +
+  scale_color_identity() +
+  scale_y_continuous(limits=c(0,420),expand=c(0.01,0.01)) +
+  scale_x_continuous(breaks=seq(1950,2020,10), expand=c(0.01,0.01), limits=c(1949,2032)) +
+  theme_minimal(base_size = 9.5) +
+  theme(panel.grid.minor=element_blank(),
+        plot.margin=unit(c(.5,1,.5,.5),"cm"),
+        panel.grid=element_line(size=.2),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold")
+        ) + 
+  labs(x="", y="", title="Formula 1 Races Wins",subtitle="Cumulative wins by nationality")
+```
+
+
+### Europe region: circuits count and location
+
+```{r}
+world = map_data("world") %>% filter(region!="Russia")
+
+c1 = circuits %>% rename(region=country) %>%
+  mutate(region=case_when(region=="UAE"~"United Arab Emirates",
+                          region=="Korea"~"South Korea",
+                          TRUE~region)) %>%
+  group_by(region) %>%
+  summarise(n=n_distinct(name)) %>%
+  mutate(reg = countrycode(region, origin = 'country.name', destination = 'un.region.name')) %>%
+  filter(reg=="Europe") %>%
+  filter(region!="Russia")
+
+c2 = inner_join(world,c1, by="region")
+
+c3 = circuits %>% rename(region=country) %>%
+  mutate(reg = countrycode(region, origin = 'country.name', destination = 'un.region.name')) %>%
+  filter(region!="Russia") %>%
+  filter(reg=="Europe") %>%
+  rename(long=lng)
+```
+
+```{r}
+ggplot() +
+  geom_polygon(data = c2, aes(x=long, y = lat, group = group, fill=factor(n)), 
+               color="#adb5bd", size=.1) +
+  coord_fixed(1.3) + 
+  geom_point(data=c3,aes(x=long, y=lat), color="#ffc300", alpha=0.8, size=1.5) +
+  #scale_fill_manual(values=(c("#d1eeea","#85c4c9","#68abb8","#3b738f","#2a5674"))) +
+  scale_fill_manual(values=(c("#9eb3c2","#1c7293","#065a82","#1b3b6f","#21295c"))) +
+  guides(fill = guide_legend(override.aes = list(size = 3.5,color="white"))) +
+  theme_void(base_size = 9) + 
+  theme(plot.subtitle=element_text(size=7),
+        legend.title=element_text(size=7),
+        plot.margin=unit(c(.4,0,.2,0),"cm")) +
+  labs(fill="Circuit count",
+       title="Formula 1 Circuits in Europe",
+       subtitle="Total of 39 circuits in Europe (excl. Russia), where France has the most circuits (n=7)") 
+```
+
+
+### Pitstop duration
+```{r}
+race_name = races %>% select(raceId, year, name)
+
+ps = pit_stops %>% select(raceId, milliseconds) %>%
+  left_join(race_name, by="raceId") %>%
+  mutate(seconds = milliseconds/1000)
+```
+
+```{r}
+psych::describeBy(ps$seconds, ps$name, mat=T) %>% 
+  remove_rownames() %>%
+  select(-item,-trimmed,-kurtosis,-se,-mad,-vars) %>%
+  mutate(group1 = str_remove(group1," Grand Prix")) %>%
+  rename('Grand Prix'=group1) %>%
+  mutate(across(3:9, round, 1)) %>%
+  arrange(desc(n))
+```
+
+```{r}
+quantile(ps$seconds, c(.25, .50,  .75, .90, .95, .99))
+
+# get 9 grand prix with most races
+ps9 = ps %>% count(name, sort=T) %>% slice(1:9) %>%
+  mutate(name=fct_inorder(name))
+```
+
+```{r}
+# Distribution of pitstop duration by GP (9 GP with the most races)
+ps2 = ps %>% 
+  filter(name %in% ps9$name) %>%
+  filter(seconds<37.2) %>%
+  mutate(name = str_remove(name," Grand Prix")) 
+
+ggplot(ps2,aes(x=seconds, y=reorder(name,seconds,FUN=median),
+             color=reorder(name,seconds,FUN=median))) +
+  ggdist::stat_dots(show.legend = F) +
+  #geom_text(data = ps2 %>% count(name) %>% mutate(lab=paste0("n=",n), x=35), 
+            #aes(x=x, y=name, label=lab, color=name), show.legend = F,vjust=-1, size=3) +
+  coord_cartesian(expand=F, clip="off") +
+  scale_color_carto_d(palette = "Prism", direction=-1) +
+  theme_minimal(base_size = 10) +
+  theme(panel.grid=element_line(size=.2),
+        plot.margin=unit(c(.5,1,.5,.5),"cm"),
+        panel.grid.minor=element_blank(),
+        axis.text.y=element_text(vjust=-0.5, size=8.5),
+        axis.title = element_text(size=8.5),
+        plot.title.position = "plot"
+        ) + 
+  labs(y="Grand Prix", x="Duration of stop (in seconds)",
+       subtitle="Distribution of pitstop duration")
+```
+
+### Winning time 
+
+```{r}
+# dot plot (average, min, max)
+# reference: https://twitter.com/nrennie35/status/1435314200251977731
+
+wt = left_join(left_join(filter(results, positionText == 1), races, by="raceId"), constructors, by="constructorId") 
+
+w1 = wt %>% mutate(hours = (((as.numeric(milliseconds)/1000)/60)/60)) %>%
+  select(year, hours) %>%
+  group_by(year) %>%
+  mutate(col=case_when(hours==max(hours)~"#ee9b00",
+                       hours==min(hours)~"#0091ad",
+                        TRUE~"grey50")) %>%
+  mutate(alpha=case_when(col=="grey50"~0.5,
+                         TRUE~0.8)) %>%
+  mutate(shape=case_when(col=="grey50"~21,
+                         TRUE~19)) %>%
+  ggplot(aes(x=year, y=hours, color=col)) +
+  geom_point(aes(alpha=alpha,shape=shape)) +
+  scale_color_identity() +
+  scale_alpha_identity() +
+  scale_shape_identity() +
+  geom_line(data=wt %>% group_by(year) %>% summarise(mean=mean(as.numeric(milliseconds))),
+            aes(x=year, y=mean/1000/60/60), color="#f72585",size=0.9) +
+  scale_x_continuous(expand=c(0.03,0.03), breaks=c(1950,1965,1980,1995,2010,2020)) +
+  theme_minimal(base_size=10) +
+  theme(panel.grid.minor=element_blank(),
+        panel.grid=element_line(size=.3),
+        plot.margin=unit(c(.5,1.5,.5,1),"cm"),
+        axis.title.y=element_text(size=8.75, margin=margin(r=5),color="grey10"),
+        axis.title.x=element_text(size=8.75, margin=margin(t=-2),color="grey10"),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=10.5)
+        ) +
+  labs(x="Year", y="Winning time (in hours)",
+       subtitle = "Formula 1 winning time across the years") +
+  annotate(geom="curve", xend=1957.5, yend=3, x=1962, y=3.2, color="grey70",
+           curvature=.2, arrow=arrow(length=unit(0.3, "lines"))) +
+  annotate(geom="text", x=1962, y=3.2, label="Average time", hjust=0, size=3,color="#f72585") +
+  annotate(geom="curve", xend=1991.7, yend=.42, x=1996, y=.6, color="grey70",
+           curvature=.2, arrow=arrow(length=unit(0.3, "lines"))) +
+  annotate(geom="text", x=1996, y=.6, label="Minimum", hjust=0, size=3,color="#0091ad") +
+  annotate(geom="curve", xend=2010.5, yend=4, x=2005, y=3.8, color="grey70",
+           curvature=.2, arrow=arrow(length=unit(0.3, "lines"))) +
+  annotate(geom="text", x=1997.8, y=3.8, label="Maximum", hjust=0, size=3,color="#ee9b00") 
+
+w1
+```
+
+```{r}
+# area plot
+# reference: https://twitter.com/nrennie35/status/1435314200251977731
+
+wt6 = wt %>% group_by(name.x) %>%
+  summarise(n=n_distinct(year)) %>% 
+  arrange(desc(n)) %>%
+  slice(1:6)
+
+w2 = wt %>% filter(name.x %in% wt6$name.x) %>%
+  mutate(hours = (((as.numeric(milliseconds)/1000)/60)/60)) %>%
+  ggplot(aes(x=year, y=hours)) +
+  geom_area(aes(group=name.x, fill=name.x),color=NA, show.legend = F) +
+  facet_wrap(~name.x, ncol=3) +
+  theme_light(base_size = 9) +
+  scale_fill_manual(values=c("#742C14FF", "#3D4F7DFF", "#657060FF", 
+                             "#E48C2AFF","#CD4F38FF","#EAD890FF")) +
+  scale_x_continuous(breaks=c(1950,1985,2020)) +
+  theme(panel.grid=element_blank(),
+        strip.background = element_rect(fill=NA),
+        strip.text = element_text(color="grey30", size = 8.5),
+        plot.margin=unit(c(.5,1.5,.5,1),"cm"),
+        plot.title.position = "plot",
+        axis.title.y=element_text(size=8.75, color="grey10", margin=margin(r=7)),
+        axis.title.x=element_text(size=8.75, color="grey10", margin=margin(t=4)),
+        plot.subtitle=element_text(size=10.5)
+        ) +
+  labs(x="Year", y="Winning time (in hours)",
+       subtitle = "Winning time by Grand Prix and year")
+
+w2
+```
+
+
+### Valtteri Bottas: Final race position
+
+```{r, warning=F}
+# heatmap 
+# reference: https://twitter.com/Jamie_Bio/status/1435306508867227649
+
+driver <- driver_standings %>% 
+  left_join(races, by = "raceId") %>% 
+  rename(driver_url = url) %>% 
+  left_join(drivers, by = "driverId") %>% 
+  left_join(results, by = c("raceId", "driverId")) %>% 
+  rename(race.pos = position.y)
+
+driver %>% 
+  mutate(driver_name = paste(forename, surname)) %>%
+  filter(driver_name=="Valtteri Bottas") %>%
+  drop_na() %>%
+  mutate(race.pos = as.numeric(race.pos),
+         race.pos.fact = cut(race.pos, 
+                             breaks = c(0, 1, 2, 3, 4, 5, max(race.pos, na.rm = T)))) %>% 
+  ggplot(aes(x = round, y = year, fill = race.pos.fact)) +
+  scale_y_reverse(breaks=c(2013,2021)) +
+  scale_x_continuous(breaks=c(1,21), expand=c(0.02,0.02)) +
+  geom_tile(colour = "white", size = 0.5) +
+  theme_minimal() +
+  theme(panel.grid=element_blank(),
+        axis.title=element_blank(),
+        legend.position = "bottom",
+        plot.title.position = "plot",
+        plot.margin=unit(c(.75,1.5,.75,1),"cm"),
+        legend.text=element_text(size=8.5),
+        legend.title=element_text(size=9.5),
+        axis.text=element_blank(),
+        legend.box.margin=margin(-10, 0, 0, 0),
+        plot.subtitle=element_text(size=9),
+        plot.title=element_markdown(size=11)
+        ) + 
+  scale_fill_manual(values=sequential_hcl(6, palette = "heat"), na.value="grey80",
+                    labels = c("1", "2", "3", "4", "5", ">5", "DNF")) +
+  guides(fill=guide_legend(nrow=1,byrow=TRUE, title.position = "left", title.hjust=0.5,
+                           label.position = "bottom")) +
+  geom_segment(aes(x = -0.5, y = 2013.5, xend = -0.5, yend = 2020.5),
+               colour = "grey50", size = 0.25) +
+  annotate(geom = "text", label = c("2013", "2021", "Year"), 
+           x = c(-.5, -.5, -1), y = c(2013, 2021, 2017), 
+           size = 3, angle = c(0, 0, 90), color="grey10") +
+  geom_segment(aes(x = 1.5, y = 2022, xend = 20.5, yend = 2022),
+               colour = "grey50", size = 0.25) +
+  annotate(geom = "text", label = c("1", "21", "Race No."), 
+           colour = "grey10", x = c(1, 21, 10), y = c(2022, 2022, 2022.5), size = 3) +
+  labs(title="**Valtteri Bottas**: Final race position", 
+       subtitle="Valtteri Bottas has won nine races, three in 2017, four in 2019 and two in 2020",fill="Final Race Position") 
+```
+
+### Points
+
+```{r, message=F}
+# reference: https://twitter.com/MikeMaieli/status/1435375782818455554/photo/1
+
+# current point system
+current_points = results %>%
+  filter(raceId==max(raceId)) %>%
+  filter(points>0) %>%
+  select(positionOrder, points)
+
+# results, current points, driver age, race date
+points_age = results %>%
+  left_join(races, by="raceId") %>%
+  left_join(drivers, by="driverId") %>%
+  unite(driver_name, c("forename","surname"), sep=" ") %>%
+  left_join(current_points) %>%
+  mutate(points=replace_na(points,0),
+         age = as.double(date-dob)/365.25
+         ) %>%
+  select(resultId, driver_name, points, age) %>%
+  arrange(age) %>%
+  group_by(driver_name) %>%
+  mutate(c_points = cumsum(points)) %>%
+  select(-points)
+```
+
+```{r}
+# top 5 driver by points
+points_age %>% group_by(driver_name) %>% summarise(total_points=max(c_points)) %>% 
+  arrange(desc(total_points)) %>% slice(1:5)
+
+# driver with earliest career start
+points_age %>% ungroup() %>% filter(age==min(age)) 
+
+# Verstappen latest record
+points_age %>% filter(driver_name=="Max Verstappen") %>% summarise(max(age))
+
+# Verstappen, Hamilton and Vettel
+points_age %>% 
+  filter(driver_name %in% c("Max Verstappen","Lewis Hamilton","Sebastian Vettel")) %>%
+  filter(age<24) %>%
+  filter(age==max(age))
+
+# 3 oldest driver at race date
+points_age %>%
+  filter(age==max(age)) %>%
+  arrange(desc(age)) %>% slice(1:3)
+
+# summary of max age
+points_age %>%
+  filter(age==max(age)) %>%
+  arrange(desc(age)) %>%
+  select(age) %>%
+  summary()
+```
+
+
+```{r}
+# reference: https://twitter.com/MikeMaieli/status/1435375782818455554/photo/1
+ggplot(points_age, aes(x=age, y=c_points)) +
+  geom_line(aes(group=driver_name, color=driver_name), show.legend = F) +
+  scale_color_manual(values=c("Max Verstappen"="#6EE2FFFF",
+                              "Lewis Hamilton" ="#FF410DFF",
+                              "Sebastian Vettel" ="#F7C530FF")) +
+  scale_x_continuous(breaks=seq(20,50,10), labels=paste(seq(20,50,10),"years old"),
+                     limits=c(15,60), expand=c(0,0)) +
+  #scale_y_continuous()
+  geom_vline(xintercept = 23.9, size=.4, linetype="dashed", color="white") +
+  annotate("text", x = c(17, 37.5, 35), y = c(1400, 3950, 3000),
+           label=c("Max Verstappen","Lewis Hamilton","Sebastian Vettel"), 
+           size=3, hjust=0, color=c("#6EE2FFFF","#FF410DFF","#F7C530FF")) +
+  annotate("point",x = rep(23.9), y = c(1386, 567, 207),
+           color=c("#6EE2FFFF","#F7C530FF","#FF410DFF"),size=2) +
+  annotate(geom="rect", xmin=24.2, xmax=30.6, ymin=2530, ymax=4220, fill="#6c757d", alpha=.5) +
+  annotate("text", x=24.5, y=4180, vjust=1, hjust=0, size=2.2, color="white",
+           label="Before the age of 24,\nVerstappen earned\n1386.5 points.\n\nAt the same age,\nHamilton earned 207\npoints and Vettel\nearned 567 points.") +
+  theme_minimal() +
+  theme(panel.grid=element_line(size=.35, color="#343a40"),
+        plot.background=element_rect(fill="#212529", color=NA),
+        axis.title=element_text(size=8, color="#ced4da", face="italic"),
+        axis.text=element_text(size=8, color="#ced4da"),
+        plot.margin=unit(c(.5,1,.5,.5),"cm"),
+        plot.subtitle=element_text(size=8, color="#e9ecef", lineheight = 1.1),
+        plot.title=element_text(size=11, color="#e9ecef", face="bold"),
+        plot.caption=element_text(size=7, color="#e9ecef", hjust=0),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        ) +
+    labs(x="Driver age", y="Cumulative points", 
+         title="F1 Drivers Points by Age ",
+         subtitle="(Cumulative points for each F1 driver since 1950)\nLewis Hamilton has the highest point 3999.5 at age 36, followed by Sebastian Vettel with 3053 points at age 34.\n",
+         caption= "\n(Points in this chart are based on current points scoring system and do not include points for fastest lap or sprint qualifying.)")
+```
+
+
+```{r}
+# points earned by year 2005-2020
+
+driver_results_df %>%
+  filter(between(year, 2005, 2020)) %>%
+  mutate(driver_name = paste(forename, surname)) %>%
+  group_by(driverId,driver_name, year) %>%
+  tally(points) %>%
+  mutate(cs= cumsum(n)) %>%
+  ungroup() %>%
+  mutate(col=case_when(driver_name=="Lewis Hamilton"~"Lewis Hamilton",
+                      driver_name=="Valtteri Bottas"~"Valtteri Bottas",
+                      driver_name=="Max Verstappen"~"Max Verstappen",
+                      TRUE~"Other drivers")) %>%
+  ggplot(aes(x=year, y=n, fill=driver_name, 
+             color=factor(col, levels=c("Lewis Hamilton","Valtteri Bottas","Max Verstappen","Other drivers")))) +
+  geom_line() +
+  scale_color_manual(values=c("#b7094c","#f48c06","#0091ad","#6c757d")) +
+  scale_x_continuous(breaks=c(2005,2007,2013,2015,2020)) +
+  scale_y_continuous(limits=c(0,5000)) +
+  theme_minimal(base_size=10) +
+  theme(panel.grid.minor=element_blank(),
+        panel.grid=element_line(size=.3,color="#343a40"),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=9, color="#e9ecef"),
+        plot.title=element_text(size=11, color="#e9ecef"),
+        plot.margin=unit(c(.5,.5,.5,.5),"cm"),
+        legend.margin=margin(0, 0, 0, -10),
+        axis.title=element_text(size=9, color="#e9ecef", face="italic"),
+        axis.text=element_text(color="#ced4da"),
+        plot.background=element_rect(fill="#212529", color=NA),
+        legend.text=element_text(color="#ced4da")
+        ) + 
+  labs(color=NULL, x="Year", y="Points",
+       title="F1 Drivers: Points earned by year",
+       subtitle="(2005 to 2020)") +
+  guides(color = guide_legend(override.aes = list(size = 3)))
+```
+
+
+### Number of pitshops by circuit
+
+```{r}
+library(reactable)
+library(htmltools)
+```
+
+```{r}
+# wrangling
+# reference: https://twitter.com/BjnNowak/status/1435989658891169793
+data <- results%>%
+  left_join(pit_stops,by=c('raceId','driverId'))%>%
+  left_join(races,by='raceId')%>%
+  left_join(circuits,by='circuitId')
+
+test = data %>%
+  filter(year>2011)%>%
+  filter(positionOrder==1)%>%
+  group_by(raceId)%>%
+  summarize(
+    nbStop = max(stop)
+  )%>%
+  mutate(
+    nbStop=case_when(
+      is.na(nbStop)~0,
+      TRUE~nbStop
+    )
+  )%>%
+  left_join(races,by='raceId')%>%
+  left_join(circuits,by='circuitId')%>%
+  mutate(circuitRef=stringr::str_replace_all(circuitRef,"_"," "))%>%
+  mutate(circuitRef=stringr::str_to_title(circuitRef)) %>%
+  mutate(circuitRef_country = glue("{circuitRef} ({country})")) 
+
+mean<-test%>%
+  group_by(circuitRef_country)%>%
+  mutate(ct=1)%>%
+  summarize(
+    meanStop=round(mean(nbStop),2),
+    minStop=min(nbStop),
+    maxStop=max(nbStop),
+    raceCount=sum(ct)
+  ) %>%
+  ungroup() %>% 
+  arrange(desc(meanStop)) %>%
+  rename("Circuit (country)" = circuitRef_country,
+         "Mean_stops" = meanStop,
+         "Min_stops" = minStop,
+         "Max_stops" = maxStop,
+         "Race_count" = raceCount) 
+```
+
+
+
+```{r}
+# render bar chart
+# reference: https://glin.github.io/reactable/articles/cookbook/cookbook.html
+bar_style <- function(width = 1, fill = "#e6e6e6", height = "75%", align = c("left", "right"), color = NULL) {
+  align <- match.arg(align)
+  if (align == "left") {
+    position <- paste0(width * 100, "%")
+    image <- sprintf("linear-gradient(90deg, %1$s %2$s, transparent %2$s)", fill, position)
+  } else {
+    position <- paste0(100 - width * 100, "%")
+    image <- sprintf("linear-gradient(90deg, transparent %1$s, %2$s %1$s)", position, fill)
+  }
+  list(
+    backgroundImage = image,
+    backgroundSize = paste("100%", height),
+    backgroundRepeat = "no-repeat",
+    backgroundPosition = "center",
+    color = color
+  )
+}
+```
+
+```{r}
+reactable(mean, defaultSorted = list("Mean_stops" = "desc","Max_stops" = "desc"),
+          defaultPage = 9 ,showPageSizeOptions = TRUE, pageSizeOptions = c(5, 8, 10),
+          bordered = FALSE, striped = TRUE, highlight = TRUE,#compact = TRUE,
+          columnGroups = list(
+    colGroup(name = "Pit-stops", columns = c("Mean_stops","Min_stops", "Max_stops"))),
+          columns = list("Circuit (country)" = colDef(filterable = TRUE,minWidth = 160),
+                         Mean_stops = colDef(name="Average",
+      style = function(value) {
+        bar_style(width = value / max(mean$Mean_stops), fill = "#2c5e77", color = "#fff")
+      },
+      align = "left",
+      format = colFormat(digits = 1)
+    ),
+    Min_stops = colDef(name="Mininum",
+      style = function(value) {
+        bar_style(width = value / max(mean$Min_stops), fill = "#ee9b00", color = "#fff")
+      },
+      align = "left",
+      format = colFormat(digits = 0)
+    ),
+    Max_stops = colDef(name="Maximum",
+      style = function(value) {
+        bar_style(width = value / max(mean$Max_stops), fill = "#9b2226", color = "#fff")
+      },
+      align = "left",
+      format = colFormat(digits = 0)
+    )),
+          style = list(fontFamily = "Work Sans, sans-serif", fontSize = "12px"),
+          theme = reactableTheme(),
+    
+          
+          )
+```
+
+### Top 20 F1 drivers 
+* total wins, career length (in years), career min year, career max year
+
+```{r}
+# wrangle
+# reference: https://github.com/gkaramanis/tidytuesday/tree/master/2021/2021-week36
+
+driver_first <- drivers %>% 
+  left_join(results, by = "driverId") %>% 
+  left_join(races, by = "raceId") %>% 
+  group_by(driverId) %>% 
+  mutate(
+    min_year = min(year),
+    max_year = max(year),
+    min_max_year = paste0(min_year,"-",max_year),
+    diff_years = max_year - min_year
+    ) %>% 
+  ungroup() %>% 
+  filter(position == "1") 
+
+  
+driver_results <- driver_first %>% 
+  count(driverId, forename, surname, diff_years,min_max_year,min_year, max_year) %>% 
+  arrange(-n) %>% 
+  mutate(
+    full_name = paste(forename, surname),
+    full_name = fct_reorder(full_name, n),
+    rank = row_number()
+    ) %>% 
+  head(20) %>%
+  select(rank, full_name, n, diff_years, min_year, max_year) %>%
+  mutate(full_name=fct_rev(fct_inorder(factor(full_name))))
+```
+
+```{r}
+  ggplot(driver_results) +
+  geom_segment(aes(x=min_year, xend=max_year, y=full_name, yend=full_name)) +
+  geom_segment(aes(x=2021, xend=max_year, y=full_name, yend=full_name),
+               linetype="dotted", color="grey50") +
+  geom_point(aes(x=min_year, y=full_name), shape=17, size=1.5) +
+  geom_point(aes(x=max_year, y=full_name, size=n), show.legend = F) +
+  geom_text(aes(x=max_year, y=full_name, label=n), color="white", size=2.8) +
+  scale_y_discrete(position="right", expand=c(0.05,0.05)) +
+  scale_x_continuous(expand=c(0.02,0.02)) +
+  scale_size(range=c(4,7)) +
+  theme_minimal() +
+  theme(panel.grid.major.y=element_blank(),
+        panel.grid.minor.y=element_blank(),
+        axis.title=element_blank(),
+        panel.grid=element_line(size=.3),
+        axis.text.x=element_text(size=7, color="grey30"),
+        axis.text.y=element_text(size=8.5, color="black"),
+        plot.subtitle=element_text(size=8.5, color="grey30"),
+        plot.margin=unit(c(.5,.5,.25,.5),"cm"),) +
+  labs(title="Top 20 Formula One Drivers",
+       subtitle="Data source: ergast.com/mrd/db") +
+  annotate("curve", x = 1969, y = 15, xend = 1973, yend = 13.7, arrow = arrow(length = unit(0.01, "npc")), color = "grey60", curvature = -0.2) +
+  annotate("text", x= 1965,, y=15.8, label="Total wins at\nlatest race year", size=2, color="grey30", hjust=0) +
+  annotate("curve", x = 1955, y = 12.3, xend = 1959, yend = 11.2, arrow = arrow(length = unit(0.01, "npc")), color = "grey60", curvature = 0.2) +
+  annotate("text", x= 1955, y=12.8, label="Earliest race year", size=2, color="grey30") +
+  annotate("curve", x = 1982, y = 18.5, xend = 1986, yend = 17.2, arrow = arrow(length = unit(0.01, "npc")), color = "grey60", curvature = -0.2) +
+  annotate("text", x= 1978.5, y=18.5, label="Years active", size=2, color="grey30") 
+```
+

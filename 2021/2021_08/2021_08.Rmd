@@ -1,0 +1,307 @@
+---
+title: "Dubois Challenge"
+date: "2021-02-17"
+output: html_notebook
+---
+
+## Data Visualization Exercise
+
+This notebook uses [TidyTuesday's](https://github.com/rfordatascience/tidytuesday) 2021 Week 8 [__Dubois Challenge__](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-02-16/readme.md), data from [Anthony Starks](https://twitter.com/ajstarks), [Allen Hillery](https://twitter.com/AlDatavizguy/status/1358454676497313792?s=20) and [Sekou Tyler](https://twitter.com/sqlsekou/status/1360281040657522689?s=20). 
+
+
+
+```{r}
+# load libraries
+library(tidyverse)
+library(janitor)
+library(cowplot)
+library(showtext)
+library(grid)
+```
+
+```{r}
+# font
+font_add_google("Teko","teko")
+showtext_auto()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+# load data
+georgia_pop <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/georgia_pop.csv')
+census <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/census.csv')
+furniture <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/furniture.csv')
+city_rural <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/city_rural.csv')
+income <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/income.csv')
+freed_slaves <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/freed_slaves.csv')
+occupation <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/occupation.csv')
+conjugal <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/conjugal.csv')
+```
+
+
+### challenge01: Comparative Increase of White and Colored Population in Georgia 
+* shared on twitter (https://twitter.com/leeolney3/status/1361575377777352704/photo/1)
+
+```{r, fig.height=4, fig.width=3.2}
+c1 = georgia_pop %>% 
+  pivot_longer(!Year) %>%
+  ggplot(aes(y=value, x=as.factor(Year))) +
+  geom_line(aes(group=name, linetype=name)) + 
+  scale_y_reverse(limits=c(100,0), expand=c(0,0), breaks=seq(0,100,5)) +
+  coord_flip() + 
+  theme_light() + 
+  theme(legend.position="bottom",
+        axis.ticks=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid = element_line(size=0.2, color="red"),
+        plot.title = element_text(hjust=0.5, size=13.5, face="bold"),
+        plot.background=element_rect(fill="#ead4bc"),
+        panel.background = element_rect(fill="#ead4bc"),
+        legend.background = element_rect(fill="#ead4bc"),
+        legend.key =element_rect(fill="#ead4bc"),
+        legend.key.width=unit(2.2, "cm"),
+        legend.spacing=unit(1.5, "cm"),
+        axis.title = element_text(size=8.5),
+        legend.text =element_text(margin=margin(r=2, unit="cm")),
+        plot.margin = margin(20, 70, 20, 50)
+        ) + 
+  labs(x="",linetype="", y="PERCENTS",
+       title="COMPARATIVE INCREASE OF WHITE AND COLORED\nPOPULATION OF GEORGIA")
+c1
+```
+
+
+
+### challenge02: Conjugal Condition
+* shared on twitter (https://twitter.com/leeolney3/status/1361635828599029760/photo/1)
+```{r}
+# capitalize col names
+names(conjugal) = toupper(names(conjugal))
+# filter data for labeling 
+labeldata = conjugal %>% pivot_longer(cols=3:5, values_to="Count", names_to="Status") %>%
+  mutate(POPULATION= str_to_upper(POPULATION)) %>% arrange(Count) %>% filter(Count>1)
+```
+
+
+```{r, fig.height=3.5, fig.width=4}
+conjugal%>% pivot_longer(cols=3:5, values_to="Count", names_to="Status") %>%
+  mutate(POPULATION= str_to_upper(POPULATION)) %>%
+  ggplot(aes(y=fct_rev(POPULATION), 
+             x=Count, 
+             fill=factor(Status, level=c("DIVORCED AND WIDOWED","MARRIED","SINGLE")),
+             color=factor(Status, level=c("DIVORCED AND WIDOWED","MARRIED","SINGLE")),
+             label = paste0((Count),"%"))) + 
+  geom_bar(position = "fill", stat = "identity", color = "#4a4e69", width=0.5, size=0.25) +
+  geom_text(data=labeldata, position = position_fill(vjust = 0.5), size =2.7, color = "white") +
+  facet_grid(AGE~., labeller = label_both) + 
+  theme_minimal() +
+  theme(legend.position="top",
+        plot.margin = margin(10, 40, 0, 20),
+        axis.text.x=element_blank(),
+        strip.background = element_rect(fill="#ead4bc",color="#4a4e69"),
+        strip.text=element_text(color="black",size=12),
+        panel.grid=element_blank(),
+        plot.background=element_rect(fill="#ead4bc", color=NA),
+        panel.background = element_rect(fill="#ead4bc", color=NA),
+        legend.background = element_rect(fill="#ead4bc", color=NA),
+        legend.key =element_rect(fill="#ead4bc", color=NA),
+        legend.text= element_text(size=10),
+        axis.text.y=element_text(size=12),
+        #plot.title.position = "plot",
+        text= element_text(family="teko"),
+        plot.title=element_text(hjust=0.5, size=22, face="bold")
+        ) + 
+  scale_fill_manual(values=c("#426351","#f9b42a","#de2d48"),
+                    guide=guide_legend(reverse=TRUE)
+                    ) +
+  labs(color="",x="", fill="", y="",
+       title="CONJUGAL CONDITION") 
+  
+  
+```
+
+### challenge02: Conjugal Condition v2
+* reference: Judith Neve (https://twitter.com/JudithNeve/status/1361804705454837761/photo/1)
+* reference: Georgios Karamanis (https://twitter.com/geokaramanis/status/1361733287564181507/photo/1)
+
+```{r}
+conjugal <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/conjugal.csv')
+```
+
+```{r, fig.height=4.5, fig.width=5.3}
+conjugal %>%
+  pivot_longer(cols = c("Single", "Married", "Divorced and Widowed"), 
+               names_to = "Category", values_to = "Pct")  %>%
+  mutate(Category= str_to_upper(Category)) %>%
+ggplot(aes(x = Population, y = Pct, fill = Category)) +
+  facet_wrap(~ Age, nrow = 3) +
+  geom_bar(position = "fill", stat = "identity", key_glyph = draw_key_point, color="#4a4e69",size=0.25,width=0.6) +
+  geom_text(aes(y = Pct, x = Population, label = paste0(Pct, "%")), 
+            size = 4, position = position_fill(vjust = 0.5), family="mono") +
+  geom_text(aes(x = Population, y = 0, label = toupper(Population)), 
+            hjust = 1, nudge_y = -0.02, family="mono",size=4.2) +
+  geom_text(aes(x = 1.5, y = 0.2, label = stringr::str_wrap(toupper(Age),5)), 
+            hjust = 0.5, nudge_y = -0.4, stat = "unique", family="mono", size=4.2) +
+  coord_flip() +
+  scale_fill_manual(values=c("#426351","#f9b42a","#de2d48"),
+                    breaks = c("SINGLE", "MARRIED", "DIVORCED AND WIDOWED")) +
+  labs(fill = "") +
+  theme_void() +
+  theme(plot.margin = margin(20, 20, 90, 20),
+        legend.position = "top",
+        text=element_text(family="mono"),
+        panel.spacing.y = unit(1.5, "lines"),
+        plot.background = element_rect(fill = "#ead4bc", color = NA),
+        strip.text = element_blank(),
+        legend.text=element_text(size=12, margin=margin(r=0.4, unit="cm")),
+        legend.margin=margin(10,30,10,0),
+        plot.title=element_text(size=20,hjust=0.3)
+        ) +
+  guides(fill = guide_legend(override.aes = list(shape = 21, size = 15))) + 
+  labs(title="CONJUGAL CONDITION")
+```
+
+
+### challenge05: Income and Expenditure of 150 Negro Families in Atlanta, GA, USA
+* reference: Amina (https://twitter.com/harratha_/status/1361541377885167619/photo/2)
+* reference: Florence Galliers (https://twitter.com/florencelydia11/status/1361713384752832520/photo/1)
+
+```{r}
+# plot
+income_plot = 
+income %>% 
+  pivot_longer(3:7) %>%
+  filter(!is.na(value)) %>%
+  filter(value!=0) %>% 
+  mutate(name=toupper(name)) %>%
+  mutate(textcol= ifelse(name=="RENT","1","0")) %>%
+  ggplot(aes(fill=factor(name,levels = c("OTHER", "TAX", "CLOTHES", "FOOD", "RENT")), 
+                        x=value,
+                        y=fct_rev(Class),
+                        label = paste0(round(value),"%")), color = "black") +
+  geom_bar(position = "fill", stat = "identity", color = "#495057", width=0.7, size=0.2) +
+  geom_text(aes(color=textcol),position = position_fill(vjust = 0.5), size =3, show.legend = FALSE) +
+  geom_text(aes(x = 1.07, y=Class, label = as.character(`Actual Average`)), vjust=0.5, color="#463f3a", family="mono",size=3) +
+  theme(legend.position="top",
+        plot.margin = margin(20, 40, 0, 20),
+        plot.background=element_rect(fill="#ead4bc", color=NA),
+        panel.background = element_rect(fill="#ead4bc", color=NA),
+        legend.background = element_rect(fill="#ead4bc"),
+        legend.key =element_rect(fill="#ead4bc"),
+        axis.title=element_text(size=8),
+        text=element_text(family="mono"),
+        axis.ticks = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x=element_blank(),
+        axis.title.y.left=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(size=12.2),
+        panel.grid=element_blank(),
+        legend.text =element_text(margin=margin(r=0.82, unit="cm")),
+        legend.margin=margin(0,24,0,0),
+        legend.box.margin=margin(10,0,-5,0)
+        )+ 
+  scale_fill_manual(values = c("#cbdfbd","#8e9aaf","#d78879","#a08294","#161213"), guide=guide_legend(reverse=TRUE)) + 
+  scale_color_manual(values=c("black","white")) +
+  labs(fill="", x="", y="example",
+       title="INCOME AND EXPENDITURE OF 150 NEGRO FAMILIES IN ATLANTA, GA.,U.S.A")
+```
+
+```{r}
+# annotate left and right labels
+income_plot + 
+  scale_y_discrete(expand = expansion(add=1)) +
+  draw_text("ACTUAL\nAVERAGE($)", x = 1.07, y = 7.7, family = "mono", size = 6.8) + 
+  scale_x_continuous(expand=expansion(mult=c(0.02,0.05))) + 
+  labs(tag="CLASS") +
+  theme(plot.tag.position = c(0.07, 0.8),
+        plot.tag=element_text(family="mono",size=7))
+```
+
+
+### challenge07: Assessed Value of Household and Kitchen Furniture Owned by Georgia Negroes.
+* shared on twitter (https://twitter.com/leeolney3/status/1361686816462671874/photo/1)
+
+```{r}
+# create labels
+data = furniture %>% 
+  rename(Value= "Houshold Value (Dollars)") %>% 
+  mutate(lab=paste(Year,"—","$",Value))
+
+data$Year = as.factor(data$Year)
+
+# add a blank row
+blank_rows <- 
+  data.frame(
+    Year="",
+   Value = 0,
+   lab="")
+
+# bind rows
+graph_data = bind_rows(data, blank_rows)
+  
+```
+
+
+```{r,fig.height=4,fig.width=4}
+graph_data %>% 
+  ggplot(aes(x=lab, y=Value)) + 
+  geom_bar(aes(fill=lab),stat="identity", width=0.5,alpha=0.9) + 
+  geom_text(hjust = 1, size = 3.7,
+            color = "#343a40", family="mono",
+            aes( y = 0,
+                 label = paste(lab," "))) +
+  theme_minimal() +
+  coord_polar(theta = "y") +
+  ylim(0, 1700000) + 
+  scale_fill_manual(values=c("green","#ff5c8a","#9ba2bf","#9c6644","#f9b42a","#fff1e6","#de2d48")) +
+  theme(legend.position="none",
+        plot.background=element_rect(fill="#ead4bc", color=NA),
+        panel.background = element_rect(fill="#ead4bc", color=NA),
+        plot.title=element_text(hjust=0.5, size=18, family="mono"),
+        plot.title.position="plot",
+        axis.text=element_blank(),
+        panel.grid=element_blank(),
+        plot.margin = margin(10, 40, 10, 40)
+        ) + 
+  labs(title="ASSESSED VALUE OF HOUSEHOLD AND KITCHEN FURNITURE\nOWNED BY GEORGIA NEGROES", x="",y="",subtitle="")
+```
+
+
+### Relative Negro Population  Of The States Of The United States
+* reference: Rebecca Stevick (https://twitter.com/rjstevick/status/1361773685560999944/photo/1)
+
+```{r,warning=FALSE, message=FALSE}
+rel_pop <- read_csv('https://raw.githubusercontent.com/ajstarks/dubois-data-portraits/master/plate02/data.csv')
+
+pal = c("black","#797d62","#9b9b7a","#84a98c","#95d5b2","#d8f3dc","#f1dca7","#ffcb69","#ffb4a2")
+
+rel_pop %>%
+  left_join(data.frame(state.abb, state.name), by = c("State" = "state.abb")) %>%
+  mutate(region = tolower(state.name),
+         Population = factor(Population,levels = c("750,000 AND OVER", 
+                                        "600,000 - 750,000", 
+                                        "500,000 - 600,000", 
+                                        "300,000 - 500,000", 
+                                        "200,000 - 300,000",
+                                        "100,000 - 200,000", 
+                                        "50,000 - 100,000", 
+                                        "25,000 - 50,000", 
+                                        "10,000 - 25,000", 
+                                        "UNDER - 10,000"))) %>%
+  left_join(map_data("state")) %>%
+  ggplot(aes(x = long, y = lat, group = group, fill = Population)) +
+  geom_polygon(color = "grey20", lwd = 0.2, key_glyph = "polygon3") + 
+  coord_fixed(1.3) + 
+  scale_fill_manual(values = pal) +
+  theme_void() + 
+  theme(text=element_text(family="mono"),
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=0.5, size=16,face="bold", margin=margin(0,0,40,0)),
+        plot.margin=margin(20,20,20,20)) +
+  labs(fill="",
+       title="RELATIVE NEGRO POPULATION OF THE STATES OF THE\nUNITED STATES.") 
+  
+```
+
+

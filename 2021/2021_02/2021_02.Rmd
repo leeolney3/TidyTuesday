@@ -1,0 +1,258 @@
+---
+title: "Transit Projects"
+output: html_notebook
+---
+
+### Data Visualization Exercise
+
+__Dataset__: [TidyTuesday 2020 Week 02 - Transit Cost Project](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-05/readme.md)  
+
+__Data source__: [Transit Costs Project](https://transitcosts.com/)
+
+__Dataset features__ (from [TidyTuesday](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-05/readme.md)):
+
+  * e: ID 
+  * country: Country Code - can be joined against countrycode via ecb or iso2c 
+  * city: City where transit tunnel is being created 
+  * line: Line name or path 
+  * start_year: Year started 
+  * end_year: Year ended (predicted or actual) 
+  * rr: I think this is Railroad (0 or 1), where 1 == Railroad? 
+  * length: Length of proposed line in km 
+  * tunnel_per: Percent of line length completed 
+  * tunnel: Tunnel length of line completed in km (can take this divided by length to get tunnel_per) 
+  * stations: Number of stations where passengers can board/leave 
+  * source1: Where was data sourced 
+  * cost: Cost in millions of local currency 
+  * currency: Currency type 
+  * year: Midpoint year of construction 
+  * ppp_rate: purchasing power parity (PPP), based on the midpoint of construction 
+  * real_cost: Real cost in Millions of USD 
+  * cost_km_millions: Cost/km in millions of USD 
+  * source2: Where was data sourced for cost 
+  * reference: reference 
+
+
+### Load packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(Hmisc)
+library(ggsci)
+library(wesanderson)
+library(patchwork)
+library(countrycode)
+```
+
+### Import data
+```{r}
+transit_cost <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-05/transit_cost.csv')
+dim(transit_cost) 
+```
+
+### Data preparation
+```{r}
+# drop obs with no ID
+transit_cost = transit_cost %>% filter(!is.na(e))
+dim(transit_cost)
+```
+
+```{r}
+# parse numeric variables interpreted as character
+transit_cost <- transit_cost %>% 
+  mutate(tunnel_per = replace_na(parse_number(tunnel_per), 0),
+         real_cost = parse_number(real_cost),
+         across(start_year:end_year, as.numeric))
+```
+
+```{r}
+# number of countries
+length(unique(transit_cost$country))
+# get country names
+transit_cost$country2= countrycode(transit_cost$country,"iso2c", "country.name")
+# get continent
+transit_cost$continent <- countrycode(sourcevar = transit_cost[["country"]],
+                            origin = "iso2c",
+                            destination = "continent")
+# change NA to United Kingdom 
+transit_cost = transit_cost %>% mutate(country2=ifelse(is.na(country2),"United Kingdom",country2)) %>% mutate(continent=ifelse(is.na(continent),"Europe",continent))
+```
+
+```{r}
+# summary of project count by continent 
+transit_cost %>% group_by(continent) %>% tally() %>% mutate(proportion=round(n/sum(n),3))
+```
+
+```{r}
+# cost/station
+transit_cost$cost_station = transit_cost$real_cost/transit_cost$stations
+# drop country with Nan in avg_cost_station
+transit_cost = transit_cost %>% filter(country2!="Qatar")
+
+# railroad and non-railroad 
+Hmisc::describe(as.factor(transit_cost$rr)) 
+# railroad df 
+railroad = transit_cost %>% filter(rr=="1")
+# non-railroad df 
+not_railroad = transit_cost %>% filter(rr=="0")
+```
+
+
+### Cost of non-railroad transit projects by continent
+```{r}
+p1 = not_railroad %>% ggplot(aes(x=continent, y=real_cost, color=continent)) + geom_boxplot(outlier.color="white",alpha=0) + scale_color_uchicago() + theme(legend.position="none") + geom_jitter(shape=16, position=position_jitter(0.2), alpha=0.7) + labs(subtitle="Real Cost", y="Real cost in USD Millions", x="")
+p2 = not_railroad %>% ggplot(aes(x=continent, y=cost_km_millions, color=continent)) + geom_boxplot(outlier.color="white",alpha=0) + scale_color_uchicago() + theme(legend.position="none") + geom_jitter(shape=16, position=position_jitter(0.2), alpha=0.7) + labs(subtitle="Cost per Kilometer", y="Cost/km in USD millions", x="")
+p3 = not_railroad %>% ggplot(aes(x=continent, y=cost_station, color=continent)) + geom_boxplot(outlier.color="white",alpha=0) + scale_color_uchicago() + theme(legend.position="none") + geom_jitter(shape=16, position=position_jitter(0.2), alpha=0.7) + labs(subtitle="Cost per Station",y="Cost/station in USD millions", x="")
+```
+
+```{r, warning=FALSE, fig.height=5, fig.width=5}
+library(ggpubr)
+figure1 = ggarrange(p1, p2, p3, ncol=2, nrow=2)
+annotate_figure(figure1, top= text_grob("Costs of Transit Projects by Continent", color="black",face="bold",size=16), 
+  bottom=text_grob("Data source: Transit Costs Project", size=10))
+```
+
+### Countries with highest non-railroad project costs
+
+```{r}
+# non_railroad project costs
+nr_pc = not_railroad %>% group_by(country2) %>% summarise(count_project = n(), avg_real_cost = mean(real_cost,na.rm=TRUE), avg_cost_km = mean(cost_km_millions,na.rm=TRUE), avg_cost_station=mean(cost_station, na.rm=TRUE)) %>% as.data.frame()
+# append count to country name
+nr_pc$country2_p = paste0(nr_pc$country2,"(",nr_pc$count_project,")")
+```
+
+```{r}
+# individual plots
+w1 = nr_pc %>% arrange(desc(count_project)) %>% head(10) %>% ggplot(aes(x=reorder(country2_p,count_project), y=count_project)) + geom_col(fill="#606c38", width=0.7) + coord_flip() + labs(y="Project count", x="Country(project count)", title= "Top 10 by project count") + theme_minimal() 
+
+w2 = nr_pc %>% arrange(desc(avg_real_cost)) %>% head(10) %>% ggplot(aes(x=reorder(country2_p,avg_real_cost), y=avg_real_cost)) + geom_col(fill="#283618", width=0.7) + coord_flip() + labs(y="Avg. real cost (in USD millions)", x="", title= "Top 10 by average real cost") + theme_minimal() 
+
+w3 = nr_pc %>% arrange(desc(avg_cost_km)) %>% head(10) %>% ggplot(aes(x=reorder(country2_p,avg_cost_km), y=avg_cost_km)) + geom_col(fill="#dda15e", width=0.7) + coord_flip() + labs(y="Avg. cost/km (in USD millions)", x="Country(project count)", title= "Top 10 by average cost/km") + theme_minimal() 
+
+w4 = nr_pc %>% arrange(desc(avg_cost_station)) %>% head(10) %>% ggplot(aes(x=reorder(country2_p,avg_cost_station), y=avg_cost_station)) + geom_col(fill="#bc6c25", width=0.7) + coord_flip() + labs(y="Avg. cost/station (in USD millions)", x="", title= "Top 10 by average cost/station") + theme_minimal() 
+```
+
+```{r, warning=FALSE, fig.height=4, fig.width=6}
+# combined plot
+figure3= ggarrange(w1,w2,w3,w4,ncol=2, nrow=2)
+annotate_figure(figure3, top= text_grob("Non-railroad Transit Projects by Countries", color="black",face="bold",size=16), 
+  bottom=text_grob("Data source: Transit Costs Project", size=10))
+```
+
+
+### European cities with highest non-railroad project costs (excl. Russia)
+```{r}
+# get averages
+eu1= not_railroad %>% filter(continent=="Europe") %>% filter(country2!="Russia") %>% group_by(country, city) %>% summarise(projects_n=n(), avg_real_cost = mean(real_cost,na.rm=TRUE), avg_cost_km = mean(cost_km_millions,na.rm=TRUE), avg_cost_station=mean(cost_station, na.rm=TRUE))
+# append country to city 
+eu1$city_country = paste0(eu1$city,",",eu1$country)
+
+# individual plots
+e1 = eu1 %>% arrange(desc(projects_n)) %>% head(10) %>% ggplot(aes(x=reorder(city_country,projects_n), y=projects_n)) + geom_col(fill="#335c67", width=0.7) + coord_flip() + labs(y="Project count", x="City,Country", title= "Top 10 by project count") + theme_minimal() + scale_y_continuous(limits=c(0,11))
+
+e2 = eu1 %>% arrange(desc(avg_real_cost)) %>% head(10) %>% ggplot(aes(x=reorder(city_country,avg_real_cost), y=avg_real_cost)) + geom_col(fill="#e09f3e", width=0.7) + coord_flip() + labs(y="Avg. real cost (in USD millions)", x="", title= "Top 10 by average real cost") + theme_minimal() + scale_y_continuous(limits=c(0,5500))
+
+e3 = eu1 %>% arrange(desc(avg_cost_km)) %>% head(10) %>% ggplot(aes(x=reorder(city_country,avg_cost_km), y=avg_cost_km)) + geom_col(fill="#9e2a2b", width=0.7) + coord_flip() + labs(y="Avg. cost/km (in USD millions)", x="City,Country", title= "Top 10 by average cost/km") + theme_minimal() + scale_y_continuous(limits=c(0,550))
+
+e4 =eu1 %>% arrange(desc(avg_cost_station)) %>% head(10) %>% ggplot(aes(x=reorder(city_country,avg_cost_station), y=avg_cost_station)) + geom_col(fill="#540b0e", width=0.7) + coord_flip() + labs(y="Avg. cost/station (in USD millions)", x="", title= "Top 10 by average cost/station") + theme_minimal() + scale_y_continuous(limits=c(0,850))
+
+```
+
+```{r, warning=FALSE, fig.height=4, fig.width=6}
+# combined plot
+figure2= ggarrange(e1,e2,e3,e4,nrow=2,ncol=2)
+annotate_figure(figure2, top= text_grob("European Cities Non-railroad Transit Projects", color="black",face="bold",size=16), 
+  bottom=text_grob("Data source: Transit Costs Project", size=10))
+```
+
+### Length/stations
+* get approximate distance between stations using length(km) divided by stations
+
+```{r}
+# length_stations
+transit_cost = transit_cost %>% mutate(length_stations = length/stations)
+transit_cost$length_stations[sapply(transit_cost$length_stations, is.infinite)] <- NA
+summary(transit_cost$length_stations)
+```
+
+
+#### length/stations of railroad and non-railroad projects 
+```{r, warning=FALSE}
+#plot
+transit_cost %>% filter(!is.na(rr)) %>% ggplot(aes(x=factor(rr), y=length_stations, color=factor(rr))) + geom_boxplot(outlier.color="white",alpha=0.1) + geom_jitter(shape=16, position=position_jitter(0.2), alpha=0.7) + scale_color_jama() + coord_flip() + theme_minimal() + theme(legend.position="none", panel.grid.minor.y=element_blank(),panel.grid.major.y=element_blank()) + labs(y="length(km) / stations", x="Is Railraod")
+```
+
+#### length/stations and city (non-railroad projects)
+```{r}
+lsc = transit_cost %>% filter(rr==0) %>% group_by(city) %>% summarise(avg_length_stations = mean(length_stations)) %>% filter(!is.na(avg_length_stations))
+summary(lsc$avg_length_stations)
+```
+
+```{r}
+# cities with lowest average length/stations
+lsc %>% arrange(avg_length_stations) %>% head(5)
+# cities with highest average length/stations
+lsc %>% arrange(desc(avg_length_stations)) %>% head(5)
+```
+
+```{r}
+# density plot
+ggplot(lsc, aes(x = avg_length_stations)) + geom_density(aes(y = ..count..), fill = "#5c6d70",alpha=0.7) +
+  geom_vline(aes(xintercept = mean(avg_length_stations)), 
+             linetype = "dashed", size = 0.6,
+             color = "#FC4E07") +
+  annotate("text", x = 1.8, y = 100, label = "Mean = 1.4 km") +
+  theme_minimal() +
+  labs(x="Avg. length/stations (km)",y="City count")
+```
+
+### Length and real cost (non-railroad projects)
+* inspired by [@MartinPons](https://twitter.com/MartinPonsM/status/1347079193998327810)
+
+```{r}
+outliers_length = boxplot(not_railroad$length, plot=FALSE)$out # get outliers in length
+min(outliers_length) # get minimum
+```
+
+```{r}
+# scatter plot with correlation coefficient and regression line
+nrr1= not_railroad %>% filter(length <66.7) # drop outliers
+ggscatter(nrr1, x = "length", y = "real_cost", add = "reg.line", color="#457b9d") +
+  stat_cor(label.x = 3, label.y = 32000) +
+  stat_regline_equation(label.x = 3, label.y = 30000) + labs(y="real_cost (in USD millions)", title="Real Cost ~ Length")
+```
+
+### Stations and real cost (non-railroad projects)
+
+```{r}
+outliers_stations = boxplot(not_railroad$stations, plot=FALSE)$out # outliers in stations
+min(outliers_stations) # get minimum
+```
+
+```{r}
+nrr2= not_railroad %>% filter(stations < 43) # drop outliers
+ggscatter(nrr2, x = "stations", y = "real_cost", add = "reg.line", color="#dda15e") +
+  stat_cor(label.x = 3, label.y = 32000) +
+  stat_regline_equation(label.x = 3, label.y = 30000) + labs(y="real_cost (in USD millions)", title="Real Cost ~ Stations")
+```
+
+### Years to complete and real cost (non-railroad projects)
+```{r}
+not_railroad = not_railroad %>% mutate(years_to_complete = end_year - start_year)
+summary(not_railroad$years_to_complete)
+```
+
+```{r}
+outliers_years = boxplot(not_railroad$years_to_complete, plot=FALSE)$out #get outliers
+min(outliers_years) #get minimum
+```
+
+
+```{r,warning=FALSE}
+nrr3= not_railroad %>% filter(stations < 12) # drop outliers
+ggscatter(nrr3, x = "years_to_complete", y = "real_cost", add = "reg.line", color="#3c6e71") +
+  stat_cor(label.x = 2, label.y = 32000) +
+  stat_regline_equation(label.x = 2, label.y = 30000) + labs(y="real_cost (in USD millions)", title="Real Cost ~ Years to Complete")
+```
+
+

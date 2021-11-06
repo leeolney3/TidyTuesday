@@ -1,0 +1,232 @@
+---
+title: "Art Collections"
+date: "2021 Week 03"
+output: html_notebook
+---
+
+## Data Exploration Exercise 
+
+This is a short exercise to practice data visualization and modeling using [TidyTuesday](https://github.com/rfordatascience/tidytuesday) Week 3 [Art Collections](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-12/readme.md) data from [Tate Art Museum](https://github.com/tategallery/collection). The data visualizations created in this notebook looked at video/flim medium, digital medium and the ratio of artworks to artists. The modeling section involves training a regularised regression model with text features using [Julia Silge's tidymodels tutorial](https://juliasilge.com/blog/tate-collection/) on the Tate collection dataset. 
+
+
+```{r, messsage=FALSE}
+# load libaries
+library(tidyverse)
+library(viridis)
+library(tidytext)
+library(tidymodels)
+library(glmnet)
+library(stopwords)
+library(textrecipes)
+library(vip)
+library(wesanderson)
+library(ggpubr)
+```
+
+```{r}
+# import data
+artwork <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-12/artwork.csv')
+artists <- readr::read_csv("https://github.com/tategallery/collection/raw/master/artist_data.csv")
+dim(artwork)
+dim(artists)
+```
+
+### Visualization
+
+```{r, warning=FALSE, fig.height=2, fig.width=4}
+# distribution: creation year
+p1 = artwork %>% filter(!is.na(year)) %>% ggplot(aes(x=year)) + geom_histogram(alpha=0.8, binwidth = 10, fill="#014f86") + labs(title="Distribution of Creation Year", caption="Data from Tate Art Museum", x="Year") + theme(title=element_text(size=9))
+
+# distribution: acquisition year
+p2 = artwork %>% filter(!is.na(acquisitionYear))  %>% ggplot(aes(x=acquisitionYear)) + geom_histogram(alpha=0.8, binwidth = 10, fill="#bc6c25") + labs(title="Distribution of Acquisition Year", x="Year", caption="Data from Tate Art Museum") + theme(title=element_text(size=9))
+
+ggarrange(p1, p2, ncol=2, nrow=1)
+```
+
+```{r}
+n_distinct(artwork$medium)
+n_distinct(artwork$year)
+```
+
+
+```{r}
+# proportion of video/flim medium by creation year
+artwork$vf = ifelse(grepl('Video|video|Film|flim', artwork$medium),"vf","non-vf")
+
+artwork %>% group_by(year, vf) %>% tally() %>% mutate(proportion= n/sum(n)) %>% filter(vf!="non-vf") %>% ggplot(aes(x=year, y=proportion)) + geom_col(fill="#0f4c5c", alpha=0.7) + labs(x="Year", y= "Proportion", title="Proportion of Video/flim artworks by creation year", caption="Data from Tate Art Museum") 
+```
+
+```{r, warning=FALSE}
+# proportion of digital by creation year
+artwork$digital = ifelse(grepl('Digital|digital', artwork$medium),"digital","non-digital")
+
+artwork %>% group_by(year, digital) %>% tally() %>% mutate(proportion= n/sum(n)) %>% filter(digital!="non-digital") %>% ggplot(aes(x=year, y=proportion)) + geom_col(fill="#0f4c5c",alpha=0.7) + labs(x="Year", y= "Proportion", title="Proportion of digital artworks by creation year", caption="Data from Tate Art Museum")
+```
+
+```{r, warning=FALSE}
+# proportion of digital artworks by acquisition year 
+artwork %>% group_by(acquisitionYear, digital) %>% tally() %>% mutate(proportion= n/sum(n)) %>% filter(digital!="non-digital") %>% ggplot(aes(x=acquisitionYear, y=proportion)) + geom_point(size=3, color="#9a031e") + geom_segment(aes(x=acquisitionYear, xend=acquisitionYear, y=0, yend=proportion), color="#05668d") + labs(x="Acquisition Year", y= "Proportion", title="Proportion of digital artworks by acquisition year", caption="Data from Tate Art Museum") + theme(legend.position="none") 
+```
+
+```{r, message=FALSE}
+#unique artist count by acquisitionYear
+artwork %>% filter(!is.na(acquisitionYear)) %>% group_by(acquisitionYear) %>% summarise(artist_count=n_distinct(artistId, na.rm=TRUE)) %>% ggplot(aes(x=acquisitionYear, y=artist_count)) + geom_line(color="#e36414") + labs(x="Year", y= "Artist count", title="Artist count and acquisition year", caption="Data from Tate Art Museum") 
+```
+
+```{r}
+# unique artist count by acquisitionYear
+artwork %>% filter(acquisitionYear>=1900) %>% group_by(acquisitionYear) %>% summarise(artist_count=n_distinct(artistId, na.rm=TRUE), artwork_count=n_distinct(id), ratio= artwork_count/artist_count) %>% ggplot(aes(x=acquisitionYear, y=ratio, fill=ratio)) + geom_col() + labs(x="Acquisition Year", y= "Ratio", title="Ratio of artworks to artists, by acquisition year (1900 onwards)", subtitle="Artworks owned or jointly owned by Tate", caption="Data from Tate Art Museum", fill="Ratio") + theme_bw() + scale_fill_viridis(option="cividis")
+```
+
+```{r}
+# 5 most frequent mediums: artworks created after 1900
+artwork %>% filter(!is.na(medium)) %>% filter(year > 1900) %>% group_by(medium) %>% tally(sort=T) %>% slice(1:5)
+
+# 5 most frequent medium: artworks created before 1900
+artwork %>% filter(!is.na(medium)) %>% filter(year <= 1900) %>% group_by(medium) %>% tally(sort=T) %>% slice(1:5)
+```
+
+```{r}
+# most common words in describing medium 
+later_df = artwork %>% filter(year > 1900) %>% select(year, medium) %>% na.omit() %>% arrange(year)
+
+later_df %>%
+  unnest_tokens(word, medium) %>%
+  count(word, sort = TRUE)
+```
+
+### Modeling 
+* reference: [Explore art media over time in the #TidyTuesday Tate collection dataset by Julia Silge](https://juliasilge.com/blog/tate-collection/). 
+
+```{r}
+# model
+set.seed(123)
+art_split <- initial_split(later_df, strata = year)
+art_train <- training(art_split)
+art_test <- testing(art_split)
+
+set.seed(234)
+art_folds <- vfold_cv(art_train, strata = year)
+art_folds
+```
+
+```{r}
+# preprocess 
+art_rec <- recipe(year ~ medium, data = art_train) %>%
+  step_tokenize(medium) %>% #make single words
+  step_stopwords(medium) %>% #remove stop words
+  step_tokenfilter(medium, max_tokens = 500) %>% #top 500 most used tokens
+  step_tfidf(medium)
+
+art_rec
+```
+
+```{r}
+# specify model
+sparse_bp <- hardhat::default_recipe_blueprint(composition = "dgCMatrix")
+
+lasso_spec <- linear_reg(penalty = tune(), mixture = 1) %>%
+  set_engine("glmnet")
+
+art_wf <- workflow() %>%
+  add_recipe(art_rec, blueprint = sparse_bp) %>%
+  add_model(lasso_spec)
+
+art_wf
+```
+
+```{r}
+# change range (regularization penalty)
+lambda_grid <- grid_regular(penalty(range = c(-3, 0)), levels = 20)
+
+# tune lasso model
+doParallel::registerDoParallel()
+set.seed(1234)
+
+lasso_rs <- tune_grid(
+  art_wf,
+  resamples = art_folds,
+  grid = lambda_grid
+)
+
+lasso_rs
+```
+
+```{r}
+# model evaluation
+autoplot(lasso_rs)
+
+show_best(lasso_rs, "rmse")
+```
+
+
+```{r}
+# select best penalty 
+best_rmse <- select_best(lasso_rs, "rmse")
+
+final_lasso <- finalize_workflow(art_wf, best_rmse)
+final_lasso
+```
+
+
+```{r}
+# fit model on training data and evaluate on testing data
+art_final <- last_fit(final_lasso, art_split)
+collect_metrics(art_final)
+```
+
+
+```{r}
+# variable importance 
+art_vip <- pull_workflow_fit(art_final$.workflow[[1]]) %>%
+  vi()
+
+art_vip %>%
+  group_by(Sign) %>%
+  slice_max(abs(Importance), n = 20) %>%
+  ungroup() %>%
+  mutate(
+    Variable = str_remove(Variable, "tfidf_medium_"),
+    Importance = abs(Importance),
+    Variable = fct_reorder(Variable, Importance),
+    Sign = if_else(Sign == "POS", "More in later art", "More in earlier art")
+  ) %>%
+  ggplot(aes(Importance, Variable, fill = Sign)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~Sign, scales = "free") +
+  labs(y = NULL) + 
+  theme_minimal() + 
+  scale_fill_manual(values = wes_palette("Moonrise2"))
+
+```
+
+```{r}
+# plot true and predicted values on testing data
+collect_predictions(art_final) %>%
+  ggplot(aes(year, .pred)) +
+  geom_abline(lty = 2, color = "gray50", size = 1.2) +
+  geom_point(size = 1.5, alpha = 0.3, color = "#05668d") +
+  coord_fixed()
+```
+
+```{r}
+# view misclassifications
+misclassified <- collect_predictions(art_final) %>%
+  bind_cols(art_test %>% select(medium)) %>%
+  filter(abs(year - .pred) > 50)
+
+misclassified %>%
+  arrange(year)
+```
+
+```{r}
+# residuals of the test set
+augment(art_final) %>%
+  ggplot(aes(.pred, .resid)) +
+  geom_hline(yintercept = 0, lty = 2, color = "gray50", size = 1.2) +
+  geom_point(size = 1.5, alpha = 0.3, color = "#05668d") +
+  geom_smooth(color = "black")
+```
+
+* The plot above indicates heteroscedasticity, with lower variance for recent artwork and higher variance for older artwork hence, it is not a good model. 
+

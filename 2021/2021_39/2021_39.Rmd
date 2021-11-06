@@ -1,0 +1,537 @@
+---
+title: "Tidy Tuesday Week 39"
+date: "2021/09/21"
+output: html_notebook
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 38 [Emmy Awards](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-21/readme.md) data from [emmys.com](https://www.emmys.com/awards/nominations/award-search).
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(hrbrthemes)
+library(gt)
+library(gtExtras)
+library(ggimage)
+library(patchwork)
+```
+
+```{r}
+nominees <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-21/nominees.csv',show_col_types = FALSE)
+```
+
+```{r}
+summary(nominees$year)
+```
+
+```{r}
+df = nominees %>% 
+  mutate(distributor= case_when(distributor=="HBO"~"HBO/HBO Max",
+                                distributor=="HBO Max"~"HBO/HBO Max",
+                                distributor== "App Store, Apple TV+" ~ "Apple TV+",
+                                TRUE ~ distributor)) %>% 
+  select(category,year,type, title, distributor,producer,page_id) %>% 
+  distinct() 
+```
+
+
+
+### Distributors 
+#### 20 distributors with most wins (1957-2021)
+
+```{r}
+winner = df %>% 
+  filter(type=="Winner") %>%
+  count(distributor) %>% 
+  arrange(desc(n)) %>%
+  slice(1:20) %>%
+  mutate(distributor=fct_inorder(distributor))
+```
+
+
+```{r}
+d1 = df %>%
+  filter(distributor %in% winner$distributor) %>%
+  group_by(distributor) %>%
+  mutate(min_year=min(year),max_year=max(year)) %>%
+  mutate(distributor=str_trim(distributor)) %>%
+  ungroup() %>%
+  count(distributor, type, min_year, max_year) %>% 
+  group_by(distributor) %>%
+  mutate(ratio=round(lead(n)/n,2)) %>%
+  mutate(year=glue::glue("{min_year}-{max_year}")) 
+```
+
+```{r, fig.width=4, fig.height=3}
+ggplot() +
+  geom_col(data=d1 %>% filter(type=="Nominee"), aes(y=fct_rev(factor(distributor, levels=winner$distributor)), x=n), 
+           width=0.65, fill="#3d5a80", color=NA) +
+  geom_col(data=d1 %>% filter(type=="Winner"), aes(y=fct_rev(factor(distributor, levels=winner$distributor)), x=n), 
+           width=0.28, fill="#f8961e", color=NA) +
+  scale_x_continuous(expand=c(0.01,0.01), breaks=seq(0,1100,250),limits=c(-400,1300)) +
+  geom_richtext(data=d1 %>% filter(type=="Winner"), 
+            aes(y=fct_rev(factor(distributor, levels=winner$distributor)), x=0,
+                label=glue::glue("**{distributor}** <span style = 'font-size:6.3pt;color:#495057;'>*{year}*</span>")), 
+            size=2.8, hjust=1, color="#212529",fill = NA, label.color = NA) +
+  geom_text(data=d1 %>% filter(type=="Nominee") %>% filter(ratio<1),
+            aes(y=fct_rev(factor(distributor, levels=winner$distributor)), x=n, label=ratio), 
+            size=2.3, color="#a44a3f", hjust=-0.2, fontface="bold") +
+  geom_text(data=d1 %>% filter(type=="Nominee") %>% filter(ratio>1),
+            aes(y=fct_rev(factor(distributor, levels=winner$distributor)), x=n, label=ratio), 
+            size=2.3, color="#a44a3f", hjust=-0.4, fontface="bold") +
+  theme_void() +
+  theme(axis.text.x=element_text(size=6.8, color="#343a40", margin=margin(t=3)),
+        plot.margin = unit(c(.7, .5, .5, .5), "cm"),
+        plot.background = element_rect(fill="#f8f9fa", color=NA),
+        plot.subtitle = element_markdown(size=9, lineheight = 1.3, hjust=0.5, margin=margin(b=10)),
+        plot.title=element_text(face="bold", hjust=0.5, margin=margin(b=7), size=15, color="#212529"),
+        plot.caption = element_text(color="#343a40", size=6.5, margin=margin(t=12), hjust=0.5)
+        ) +
+  labs(x="Count", y="Distributor",
+       title="Top 20 Show Distributors, by Emmy Awards Winners",
+       caption="#TidyTuesday Week 39 | Data from emmys.com",
+       subtitle="<span style = ';color:#f8961e;'><b>Winners<b></span>, 
+       <span style = ';color:#3d5a80;'><b>Nominees<b></span> and
+       <span style = ';color:#a44a3f;'><b>Winner to nominees ratio<b></span>") +
+  annotate("segment", x=200, xend=200, y=0.75,yend=1.25, color="#a44a3f") +
+  annotate("segment", x=70, xend=200, y=1, yend=1,color="#a44a3f" ) +
+  annotate("text", x=210, y=1, label="Highest winner to nominees ratio among top 20",
+          color="#a44a3f", size=2.5, hjust=0, fontface="italic")
+```
+Bar chart showing the Emmy winners and nominees count of the top 20 show distributors, by most winners from 1957 to 2021. The chart also show the winner to nominees ratio by distributor, where Adult Swim has the highest ratio (1.78) among the top 20. 
+
+#### 10 distributors with most nominees in 2021
+
+```{r}
+# netflix won 44 instead of 43 as Outstanding Limited Or Anthology Series - 2021 is not in the list
+d2 = df %>% 
+  filter(year==2021) %>%
+  group_by(distributor) %>%
+  summarise(Nominees = length(distributor),
+            Winners= length(type[type=="Winner"])
+            ) %>%
+    mutate(Winners = as.numeric(Winners),
+            Winners = case_when(distributor=="Netflix" ~ 44, TRUE ~ Winners)) %>%
+  arrange(desc(Nominees)) %>%
+  mutate(distributor=fct_inorder(distributor)) %>%
+  slice(1:10) %>%
+  pivot_longer(Nominees:Winners)
+```
+
+
+```{r}
+# bar plot with logos
+plt1 = ggplot(data = d2,aes(y=fct_rev(distributor), x=value)) +
+  geom_col(data=d2 %>% filter(name=="Nominees"),
+           width=0.6, alpha=0.7, fill="#8d99ae") +
+  geom_col(data=d2 %>% filter(name=="Winners"), 
+           width=0.6, alpha=0.85, fill="#f72585") +
+  geom_text(data=d2 %>% filter(name=="Nominees"), aes(label=ifelse(distributor=="HBO/HBO Max",paste(value,"nominees"),value)), size=3, color="white", hjust=1, nudge_x=-1.2, fontface="bold") +
+  geom_text(data=d2 %>% filter(name=="Winners") %>% filter(value>0),
+            aes(label=ifelse(distributor=="Netflix",paste(value,"winners"),value)), 
+            size=3.2, color="white", hjust=1,nudge_x=-1, fontface="bold") +
+  coord_cartesian(clip="off",expand=F) +
+  scale_x_continuous(limits=c(-15,135)) +
+  theme_ipsum(base_size = 10) +
+  theme(panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.background = element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_markdown(size=15, margin=margin(b=5)),
+        plot.subtitle = element_text(size=11),
+        plot.caption=element_text(size=9, face="plain"),
+        plot.margin = unit(c(.7, 1, .7, 1), "cm"),
+        ) +
+  labs(title="2021 Emmy Awards <span style = ';color:#f72585;'><b>Winners<b></span> and <span style = ';color:#8d99ae;'><b>Nominations<b></span>",
+       subtitle="10 distributors with the most nominations",
+       caption="#TidyTuesday Week 39 | Data from emmys.com")
+```
+
+```{r}
+# geom_image reference: https://github.com/JuanmaMN/TidyTuesday/blob/master/2021/September/TidyTuesday_21_09_2021.R
+img = c("fx.png","prime_video.png","abc.png","hulu.png","cbs.png",
+        "apple_tv.png","nbc.png","disney.png","netflix.png","hbo.png") 
+```
+
+```{r}
+plt1+ 
+  geom_image(aes(x = -6, y = 1, image = img[1]), asp = 2) +
+  geom_image(aes(x = -6, y = 2, image = img[2]), asp = 2) +
+  geom_image(aes(x = -6, y = 3, image = img[3]), asp = 2) +
+  geom_image(aes(x = -6, y = 4, image = img[4]), asp = 2) +
+  geom_image(aes(x = -6, y = 5, image = img[5]), asp = 2) +
+  geom_image(aes(x = -6, y = 6, image = img[6]), asp = 2) +
+  geom_image(aes(x = -6, y = 7, image = img[7]), asp = 2) +
+  geom_image(aes(x = -6, y = 8, image = img[8]), asp = 2) +
+  geom_image(aes(x = -6, y = 9, image = img[9]), asp = 2) +
+  geom_image(aes(x = -6, y = 10, image = img[10]), asp = 2)
+```
+
+#### 10 distributors with most wins from 2017 to 2021
+
+```{r}
+winner2 = df %>% 
+  filter(between(year, 2017,2021)) %>%
+  filter(type=="Winner") %>%
+  count(distributor) %>% 
+  arrange(desc(n)) %>%
+  slice(1:10) %>%
+  mutate(distributor=fct_inorder(distributor))
+```
+
+```{r}
+df %>%
+  filter(between(year, 2017,2021)) %>% 
+  filter(type=="Winner") %>%
+  filter(distributor %in% winner2$distributor) %>%
+  count(distributor,year) %>%
+  mutate(n=ifelse(year==2021 & distributor=="Netflix",44,n)) %>%
+  arrange(desc(n)) %>%
+  ggplot() +
+  geom_point(aes(x=factor(distributor,levels=winner2$distributor), y=year, size=n, 
+                 fill=factor(distributor,levels=winner2$distributor)), shape=21, color="white") + 
+  geom_text(aes(x=factor(distributor,levels=winner2$distributor), y=year, label=n), color="white") +
+  theme_minimal(base_size = 10) +
+  coord_cartesian(clip="off") +
+  scale_x_discrete(position="top",
+                   labels = function(x) str_wrap(x, width = 7)) +
+  theme(panel.grid=element_blank(),
+        legend.position = "none",
+        plot.margin = unit(c(.7, 1, .5, 1), "cm"),
+        axis.text.x.top=element_text(margin=margin(b=10),face="bold"),
+        axis.text.y=element_text(face="bold"),
+        axis.title=element_blank(),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(margin=margin(b=15), hjust=0.5),
+        plot.title=element_text(hjust=0.5, face="bold", size=14),
+        plot.caption=element_text(hjust=0.5, color="grey50", size=7)
+        ) +
+  scale_size(range=c(5,15)) +
+  labs(title="SHOW DISTRIBUTORS WITH THE MOST EMMY WINS", subtitle="(2017 to 2021)",
+       caption="\n#TidyTuesday Week 39 | Data from emmys.com") +
+  scale_fill_manual(values=c("#991EEB","#E50914","#7e887a","black","#00A8E1",
+                              "grey70","#113CCF","#FFCE00","#1ce783","#CC0000"))
+  
+```
+
+#### Award category: Acting (actress and actor)
+* inspired by https://twitter.com/BlakeRobMills/status/1440524242416660493/photo/1
+
+```{r}
+acting = df %>% filter(year>=2015) %>%
+  mutate(distributor=ifelse(distributor=="HBO","HBO/HBO Max", distributor)) %>%
+  filter(year >=2015, distributor %in% c("HBO/HBO Max", "Netflix", "Hulu", "FX Networks", "NBC")) %>% 
+  distinct(category, distributor, year, type, title, .keep_all = TRUE) %>%
+  mutate(category = str_to_lower(category),
+         cat = case_when(str_detect(category,"actor")~"actor",
+                         str_detect(category,"actress")~"actress",
+                         TRUE~category),
+         color = paste(type, year),
+         year = factor(year),
+         distributor=str_to_upper(distributor)) %>%
+  filter(cat=="actor"|cat=="actress") %>%
+  select(cat, distributor, type, year, color) 
+
+actress = acting %>% filter(cat=="actress") %>%
+  ggplot() +
+  geom_dotplot(binwidth = 1, aes(fill=year, alpha = type, x=year), stackdir = "up", method="histodot",
+               stackgroups = TRUE, color="grey90", stackratio = 0.75, dotsize = .35, show.legend = F) +
+  scale_alpha_manual(values=c(0.4,1)) +
+  facet_wrap(~distributor, scales="free", ncol=5, strip.position = "bottom") +
+  scale_fill_manual(values=c("#8ecae6","#219ebc","#126782","#023047","#ffb703","#fd9e02","#fb8500")) +
+  scale_x_discrete(limits=c("2015","2016","2017","2018","2019","2020","2021"),
+                   labels=c("2015"="2015", "2016"=".","2017"="2017","2018"=".", "2019"="2019",
+                            "2020"=".","2021"="2021")) +
+  #coord_cartesian(expand=F, clip="off") +
+  theme_void() +
+  theme(axis.text.x=element_text(size=6),
+        strip.text=element_text(size=9, face="bold", margin=margin(t=10, b=0)),
+        strip.placement = "outside",
+        panel.spacing = unit(1.2, "lines"),
+        plot.title=element_text(size=15,color="#ced4da",face="bold",hjust=0.075,margin=margin(t=60,b=-60))) +
+  labs(title="ACTRESS")
+
+actor = acting %>% filter(cat=="actor") %>%
+  ggplot() +
+  geom_dotplot(binwidth = 1, aes(fill=year, alpha = type, x=year), stackdir = "down", method="histodot",
+               stackgroups = TRUE, color="grey90", stackratio = 0.75, dotsize = .35, show.legend = F) +
+  scale_alpha_manual(values=c(0.4,1)) +
+  facet_wrap(~distributor, scales="free", ncol=5) +
+  scale_fill_manual(values=c("#8ecae6","#219ebc","#126782","#023047","#ffb703","#fd9e02","#fb8500")) +
+  scale_x_discrete(limits=c("2015","2016","2017","2018","2019","2020","2021"), position="top",
+                   labels=c("2015"=".","2016"="2016","2017"=".","2018"="2018","2019"=".","2020"="2020","2021"=".")) +
+  theme_void() +
+  theme(axis.text.x=element_text(size=6),
+        strip.text=element_blank(),
+        panel.spacing = unit(1.2, "lines"),
+        plot.title=element_text(size=15,color="#ced4da",face="bold",hjust=0.075,margin=margin(t=80,b=-80))) +
+  labs(title="ACTOR")
+```
+
+```{r}
+actress / actor +
+  plot_annotation(title = 'EMMY NOMINATIONS AND WINNERS BY ACTING CATEGORY', 
+                  subtitle='Opaque dots show winners count and transparent dots show nominations count',
+                  caption="Data source: emmys.com",
+                  theme=theme(plot.title=element_text(hjust=0.5, size=11, margin=margin(t=25,b=-25)),
+                              plot.subtitle=element_text(hjust=0.5, color="#495057",size=7.5,
+                                                         margin=margin(t=29,b=-25)),
+                              plot.caption=element_text(size=6, margin=margin(t=-25,b=15)))
+                  ) 
+```
+
+
+```{r}
+d3 = df %>% 
+  filter(year>=2011) %>%
+  group_by(distributor) %>%
+  mutate(min_year=min(year), max_year=max(year),
+            Years=n_distinct(year)) %>%
+  ungroup() %>%
+  count(distributor, type, min_year, max_year, Years) %>%
+  pivot_wider(names_from = type, values_from = n) %>%
+  filter(max_year==2021) %>%
+  arrange(desc(Winner)) %>%
+  mutate(Nominees= Nominee+Winner) %>%
+  select(-Nominee) %>%
+  mutate("Winners:Nominees"=round(Winner/Nominees,2)) %>%
+  select(Distributor=distributor, Winners=Winner, Nominees, "Winners:Nominees",Years, "Min Year"=min_year, "Max Year"=max_year) 
+
+d3 %>% slice(1:10)
+```
+
+
+#### Nominees: non-streaming vs streaming (2015-2021)
+```{r}
+d4 = nominees %>% 
+  select(category,year,type, title, distributor,producer,page_id) %>% 
+  distinct() %>%
+  filter(year>=2015) %>%
+  mutate(streaming=as.factor(ifelse(distributor %in% c("Netflix","Prime Video","Hulu","Apple TV+","HBO Max",
+                                                       "Amazon","Amazon Instant Video","Disney+"),
+                                    "Streaming","Non-Streaming"))) %>%
+  count(year, streaming,type) 
+
+d4 %>% filter(type=="Nominee") %>% mutate(n= ifelse(streaming=="Non-Streaming",(-1*n),n)) %>%
+  ggplot(aes(y=fct_rev(factor(year)), x=n)) +
+  geom_col(aes(fill=streaming),width=0.5, show.legend = F, alpha=0.8) +
+  geom_text(aes(label=abs(n), hjust=ifelse(streaming=="Streaming",1.3,-0.3)), 
+            size=3, color="white", fontface="bold") +
+  coord_cartesian(clip="off") +
+  theme_void() +
+  annotate(geom="richtext",x=-19,y=7.9, fill = NA, label.color = NA, hjust=0.5, size=3.5,color="white", 
+           label="<span style = ';color:#62619D;'><b>Non-streaming Services<b></span> | <span style = ';color:#d4af37;'><b>Streaming Services<b></span>",) +
+  theme(axis.text.y=element_text(size=11, color="#adb5bd", face="bold"),
+        plot.margin = unit(c(1.1, 1.5, 1.1, 1.5), "cm"),
+        plot.title.position = "plot",
+        plot.title=element_markdown(face="bold", color="black", size=14),
+        plot.subtitle = element_markdown(margin=margin(t=10,b=20), color="#343a40", size=8),
+        plot.caption = element_text(color="white", size=7, margin=margin(t=10))
+        ) +
+  scale_fill_manual(values=c("#62619D","#d4af37")) +
+    labs(title="The Rise of <span style = ';color:#d4af37;'><b>Streaming Services<b></span> in Emmy Nominations",
+         subtitle="Streaming services: *Netflix*, *Hulu*, *Apple TV+*, *HBO Max*, *Disney+*, *Prime Video*, *Amazon*, *Amazon Instant Video*",
+         caption="Data source: emmys.com") 
+```
+
+### Winners: Streaming services (2015-2016) 
+* inspired by https://twitter.com/Jamie_Bio/status/1440714660685123590/photo/1
+
+```{r}
+d6 = df %>% 
+  filter(year>=2015) %>%
+  filter(type=="Winner") %>%
+  mutate(group=as.factor(ifelse(distributor %in% c("Netflix","Prime Video","Hulu","Apple TV+","HBO/HBO Max",
+                                                       "Amazon","Amazon Instant Video","Disney+"),
+                                    "Streaming","Non-Streaming"))) %>%
+  filter(group=="Streaming") %>%
+   mutate(
+    distributor = case_when(
+      distributor == "Amazon" ~ "PRIME VIDEO",
+      distributor == "Amazon Instant Video" ~ "PRIME VIDEO",
+      TRUE ~ distributor
+    ),
+    distributor = toupper(distributor)
+  ) %>%
+  count(distributor, year)
+```
+
+
+```{r}
+ggplot(data = d6 %>% filter(distributor!="PRIME VIDEO" & distributor != "HULU"),
+       aes(x=year, y=n, color=distributor), size=.7) +
+  geom_vline(xintercept = seq(2015,2021,1), color="#e9ecef") +
+  geom_richtext(aes(x=year, y=16, label=year), size=2,label.color = NA, color="grey") +
+  geom_richtext(aes(x=year, y=36, label=year), size=2,label.color = NA, color="grey") +
+  geom_line(size=.7) +
+  geom_line(data=d6 %>% filter(distributor=="PRIME VIDEO" | distributor == "HULU"),
+            aes(x=year, y=n, color=distributor), linetype="dashed") +
+  geom_text(data=d6 %>% filter(year==2021), 
+            aes(x=year, y=n, label=distributor, color=distributor), size=2, hjust=0, nudge_x = 0.15, fontface="bold") +
+  geom_point(data=d6 %>% filter(year==2021), 
+            aes(x=year, y=n), size=5) +
+  geom_text(data=d6 %>% filter(year==2021), 
+            aes(x=year, y=n, label=n), color="white", size=2.4, fontface="bold") +
+  geom_text(data=d6 %>% filter(year==2019, distributor=="PRIME VIDEO" | distributor == "HULU"), 
+            aes(x=year, y=n, label=distributor, color=distributor), size=2, hjust=0, nudge_x = 0.2, fontface="bold") +
+  geom_point(data=d6 %>% filter(year!=2021),
+             aes(x=year, y=n), size=4, color="black", fill="white", shape=21) +
+  geom_text(data=d6 %>% filter(year!=2021),
+             aes(x=year, y=n, label=n), size=1.8, color="black") +
+  coord_cartesian(clip="off") +
+  theme_void() +
+  theme(plot.margin = unit(c(.5, 1, .5, 1), "cm"),
+        legend.position="none",
+        plot.title=element_text(hjust=0.5, size=11)
+        ) +
+  scale_color_manual(values=c("#5F4690","#457b9d","#38A6A5","#0F8554","#ae2012","#EDAD08")) +
+  scale_y_continuous(expand=c(0,0))+
+  labs(title="EMMY AWARD WINNERS: STREAMING SERVICES\n")
+```
+
+### HBO, NBC, Netflix
+* inspired by https://twitter.com/nsgrantham/status/1441064012867772419/photo/1
+```{r}
+wdata = df %>% filter(distributor %in% c("HBO/HBO Max","NBC","Netflix")) %>%
+  mutate(distributor=ifelse(distributor=="HBO/HBO Max","HBO",distributor)) %>%
+  filter(year>=2019) %>%
+  count(year, type, distributor) %>%
+  ungroup() %>%
+  arrange(desc(type)) %>%
+  mutate(n=ifelse(year==2021 & distributor=="Netflix",44,n))
+
+plot_waffle = function(df, emmy_year) {
+  df %>%
+    filter(year == emmy_year) %>%
+    ggplot() +
+    geom_waffle(aes(fill = type, values = n), color = "#1d2d44", n_rows = 5, size = 0.4, flip = TRUE, alpha=0.75) +
+    facet_wrap(~ distributor, nrow = 1, strip.position = "bottom") +
+    coord_equal(clip = "off") +
+    scale_fill_manual(values = c("#507698","#d4af37")) +
+    scale_y_continuous(labels = NULL, limits = c(0, 35), expand=c(0.01,0.01)) +
+    scale_x_continuous(labels = NULL) +
+    labs(title = emmy_year) +
+    guides(fill = "none") +
+    theme_void() +
+    theme(
+      plot.title = element_text(color = "#536271", size = 24, hjust = 0.5, margin = margin(0, 0, -0.5, 0, unit = "line")),
+      strip.text = element_text(size = 8.75, color="#e9ecef", face="bold")
+    )
+}
+```
+
+
+```{r}
+(
+  plot_waffle(wdata, 2019) + 
+  plot_waffle(wdata, 2020) +
+  plot_waffle(wdata, 2021)
+) +
+plot_annotation(
+  title = "HBO, NBC and Netflix Emmy <span style = ';color:#507698;'><b>Nominations<b></span> and <span style = ';color:#d4af37;'><b>Winners<b></span>" ,
+  subtitle = "Netflix finally surpassed HBO/HBO Max in 2021, winning 44 of 129 Emmy nominations versus HBO/HBO Max's 19 of 130\n",
+  caption = "Data source:emmys.com",
+  theme = theme(
+    plot.title = element_markdown(color="#e9ecef", face="bold",margin = margin(0, 0, 0.5, 0, unit = "line")),
+    plot.subtitle = element_text(size=8, color="#ced4da"),
+    plot.caption = element_text(size=6.5,color="#e9ecef", margin = margin(2, 0, 0, 0, unit = "line"), hjust=0),
+    plot.margin = margin(1.5, 1.5, 1.5, 1.5, unit = "line"),
+    plot.background = element_rect(fill="#1d2d44", color=NA)
+  )
+)
+```
+
+#### Comedy, Drama and Documentary
+* inspired by https://twitter.com/joaomyname/status/1441129781710372869
+* inspired by https://twitter.com/nsgrantham/status/1441064012867772419/photo/1
+
+```{r}
+wdata2 = df %>% filter(distributor %in% c("HBO/HBO Max","Netflix")) %>%
+  mutate(category=str_to_upper(category)) %>%
+  filter(year>=2017) %>%
+  mutate(cat = case_when(str_detect(category,"DRAMA") ~"Drama",
+         str_detect(category,"COMEDY")~"Comedy",
+         str_detect(category,"DOCUMENTARY")~"Documentary/\nNonfiction",
+         TRUE ~ category)
+         ) %>%
+  filter(cat %in% c("Drama","Comedy","Documentary/\nNonfiction")) %>%
+  count(cat, type, distributor)
+```
+
+```{r}
+plot_waffle = function(df, category) {
+  df %>%
+    filter(cat == category) %>%
+    ggplot() +
+    geom_waffle(aes(fill = type, values = n), color = "#223843", n_rows = 10, size = 0.4, flip = TRUE, alpha=0.8) +
+    facet_wrap(~ distributor, nrow = 1, strip.position = "bottom") +
+    coord_equal(clip = "off") +
+    scale_fill_manual(values = c("#618985","#ffff3f")) +
+    scale_y_continuous(labels = NULL, limits = c(0, 24), expand=c(0.01,0.01)) +
+    scale_x_continuous(labels = NULL) +
+    labs(title = category) +
+    guides(fill = "none") +
+    theme_void() +
+    theme(
+      plot.title = element_text(color = "#706677", size = 20, hjust = 0.5, 
+                                margin = margin(0, 0, -0.5, 0, unit = "line")),
+      strip.text = element_text(size = 8.75, color="#e9ecef", face="bold"),
+      panel.spacing = unit(0.05, "lines")
+    )
+}
+
+(
+  plot_waffle(wdata2, "Comedy") + 
+  plot_waffle(wdata2, "Drama") +
+  plot_waffle(wdata2, "Documentary/\nNonfiction")
+) +
+plot_annotation(
+  title = "Emmy <span style = ';color:#618985;'><b>Nominations<b></span> and <span style = ';color:#ffff3f;'><b>Winners<b></span> by Genre" ,
+  subtitle = "HBO/HBO Max and Netflix, from 2017 to 2021\n",
+  caption = "Data source:emmys.com",
+  theme = theme(
+    plot.title = element_markdown(color="#e9ecef", face="bold",margin = margin(0, 0, 0.5, 0, unit = "line")),
+    plot.subtitle = element_text(size=10, color="#ced4da"),
+    plot.caption = element_text(size=6.5,color="#e9ecef", margin = margin(5, 0, 0, 0, unit = "line"), hjust=0),
+    plot.margin = margin(2, 2, 2, 2, unit = "line"),
+    plot.background = element_rect(fill="#223843", color=NA)
+  )
+)
+```
+
+
+### Titles
+#### 20 titles with the most wins and nominated in 2021
+
+```{r}
+df %>% 
+  group_by(title) %>%
+  summarise(Nominees = length(type),
+            Winners= length(type[type=="Winner"]),
+            min_yr_nom=min(year),
+            max_yr_nom=max(year),
+            yrs_nom = n_distinct(year),
+            yrs_won = n_distinct(year[type=="Winner"])
+            ) %>%
+  arrange(desc(Winners)) %>%
+  mutate(ratio=round(Winners/Nominees*100,2)) %>%
+  filter(max_yr_nom==2021) %>% 
+  slice(1:10) %>%
+  select(title, Nominees, Winners, win_ratio=ratio, min_yr_nom, max_yr_nom, yrs_nom, yrs_won) %>%
+  gt() %>%
+  gt_theme_espn()%>%
+  tab_source_note(source_note="Data source: emmys.com") %>%
+  tab_header(title="20 Shows with the most Emmy Awards",
+             subtitle="that have at least one Emmy nomination in 2021")
+```
+
+
+
+
+
+
+
