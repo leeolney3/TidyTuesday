@@ -13,6 +13,8 @@ Weekly [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) submission
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_35/2021_35.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_35)
 
 ## 2021
+* [Week 46: afrimapr](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_46)
+* [Week 45: Making maps with R](https://github.com/leeolney3/30DayMapChallenge/tree/main/02_lines) (#30DayMapChallenge crossover)
 * [Week 44: Ultra Trail Running](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_44)
 * [Week 43: Giant Pumpkins](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_43)
 * [Week 42: Global Seafood](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_42)
