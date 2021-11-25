@@ -13,6 +13,8 @@ Weekly [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) submission
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_35/2021_35.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_35)
 
 ## 2021
+* [Week 48: Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
+* [Week 47: Break to promote #BlackInDataWeek 2021](https://twitter.com/thomas_mock/status/1460297198390894593)
 * [Week 46: afrimapr](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_46)
 * [Week 45: Making maps with R](https://github.com/leeolney3/30DayMapChallenge/tree/main/02_lines) (#30DayMapChallenge crossover)
 * [Week 44: Ultra Trail Running](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_44)
