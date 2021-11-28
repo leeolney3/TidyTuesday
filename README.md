@@ -1,6 +1,4 @@
-<h1 style="font-weight:normal" align="center">
-  &nbsp;#TidyTuesday Contributions&nbsp;
-</h1>
+## #TidyTuesday Contributions
 
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
 
