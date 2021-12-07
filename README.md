@@ -56,6 +56,10 @@ List of contributions
 * 2020/48 [Washington Trails](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_48)
 
 ## Highlights
+#### [Week 49/2021: Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_50/2021_50_p2b.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_50/2021_50_p1b.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
+***
 #### [Week 49/2021: World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_49/p2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 ***
