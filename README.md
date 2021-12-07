@@ -3,7 +3,8 @@
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
 
 List of contributions
-
+* 2021/50 [Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
+* 2021/49 [World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 * 2021/48 [Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
 * 2021/46 [afrimapr](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_46)
 * 2021/45 [Making maps with R](https://github.com/leeolney3/30DayMapChallenge/tree/main/02_lines) (#30DayMapChallenge crossover)
