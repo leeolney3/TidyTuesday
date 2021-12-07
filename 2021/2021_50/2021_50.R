@@ -15,7 +15,8 @@ showtext_auto()
 # import data
 spiders <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-12-07/spiders.csv')
 
-# wrangle
+# bump/alluvial 
+## wrangle
 spiders1 = spiders %>% filter(year>=1980, year<2021)
 
 ind = spiders1 %>%
@@ -36,7 +37,7 @@ br = spiders1 %>%
 
 spiders2 = bind_rows(ind,usa, sa, br)
 
-# plot
+## plot
 spiders2 %>%
   ggplot(aes(x=year, y=n, alluvium=country)) +
   geom_alluvium(aes(fill=country, color=country),
@@ -61,3 +62,51 @@ spiders2 %>%
        subtitle="by distribution region from 1980 to 2020, according to World Spider Database",
        fill="", color="", x="Year", y="Species count",
        caption="#TidyTuesday Week 50 | Data: World Spider Database")
+
+# gt 
+library(gt)
+library(gtExtras)
+
+## wrangle
+fg = spiders %>% group_by(family, genus) %>%
+  summarise(n1 = n_distinct(species),
+            min_year = min(year),
+            max_year = max(year),
+            density = list(year),
+            .groups="drop"
+            ) %>%
+  ungroup() %>%
+  arrange(desc(n1)) %>%
+  slice(1:20) %>%
+  mutate(n2 = n1,
+         histogram = density) %>%
+  select(family,genus,n1,n2, min_year, max_year, density, histogram)
+  
+range(fg$max_year)
+range(fg$min_year)
+
+## table
+gt(fg) %>%
+  gt_theme_538() %>%
+  gt_plt_bar(column = n2, width=40, color="#606c38") %>%
+  gt_sparkline(density, type="density", bw=.75, same_limit = TRUE, width = 30,) %>%
+  gt_sparkline(histogram, type="histogram", bw=.75, same_limit = TRUE, width = 30,) %>%
+  gt_color_box(columns=min_year, domain=1757:1936, palette = "wesanderson::Zissou1") %>%
+  gt_color_box(columns=max_year, domain=2015:2021, palette = "wesanderson::Zissou1") %>%
+  tab_spanner(
+    label = "Year",
+    columns = min_year:histogram
+  ) %>%
+  cols_label(
+    n1 = "",
+    n2 = "species count",
+    min_year= "min",
+    max_year= "max"
+  ) %>%
+  cols_align(column = 5:6, align ="center") %>%
+  tab_header(
+    title=md("**Spiders: 20 family and genus with the most species described**"),
+    subtitle=md("Total number of currently valid spider species described from 1757 to 2021, according to World Spider Database.")
+  ) %>%
+  tab_source_note(source_note="#TidyTuesday Week 50 | Data: World Spider Database") %>%
+  tab_options(source_notes.padding = px(14))
