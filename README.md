@@ -3,6 +3,7 @@
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
 
 List of contributions
+* 2021/51 [Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 * 2021/50 [Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
 * 2021/49 [World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 * 2021/48 [Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
