@@ -63,13 +63,13 @@ theme1 = theme_minimal(base_family="roboto condensed", base_size = 13) +
         legend.justification = "left",
         legend.title=element_text(size=11.8),
         panel.spacing = unit(1, "lines"),
-        plot.caption=element_text(size=9.5, color="grey20", margin=margin(t=12)),
+        plot.caption=element_text(size=9.1, color="grey20", margin=margin(t=14)),
         plot.background = element_rect(fill="#e9ecef", color=NA),
         legend.margin=margin(b=0)
         ) 
         
 # plot
-p1 = df1 %>% 
+df1 %>% 
   filter(album_name!="Forever") %>%
   mutate(album_name = case_when(album_name=="Spiceworld" ~ "**Spiceworld**<br>Album",
                                 album_name=="Spice" ~ "**Spice**<br>Album")
@@ -80,6 +80,7 @@ p1 = df1 %>%
   geom_tile(color="#e9ecef", size=.8) +
   geom_text(aes(label=round(prop,1)), family="roboto condensed", size=3.6, color="white") +
   scale_fill_gradientn(colors=met.brewer(name="Robert", 100, type = "continuous"),limits=c(0,100)) +
+  scale_x_discrete(position="top") +
   facet_wrap(~album_name, ncol=1, strip.position = "left", scales="free_x") +
   theme1 +
   guides(fill = guide_colorbar(title.position = "top", 
