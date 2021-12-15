@@ -58,7 +58,8 @@ List of contributions
 
 ## Highlights
 #### [Week 51/2021: Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_51/2021_50_p2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_51/2021_51_p2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_51/2021_51_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 ***
 #### [Week 50/2021: Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_50/2021_50_p2b.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
