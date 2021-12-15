@@ -1,5 +1,5 @@
-#TidyTuesday week 51 2021-12-14 
-#Spice Girls, data from Spotify and Genius
+# TidyTuesday week 51 2021-12-14 
+# Spice Girls, data from Spotify and Genius
 
 library(tidyverse)
 options(dplyr.summarise.inform = FALSE)
@@ -9,8 +9,17 @@ library(MetBrewer)
 library(showtext)
 font_add_google("Oswald", "oswald")
 font_add_google("Roboto Condensed", "roboto condensed")
+font_add_google("Fira Sans Condensed")
+font_add_google("Fira Sans")
 showtext_opts(dpi = 320)
 showtext_auto(enable = TRUE)
+
+tuesdata <- tidytuesdayR::tt_load('2021-12-14')
+lyrics = tuesdata$lyrics
+studio_album_tracks = tuesdata$studio_album_tracks
+related_artists = tuesdata$related_artists
+
+# Section One -------------------------------------------------------------
 
 # lyrics data 
 tuesdata <- tidytuesdayR::tt_load('2021-12-14')
@@ -38,8 +47,7 @@ fa = function(artist1) {
   mutate(artist=artist1)
 }
 
-artist_df = bind_rows(fa("all"),fa("scary"),fa("sporty"),fa("baby"),fa("ginger"),fa("posh")
-          ) %>%
+artist_df = bind_rows(fa("all"),fa("scary"),fa("sporty"),fa("baby"),fa("ginger"),fa("posh") %>%
   arrange(album_name, track_number) %>%
   left_join(lines_df, by=c("album_name","track_number")) %>% 
   mutate(n1 = ifelse(n==79, 47,n)) %>%
@@ -96,10 +104,13 @@ p1 = df1 %>%
        fill="Proportion of total lines by album track (%)")
        
 # save
-ggsave("2021_51.png", width=8, height=7, unit="in")
+ggsave("2021_51.png", height=7, width=8, unit="in")
 
-# Part 2: add track names
-track_df = tuesdata$studio_album_tracks %>% 
+
+# Section Two -------------------------------------------------------------
+
+# add track names to lyrics df
+track_df = studio_album_tracks %>% 
   select(album_name, track_name, track_number) %>%
   mutate(track_name= fct_inorder(track_name))
   
@@ -110,13 +121,10 @@ df2 = artist_df %>%
   mutate(album_name = case_when(album_name=="Spiceworld" ~ "*Spiceworld Album (1997)*",
                                 album_name=="Spice" ~ "*Spice Album (1996)*"))
 
-# font                                
-font_add_google("Fira Sans Condensed")
-font_add_google("Fira Sans")
-f2 = "Fira Sans Condensed"
-f3 = "Fira Sans"    
-
 # dot plot
+f2 = "Fira Sans Condensed"
+f3 = "Fira Sans"   
+
 p2 = df2 %>% 
   ggplot(aes(x=str_to_title(artist), y=fct_rev(track_name), color=artist)) +
   geom_line(aes(group=artist), show.legend = F) +
@@ -156,5 +164,43 @@ p2 = df2 %>%
        size="Proportion of total lines by album track")
        
 # save
-ggsave("2021_50_p2.png", height=6, width=8, unit="in", bg="#fafafa")                          
+ggsave("2021_51_p2.png", height=6, width=8, unit="in", bg="#fafafa")                          
 
+# Section Three -------------------------------------------------------------
+
+# related artists followers and popularity 
+rel = related_artists %>%
+select(artist_name, popularity, followers_total) %>%
+  unique() %>%
+  mutate(artist_name = fct_reorder(artist_name, popularity),
+         fol_lab = scales::number(followers_total, scale = 1e-3, suffix="k", big.mark = "")) 
+
+rel %>% 
+  ggplot(aes(popularity, artist_name, color=I(ifelse(artist_name=="Spice Girls","#E3120B","#333333")))) +
+  geom_segment(aes(x=0, xend = popularity, y=artist_name, yend=artist_name)) +
+  geom_point(aes(size=followers_total),show.legend = F) +
+  geom_richtext(data=rel %>% filter(artist_name=="Spice Girls"), 
+                aes(label=glue::glue("{fol_lab}<br> followers")),
+                size=2.9, nudge_x=4.5, fill = NA, family=f3, 
+                label.color = NA, label.padding = grid::unit(rep(0, 4), "pt")) +
+  geom_richtext(data=rel %>% filter(artist_name!="Spice Girls"), 
+                aes(label=fol_lab),
+                size=2.9, nudge_x=3.5, fill = NA, family=f3,
+                label.color = NA, label.padding = grid::unit(rep(0, 4), "pt")) +
+  geom_text(aes(x=0, label=case_when(artist_name=="Spice Girls"~glue::glue("{artist_name}: {popularity} popularity"),TRUE~glue::glue("{artist_name}: {popularity}"))),
+            size=3, nudge_y = 0.35, hjust=0, nudge_x = .5, family=f3) +
+  geom_vline(xintercept=0, color="#1A1A1A") +
+  scale_x_continuous(limits=c(0,80), expand=c(0,.0)) +
+  scale_y_discrete(expand = expansion(mult = c(.001, .035))) +
+  scale_size_area(max_size = 8) +
+  scale_color_identity() +
+  coord_cartesian(clip="off") +
+  theme_void(base_family = f3) +
+  theme(plot.margin=margin(1,1.5,1,1, unit="cm"),
+        plot.title=element_markdown(margin=margin(b=13), color="#333333", size=12),
+        plot.caption=element_text(size=8, color="grey30")
+  ) +
+  labs(title ="<span style = 'color:#E3120B;'>**Spice Girls**</span> popularity and followers compared to **related artists**",
+       caption="\n#TidyTuesday Week 51 | Data from Spotify and Genius")
+
+ggsave("2021_51_p3.png", height=6, width = 8, unit="in", bg="#fafafa")
