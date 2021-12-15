@@ -8,7 +8,7 @@ List of contributions
 * 2021/49 [World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 * 2021/48 [Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
 * 2021/46 [afrimapr](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_46)
-* 2021/45 [Making maps with R](https://github.com/leeolney3/30DayMapChallenge/tree/main/02_lines) (#30DayMapChallenge crossover)
+* 2021/45 [Making maps with R](https://github.com/leeolney3/30DayMapChallenge/tree/main/2021/02_lines) (#30DayMapChallenge crossover)
 * 2021/44 [Ultra Trail Running](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_44)
 * 2021/43 [Giant Pumpkins](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_43)
 * 2021/42 [Global Seafood](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_42)
