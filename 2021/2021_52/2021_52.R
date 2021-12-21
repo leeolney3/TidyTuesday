@@ -70,6 +70,6 @@ p1 = df1 %>%
   labs(y="Caffine (mg)", x=NULL,
        caption="\n#TidyTuesday Week 52 | Data from PythonCoderUnicorn and @StarTrek_Lt",
        title="Caffeine in Starbucks Cold Drinks",
-       subtitle="<span style = 'font-size:10pt;color:grey20'>Caffeine (mg) and caffine per ml (mg/ml) by product and serving size.</span><br><span style = 'color:#8F6404;'>**Tall (354 ml)**</span> | <span style = 'color:#d29074;'>**Grande (473 ml)**</span> | <span style = 'color:#0B5232;'>**Venti (709 ml)**</span>")
+       subtitle="<span style = 'font-size:10pt;color:grey20'>Caffeine (mg) and caffine per ml (mg/ml) by product and serving size.</span><br><span style = 'color:#8F6404;'>**Tall (354 ml)**</span> | <span style = 'color:#d99f87;'>**Grande (473 ml)**</span> | <span style = 'color:#0B5232;'>**Venti (709 ml)**</span>")
        
 p1
