@@ -2,6 +2,8 @@
 
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
 
+Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [mail](mailto:leeolney3@gmail.com).
+
 List of contributions
 * 2021/52 [Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 * 2021/51 [Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
