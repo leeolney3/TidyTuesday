@@ -5,6 +5,7 @@ My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesda
 Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [mail](mailto:leeolney3@gmail.com).
 
 List of contributions
+* 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
 * 2021/52 [Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 * 2021/51 [Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 * 2021/50 [Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
