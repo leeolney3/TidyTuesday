@@ -61,6 +61,9 @@ List of contributions
 * 2020/48 [Washington Trails](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_48)
 
 ## Highlights
+#### [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
+***
 #### [Week 52/2021: Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_52/2021_52_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 ***
