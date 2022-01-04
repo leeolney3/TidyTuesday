@@ -2,10 +2,21 @@
 
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
 
-Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [mail](mailto:leeolney3@gmail.com).
+Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
-List of contributions
+**List of contributions**
+<details open>
+  <summary><b>2022</b></summary>
+
+<!-- toc -->
 * 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
+<!-- tocstop -->
+</details>
+
+<details>
+  <summary><b>2021</b> (click to expand)</summary>
+
+<!-- toc -->
 * 2021/52 [Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 * 2021/51 [Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 * 2021/50 [Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
@@ -57,9 +68,19 @@ List of contributions
 * 2021/03 [Art Collections](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_03)
 * 2021/02 [Transit Cost Project](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_02)
 * 2021/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_01)
+<!-- tocstop -->
+</details>
+
+<details>
+  <summary><b>2020</b> (click to expand)</summary>
+
+<!-- toc -->
 * 2020/52 [Big Mac Index](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_52)
 * 2020/48 [Washington Trails](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_48)
+<!-- tocstop -->
+</details>
 
+***
 ## Highlights
 #### [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
