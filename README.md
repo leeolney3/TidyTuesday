@@ -10,6 +10,7 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
 
 <!-- toc -->
 * 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
+* 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
 <!-- tocstop -->
 </details>
 
@@ -82,6 +83,9 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
 
 ***
 ## Highlights
+#### [Week 02/2022: Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_02/2022_02.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
+***
 #### [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
 ***
