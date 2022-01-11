@@ -31,20 +31,34 @@ s1 = stressor %>%
 my_grid = us_state_grid1 %>% filter(name %in% s1$state)
 
 # Plot
+s1 = stressor %>%
+  filter(state!=c("United States","Other States")) %>% #47 states 
+  filter(stressor %in% c("Varroa mites","Other pests/parasites")) %>%
+  mutate(stress_pct = stress_pct/100) %>%
+  pivot_wider(names_from = "stressor", values_from="stress_pct") %>%
+  group_by(state) %>%
+  mutate(number= row_number()) %>%
+  ungroup()
+```
+
+```{r, warning=F, message=F, fig.width=4.8, fig.height=3.5}
+my_grid = us_state_grid1 %>% filter(name %in% s1$state)
+
 s1 %>% janitor::clean_names() %>%
   ggplot(aes(x=number)) +
+  #geom_vline(xintercept=13, color="grey90", size=.3) +
   geom_line(aes(y=varroa_mites, color="varroa_mites")) +
   geom_line(aes(y=other_pests_parasites, color="other_pests_parasites")) +
   stat_difference(aes(ymin = other_pests_parasites, ymax = varroa_mites), alpha = 0.3) +
   scale_color_manual(name=NULL, values=c("#6930c3","#ee9b00"), labels=c("Other pest parasites","Varroa mites")) +
   scale_fill_manual(name=NULL,values=c("#ee9b00","#6930c3","#2a9d8f"),labels = c("More varroa mites", "More other pest parasites", "Same")) +
   scale_y_continuous(breaks=c(0,.5,1), limits=c(0,1), labels=scales::percent) +
-  scale_x_continuous(breaks=c(1,15,25), labels=c("'15","'18","'21")) +
+  scale_x_continuous(breaks=c(1,13,25), labels=c("'15","'18","'21")) +
   coord_cartesian(expand=F, clip="off") +
   facet_geo(~state,grid=my_grid) +
-  cowplot::theme_minimal_hgrid(8.5) +
+  cowplot::theme_minimal_grid(8.5) +
   theme(text=element_text(family=f1),
-        panel.grid.major=element_line(size=.3, color="grey90"),
+        panel.grid.major=element_line(size=.2, color="grey90"),
         legend.position="top",
         legend.justification = "center",
         panel.spacing = unit(.75, "lines"),
