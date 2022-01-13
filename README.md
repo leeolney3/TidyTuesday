@@ -9,8 +9,8 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
   <summary><b>2022</b></summary>
 
 <!-- toc -->
-* 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
-* 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
+* 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)  
+* 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
 <!-- tocstop -->
 </details>
 
@@ -83,38 +83,38 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
 
 ***
 ## Highlights
-#### [Week 02/2022: Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_02/2022_02_v2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_02)
+* [Week 02/2022: Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_02/2022_02_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)
 ***
-#### [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/2022_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/2022_01)
+* [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
 ***
-#### [Week 52/2021: Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
+* [Week 52/2021: Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_52/2021_52_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 ***
-#### [Week 51/2021: Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
+* [Week 51/2021: Spice Girls](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_51/2021_51_p2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_51/2021_51_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_51)
 ***
-#### [Week 50/2021: Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
+* [Week 50/2021: Spiders](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_50/2021_50_p2b.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_50/2021_50_p1b.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_50)
 ***
-#### [Week 49/2021: World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
+* [Week 49/2021: World Cup Cricket](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_49/p2.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_49)
 ***
-#### [Week 48/2021: Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
+* [Week 48/2021: Dr. Who](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_48/2021_48.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_48)
 ***
-#### [Week 42/2021: Global Seafood](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_42)
+* [Week 42/2021: Global Seafood](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_42)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_42/2021_42.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_42)
 ***
-#### [Week 40/2021: NBER Papers](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_40)
+* [Week 40/2021: NBER Papers](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_40)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_40/2021_40.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_40)
 ***
-#### [Week 37/2021 Formula 1 Races](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_37)
+* [Week 37/2021: Formula 1 Races](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_37)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_37/2021_37.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_37)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_37/2021_37_gtExtras.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_37)
 ***
-#### [Week 35/2021: Lemurs](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_35)
+* [Week 35/2021: Lemurs](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_35)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_35/2021_35.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_35)
