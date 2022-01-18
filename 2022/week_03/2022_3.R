@@ -86,7 +86,7 @@ table1 = co1 %>%
               columns=c(average:boxplot)) %>%
   tab_header(title=md("<span style='color:#7f5539'>Ratings of Plain Dark Chocolate Bar</span>"),
              subtitle=md("Summary table of ratings by 22 manufacturers with more than 15 reviews, according to *Flavors of Cacao*.")) %>%
-  tab_source_note(source_note = gt::html("<br>#TidyTuesday Week 3<br>Data source: Flavors of Cacao, by way of Georgios and Kelsey")) %>%
+  tab_source_note(source_note = gt::html("<br>#TidyTuesday Week 3  |  Data source: Flavors of Cacao, by way of Georgios and Kelsey  |  Inline boxplot adapted from Tom Mock")) %>%
   tab_style(
     style = list(
       cell_text(
