@@ -1,6 +1,6 @@
 # TidyTuesday week 3, 2022-01-18
 # Chocolate Bar Ratings, Data from Flavors of Cacao.
-# Boxplot function from Thomas Mock 
+# Citation (Inline boxplot function) : Mock (2020, Oct. 31). The Mockup Blog: Embedding custom HTML in gt tables. Retrieved from https://themockup.blog/posts/2020-10-31-embedding-custom-features-in-gt-tables/
 
 library(tidyverse)
 library(gt)
