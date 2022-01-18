@@ -9,6 +9,7 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/03 [Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
 * 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)  
 * 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
 <!-- tocstop -->
@@ -83,6 +84,9 @@ Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeoln
 
 ***
 ## Highlights
+* [Week 03/2022: Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_03/2022_03.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
+***
 * [Week 02/2022: Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_02/2022_02_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)
 ***
