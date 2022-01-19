@@ -4,6 +4,7 @@
 library(tidyverse)
 library(gt)
 library(gtExtras)
+library(kableExtra)
 
 choco<- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv')
 
