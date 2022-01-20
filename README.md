@@ -1,8 +1,8 @@
-# #TidyTuesday Contributions
+# #TidyTuesday
 
-My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity). 
+My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly social data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity) that focuses on data wrangling and visualisation. More information about #TidyTuesday can be found here: [https://github.com/rfordatascience/tidytuesday#readme](https://github.com/rfordatascience/tidytuesday#readme).
 
-Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
+My #TidyTuesday visualisations are shown below with links to the code. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
 **List of contributions**
 <details open>
