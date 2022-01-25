@@ -2,13 +2,14 @@
 
 My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly social data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity) that focuses on data wrangling and visualisation. More information about #TidyTuesday can be found here: [https://github.com/rfordatascience/tidytuesday#readme](https://github.com/rfordatascience/tidytuesday#readme).
 
-My #TidyTuesday visualisations are shown below with links to the code. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
+My #TidyTuesday visualisations are shown below,with links to the code. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
 **List of contributions**
 <details open>
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/04 [Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
 * 2022/03 [Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
 * 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)  
 * 2022/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
@@ -84,6 +85,9 @@ My #TidyTuesday visualisations are shown below with links to the code. Feedback 
 
 ***
 ## Highlights
+* [Week 04/2022: Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_04/2022_04.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
+***
 * [Week 03/2022: Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_03/2022_03.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
 ***
