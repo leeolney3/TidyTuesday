@@ -15,6 +15,7 @@ showtext_auto(enable = TRUE)
 ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-25/ratings.csv')
 #details <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-25/details.csv')
 
+# Ratings by decade
 # Wrangle
 ratings2 = ratings %>% 
   filter(between(year, 1900, 2021)) %>%
@@ -68,3 +69,76 @@ ratings3 %>%
        
 # Save plot
 ggsave("2022_04.png", width=7, height=4.8)
+
+
+# Five most common categories (ratings and users) by decade
+# clean category 
+category = details %>% 
+  filter(between(yearpublished, 1970, 2021)) %>% 
+  select(id, yearpublished,boardgamecategory) %>%
+  mutate(cat = strsplit(as.character(boardgamecategory), ",")) %>% 
+    unnest(cat) %>%
+  mutate(cat = gsub("\\[|\\]", "", cat),cat = gsub("'", "", cat),cat = gsub("\"", "", cat),
+         cat = str_trim(cat, side="both"),
+         cat_grp = fct_lump(cat, 5)) %>%
+  mutate(decade = floor(yearpublished/10)*10,
+         decade = glue::glue("{decade}s")) %>%
+  drop_na(cat_grp)
+  
+# create label (decade, game count and category count )
+category_lab = category %>% group_by(decade) %>%
+  summarise(n_game = n(),
+            n_cat = n_distinct(cat)) %>%
+  mutate(lab = glue::glue("{decade} ({n_game} games, {n_cat} categories)")) %>%
+  select(decade, lab)
+  
+# get top 5 categories
+category_df = category %>% 
+  group_by(decade,cat) %>%
+  tally() %>%
+  mutate(pct=round(n/sum(n)*100,2),
+         cat_rank = dense_rank(desc(n))) %>%
+  filter(cat_rank<=5) %>%
+  arrange(decade, cat_rank) %>%
+  left_join(category_lab, by="decade") %>%
+  ungroup() %>%
+  select(decade, lab, cat_rank, cat,n, pct)
+  
+# select variables from ratings.csv for joining 
+ratings_join = ratings %>% select(id, average, users_rated)
+
+# summarize rating by category and decade
+cr_df = category %>% left_join(ratings_join, by="id") %>%
+  group_by(decade, cat) %>%
+  summarise(min= min(average),
+            median=round(median(average),2),
+            max= max(average),
+            range=max-min,
+            rate_list = list(average),
+            user_sum = sum(users_rated),
+            .groups="drop"
+            ) 
+            
+# gt table
+table = category_df %>% left_join(cr_df, by=c("decade","cat")) %>%
+  select(-lab) %>%
+  gt(groupname_col = "decade") %>%
+  gt_theme_538() %>%
+  gt_sparkline(rate_list, type="density", line_color = "#15616d", fill_color = "#d8f3dc") %>%
+  fmt_symbol_first(column = pct, suffix = "%") %>%
+  cols_label(cat_rank="rank",
+             pct="percent",
+             cat="category",
+             rate_list = "density",
+             user_sum = "users sum") %>%
+  tab_spanner(label="Average rating",columns=min:user_sum) %>%
+  gt_color_rows(columns=pct, palette="ggsci::indigo_material") %>%
+  gt_color_rows(columns=median, palette="ggsci::pink_material") %>%
+  fmt_number(columns=user_sum, decimals = 0, sep_mark = " ") %>%
+  gt_color_rows(columns=user_sum, palette="ggsci::grey_material") %>%
+  tab_source_note(source_note =html("<br>TidyTuesday Week 4  |  Data from Kaggle by way of Board Games Geek, shared by David and Georgios")) %>%
+  tab_header(title="Board games categories and ratings",
+             subtitle="Summary table of the five most common board game category by decade and their ratings, for board games released from 1970 to 2021.")
+             
+# save table
+gtsave_extra(table, "2022_04_p2.png")
