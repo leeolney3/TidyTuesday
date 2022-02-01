@@ -9,6 +9,7 @@ My #TidyTuesday visualisations are shown below,with links to the code. Feedback 
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/05 [Dog breeds](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
 * 2022/04 [Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
 * 2022/03 [Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
 * 2022/02 [Bee Colony losses](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_02)  
@@ -84,7 +85,10 @@ My #TidyTuesday visualisations are shown below,with links to the code. Feedback 
 </details>
 
 ***
-## Highlights
+## 2022 
+* [Week 05/2022: Dog breeds](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_05/2022_05.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
+***
 * [Week 04/2022: Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_04/2022_04.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
 ***
@@ -97,6 +101,9 @@ My #TidyTuesday visualisations are shown below,with links to the code. Feedback 
 * [Week 01/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_01/2022_01.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_01)
 ***
+
+***
+## 2021 Highlights
 * [Week 52/2021: Starbucks Drinks](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2021/2021_52/2021_52_p1.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_52)
 ***
