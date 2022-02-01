@@ -80,4 +80,70 @@ p1 +
             aes(label=breed, x=2014.25), size=3, hjust=1,family=f1) 
             
 # Save
-ggsave("2022_05.png", bg="white", height=5, width=7.4)            
+ggsave("2022_05.png", bg="white", height=5, width=7.4)   
+
+# Extended plot (Thank you Benjamin for the suggestion) 
+breeds10 = breed_rank_all %>% pivot_longer(x2013_rank:x2020_rank) %>% filter(value<=10) %>% pull(breed) %>% unique()
+breed_rank_10 = breed_rank_all %>% 
+  pivot_longer(x2013_rank:x2020_rank) %>% 
+  mutate(name = parse_number(name)) %>%
+  filter(breed %in% breeds10) %>%
+  mutate(drool_level = case_when(breed == "Retrievers (Labrador)" ~2,
+                           breed == "Retrievers (Golden)" ~ 2,
+                           breed == "German Shepherd Dogs" ~ 2,
+                           breed == "Pointers (German Shorthaired)" ~2,
+                           breed=="French Bulldogs" ~3,
+                           breed=="Bulldogs"~3,
+                           breed=="Poodles"~1,
+                           breed=="Beagles"~1,
+                           breed=="Rottweilers"~3,
+                           breed=="Dachshunds"~2,
+                           breed=="Pembroke Welsh Corgis"~1,
+                           breed=="Yorkshire Terriers"~1,
+                           breed=="Boxers"~3))
+                           
+p2 = breed_rank_10 %>%
+  ggplot(aes(name,value)) +
+  geom_bump(aes(group=breed,color=factor(drool_level)), size=5, smooth = 8, alpha=.8) +
+  geom_vline(xintercept = seq(2013, 2020,1), color="white", size=.2) +
+  scale_y_reverse() +
+  scale_x_continuous(breaks=seq(2013, 2020,1), position="top") +
+  scale_color_manual("Drooling Level (1 to 5)",values=c("#7678ed","#00dca6","#fa8c00")) +
+  geom_text(data = breed_rank_10 %>% filter(name==2018, between(value,1,5)),
+            aes(label=breed), size=3, family=f2) +
+  geom_text(data = breed_rank_10 %>% filter(name==2020, between(value,6,9)),
+            aes(label=breed, x=2019.75), size=3, family=f2, hjust=1) +
+  geom_text(data = breed_rank_10 %>% filter(name==2016, value==10),
+            aes(label=breed, x=2015.5), size=3, family=f2) +
+  geom_text(data = breed_rank_10 %>% filter(name==2016, value==13),
+            aes(label=breed, x=2015.5), size=3, family=f2) +
+  geom_text(data=breed_rank_10 %>% filter(name==2013, value==6),
+            aes(label=breed, x=2013.25), size=3, family=f2, hjust=0) +
+  geom_text(data=breed_rank_10 %>% filter(name==2019, value==10),
+            aes(label=breed, x=2019), size=3, family=f2) +
+  geom_text(data=breed_rank_10 %>% filter(name==min(name)),
+            aes(label=value, x=2013.05), size=3, family=f2, hjust=0, color="white") +
+  geom_text(data=breed_rank_10 %>% filter(name==max(name)),
+            aes(label=value, x=2019.95), size=3, family=f2, hjust=1, color="white") +
+  theme_void(base_size = 9, base_family = f1) +
+  theme(legend.position = "top",
+        legend.margin=margin(t=6,b=-2),
+        legend.justification = "left",
+        plot.margin = unit(c(.5, 1, .5, .5), "cm"),
+        plot.title=element_text(face="bold"),
+        axis.line.x.top = element_line(),
+        axis.text.x=element_text(size=8, margin=margin(t=3)),
+        axis.ticks.x = element_line(),
+        axis.ticks.length=unit(.15, "cm"),
+        plot.caption.position = "plot",
+        plot.caption=element_text( hjust=0, margin=margin(t=10)),
+        legend.text=element_text(size=8),
+        legend.title=element_text(size=8)
+        ) +
+  labs(title="10 most popular dog breeds and their drooling level",
+         subtitle="Popularity of dog breeds by AKC registration statistics from 2013-2020",
+         caption="TidyTuesday Week 5 | Data from American Kennel Club courtesy of KKakey")
+      
+p2 + 
+  geom_image(data = breed_rank_10 %>% filter(name == min(name)),aes(image=image, x=name-.3), size=.04) +
+  geom_image(data = breed_rank_10 %>% filter(name == max(name)),aes(image=image, x=name+.3), size=.04)    
