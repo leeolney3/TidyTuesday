@@ -83,6 +83,10 @@ p1 +
 ggsave("2022_05.png", bg="white", height=5, width=7.4)   
 
 # Extended plot (Thank you Benjamin for the suggestion) 
+
+font_add_google("Barlow Condensed","barlow")
+f2 = "barlow"
+
 breeds10 = breed_rank_all %>% pivot_longer(x2013_rank:x2020_rank) %>% filter(value<=10) %>% pull(breed) %>% unique()
 breed_rank_10 = breed_rank_all %>% 
   pivot_longer(x2013_rank:x2020_rank) %>% 
