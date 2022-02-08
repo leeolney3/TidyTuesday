@@ -74,8 +74,8 @@ df2 %>%
        y="Graduation Date",
        size="Number of Tuskegee Airmen",
        title="The Tuskegee Airmen",
-       subtitle="Tuskegee Airmen with 1 or more aerial victory credits",
-       caption="\n#TidyTuesday Week 5 | Data from Commemorative Airforce (CAF) by way of the VA-TUG")
+       subtitle="Tuskegee Airmen with one or more aerial victory credits",
+       caption="\n#TidyTuesday Week 6 | #TuskegeeAirmenChallenge | Data from Commemorative Airforce (CAF) by way of the VA-TUG")
        
 # Save
 ggsave("2022_06.png", unit="in")
