@@ -1,14 +1,15 @@
 # #TidyTuesday
 
-My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly social data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity) that focuses on data wrangling and visualisation. More information about #TidyTuesday can be found here: [https://github.com/rfordatascience/tidytuesday#readme](https://github.com/rfordatascience/tidytuesday#readme).
+My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly social data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity) that focuses on data wrangling and visualisation. More information about #TidyTuesday is available at: [https://github.com/rfordatascience/tidytuesday#readme](https://github.com/rfordatascience/tidytuesday#readme).
 
-My #TidyTuesday visualisations are shown below,with links to the code. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
+My #TidyTuesday visualisations and code are shown below. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
 **List of contributions**
 <details open>
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/06 [Tuskegee Airmen](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
 * 2022/05 [Dog breeds](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
 * 2022/04 [Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
 * 2022/03 [Chocolate Bar ratings](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_03)
@@ -86,6 +87,9 @@ My #TidyTuesday visualisations are shown below,with links to the code. Feedback 
 
 ***
 ## 2022 
+* [Week 06/2022: Tuskegee Airmen](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_06/2022_06.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
+***
 * [Week 05/2022: Dog breeds](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_05/2022_05.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
 ***
