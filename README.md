@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/07 [#DuBoisChallenge2022](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_07)
 * 2022/06 [Tuskegee Airmen](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
 * 2022/05 [Dog breeds](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_05)
 * 2022/04 [Board games](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_04)
@@ -87,6 +88,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 06/2022: #DuBoisChallenge2022](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_07)  
+<img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_07/challenge02.png" width="49%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_07/challenge07.png" width="49%">
+***
 * [Week 06/2022: Tuskegee Airmen](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_06/2022_06.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
 ***
