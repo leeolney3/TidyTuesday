@@ -109,4 +109,45 @@ cowplot::plot_grid(c07) +
 
 ggsave("challenge07.png",height=10, width=8.5)
 
+# challenge 05
+data5 = read_csv("https://raw.githubusercontent.com/ajstarks/dubois-data-portraits/master/challenge/2022/challenge05/data.csv",show_col_types = FALSE)
+
+data5 = data5 %>%
+  add_row(Year=1863, Slave=97, Free=3)
+
+lab5 = data5 %>% 
+  mutate(Free=ifelse(Free==100.0,"100%",Free),
+                        Free=ifelse(Free==1.3,"1.3%",Free)) %>%
+  filter(Year!=1863)
+
+c05 = data5 %>% pivot_longer(Slave:Free) %>%
+  ggplot(aes(x=Year, y=value)) +
+  geom_area(aes(fill=name), show.legend=F, color="#E3D4C3") +
+  geom_vline(xintercept=lab5$Year, color="#E3D4C3") +
+  scale_x_reverse(breaks=lab5$Year, expand=c(0,0), 
+                  sec.axis = sec_axis(~ . * 1, breaks = lab5$Year, labels = lab5$Free)
+  ) +
+  scale_y_continuous(expand=c(0,0), position="right",
+                     breaks=c(97,98,99,100), labels=c("3%","2%","1%","")) +
+  scale_fill_manual(values=c("#CD2642","#1E1B19")) +
+  coord_flip(ylim=c(97,100)) +
+  theme_minimal(base_family = "mono") +
+  theme(plot.margin=margin(.8,3.4,.5,3.4,"cm"),
+        axis.title=element_blank(),
+        axis.text.y.left =element_text(margin=margin(r=17), size=8.3,color="grey40"),
+        axis.text.y.right =element_text(margin=margin(l=17), size=8.3,color="grey40"),
+        plot.background = element_rect(fill="#E3D4C3", color=NA),
+        plot.title=element_text(hjust=.5, margin=margin(b=30)),
+        plot.caption.position="plot",
+        plot.caption=element_text(hjust=.5, margin=margin(t=40), size=7),
+        axis.ticks.x.top = element_line(size=.3, color="grey50"),
+        axis.text.x.top = element_text(size=7, color="grey40")
+  ) +
+  labs(title=str_to_upper("#DuBoisChallenge2022 Challenge 05"),
+       caption="#TidyTuesday #DuboisChallenge2022 | Data source: Anthony Starks")
+
+plot_grid(c05) + draw_text("PERCENT", x=.76, y=.89, size=7, color="grey40", family="mono")
+
+ggsave("challenge05.png",width=6, height=7.5, unit="in")
+
 
