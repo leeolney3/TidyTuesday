@@ -30,7 +30,8 @@ df1 = freedom %>%
                          "PF"="Partially Free",
                          "NF"="Not Free"))
                          
-# Beeswarm plot       
+# Beeswarm plot   
+# Inspired by Fiona Lees @Fi_Lees <https://twitter.com/Fi_Lees/status/1496902332239552521/photo/1>
 p1 = df1 %>%
   ggplot(aes(x=value, y=name, color=Status)) +
   geom_beeswarm(size=3,cex = 3.8, groupOnX = FALSE) +
@@ -58,12 +59,13 @@ p1 = df1 %>%
         ) +
   labs(title="Political Rights and Civil Liberties, 2020",
        subtitle="Least Developed Countries",
-       caption="\n#TidyTuesday Week 8 | Data from UN and Freedom House | Plot inspired by Nicola Rennie @nrennie35")
+       caption="\n#TidyTuesday Week 8 | Data from UN and Freedom House | Plot inspired by Fiona Lees @Fi_Lees")
        
 ggsave("2020_08_p1.png", p1, height=8, width=8, unit="in", bg="white")
 
 
 # Facetted area plot
+# Inspired by Nicola Rennie @nrennie35 <https://twitter.com/nrennie35/status/1496038550860492801/photo/1>
 library(geofacet)
 library(ggnewscale)
 
@@ -114,7 +116,7 @@ p2 = df3 %>%
         plot.title=element_text(hjust=.5, face="bold", size=16, margin=margin(b=10), family=f2),
         plot.subtitle = element_text(hjust=.5, size=13, face="bold", margin=margin(b=10), family=f2),
         plot.caption = element_text(hjust=.5, size=9, color="grey30")) +
-  labs(caption="\n#TidyTuesday Week 8 | Data from UN and Freedom House | Plot inspired by Fiona Lees @Fi_Lees",
+  labs(caption="\n#TidyTuesday Week 8 | Data from UN and Freedom House | Plot inspired by Nicola Rennie @nrennie35",
        title="Civil Liberties and Political Rights Rating in Africa",
        subtitle="1995 to 2020")
        
