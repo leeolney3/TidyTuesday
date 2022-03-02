@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/09 [Alternative Fuel Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_09)
 * 2022/08 [World Freedom index](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_08)
 * 2022/07 [#DuBoisChallenge2022](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_07)
 * 2022/06 [Tuskegee Airmen](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_06)
@@ -89,9 +90,11 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 09/2022: Alternative Fuel Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_09)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_09/2022_09.png)](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_09)
+***
 * [Week 08/2022: World Freedom index](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_08)  
 <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2022_08_p2.png" width="36.5%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2020_08_p1.png" width="50%"> 
-
 * [Week 07/2022: #DuBoisChallenge2022](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_07)  
 <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_07/challenge02.png" width="33.2%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_07/challenge07.png" width="31.75%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_07/challenge05.png" width="30%">
 ***
