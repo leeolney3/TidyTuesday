@@ -33,8 +33,8 @@ p1 =ggplot() +
   coord_sf(ylim=c(41, 60), xlim=c(-11,26)) +
   cowplot::theme_map(10) +
   theme(plot.caption=element_text(size=7.5)) +
-  labs(title="Erasmus student mobility: Students from Luxembourg",
-       subtitle="From academic year 2014-2015 to 2019-2020, 121 out of 2739 participants from Luxembourg went to other cities for the\nERASMUS program.",
+  labs(title="Erasmus student mobility: Students from Luxembourg City",
+       subtitle="From academic year 2014-2015 to 2019-2020, 121 out of 2739 participants from Luxembourg City went to other EU cities for the\nERASMUS program.",
        caption="TidyTuesday Week 10 | Data from Data.Europa by way of Data is Plural")
   
 # bar 
