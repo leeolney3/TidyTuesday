@@ -29,7 +29,7 @@ cran2 %>%
   ggplot(aes(x=date2, y=n, color=fct_rev(factor(yr)))) +
   geom_line(show.legend=F, alpha=.95)  +
   geom_richtext(data=cran3, aes(x=as.Date("2019-09-15"), 
-                                label="There were **123**<br>uploads/updates<br>on **2020-01-07**"), 
+                                label="**123 packages** were<br>uploaded/updated<br>on **Jan 7, 2020**"), 
                 size=3.5, hjust=1, vjust=0.9, family="Lato",lineheight=1.4,
                 label.padding = grid::unit(rep(0, 4), "pt"), fill = NA, label.color = NA) +
   scale_color_manual(values=met.brewer("Renoir", 5)) +
