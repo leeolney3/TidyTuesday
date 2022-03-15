@@ -29,9 +29,9 @@ cran2 %>%
   ggplot(aes(x=date2, y=n, color=fct_rev(factor(yr)))) +
   geom_line(show.legend=F, alpha=.95)  +
   geom_richtext(data=cran3, aes(x=as.Date("2019-09-15"), 
-                                label="**123 packages** were<br>uploaded/updated on<br>**2020-01-07**"), 
-            size=3.4, hjust=1, vjust=0.9, family="Lato",
-            label.padding = grid::unit(rep(0, 4), "pt"), fill = NA, label.color = NA) +
+                                label="There were **123**<br>uploads/updates<br>on **2020-01-07**"), 
+                size=3.5, hjust=1, vjust=0.9, family="Lato",lineheight=1.4,
+                label.padding = grid::unit(rep(0, 4), "pt"), fill = NA, label.color = NA) +
   scale_color_manual(values=met.brewer("Renoir", 5)) +
   scale_x_date(breaks="1 year", labels=scales::date_format("%Y"), expand=c(0.02,0.02)) +
   scale_y_continuous(expand=c(0,0), limits=c(0,125)) +
@@ -49,7 +49,7 @@ cran2 %>%
         plot.title.position = "plot") +
   labs(title="Number of uploads/updates on CRAN by date",
        subtitle="2016 to 2021\n",
-       caption="\n#TidyTuesday Week 11 | Data from Robert Flight GitHub") +
+       caption="\n#TidyTuesday Week 11  |  Data from Robert Flight GitHub") +
   annotate(geom="segment", x=as.Date("2019-09-25"), xend=as.Date("2019-12-25"), y=123, yend=123,
            color="#14114E", arrow=arrow(length = unit(.2,"cm")), size=.4)
            
