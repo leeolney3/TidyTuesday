@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/11 [CRAN/BIOC Vignettes](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_11)  
 * 2022/10 [Erasmus student mobility](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_10)
 * 2022/09 [Alternative Fuel Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_09)
 * 2022/08 [World Freedom index](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_08)
