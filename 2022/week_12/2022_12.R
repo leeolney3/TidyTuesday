@@ -36,7 +36,7 @@ babynames %>% filter(name %in% selected) %>%
         strip.text=element_text(hjust=0, size=10.5),
         axis.text=element_text(size=8.5),
         axis.title=element_blank()
-        ) +
+  ) +
   labs(title= "Names of newborns (1880-2017)",
        subtitle="15 most common names by proportion of total births in the US, arranged in alphabetical order\n",
        caption="\n#TidyTuesday week 12 | Data source: babynames R package from Hadley Wickham")
