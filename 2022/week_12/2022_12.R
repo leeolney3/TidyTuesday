@@ -17,11 +17,14 @@ selected = babynames %>%
   slice(1:15) %>%
   pull(name)
   
-babynames %>% filter(name %in% selected) %>%
-  ggplot(aes(year, prop)) +
-  geom_col(aes(fill=prop),show.legend = F) +
+babynames %>% 
+  filter(name %in% selected)  %>%
+  group_by(name, year) %>%
+  tally(prop) %>%
+  ggplot(aes(year, n)) +
+  geom_col(aes(fill=n),show.legend = F) +
   facet_wrap(~name, ncol=3) +
-  scale_y_continuous(labels=scales::percent, breaks=c(0.035,0.07)) +
+  scale_y_continuous(labels=scales::percent, breaks=c(0.04,0.08)) +
   scico::scale_fill_scico(palette="bamako") +
   theme_minimal() +
   theme(text=element_text(family="Outfit"),
