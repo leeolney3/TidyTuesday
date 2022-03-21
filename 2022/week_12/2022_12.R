@@ -39,9 +39,50 @@ babynames %>%
         strip.text=element_text(hjust=0, size=10.5),
         axis.text=element_text(size=8.5),
         axis.title=element_blank()
-  ) +
+        ) +
   labs(title= "Names of newborns (1880-2017)",
        subtitle="15 most common names by proportion of total births in the US, arranged in alphabetical order\n",
        caption="\n#TidyTuesday week 12 | Data source: babynames R package from Hadley Wickham")
-       
-ggsave("2022_12.png", height=8, width=8, unit="in", bg="white")
+
+# relative change
+df2 = babynames %>% 
+  filter(name %in% selected) %>%
+  group_by(name,year) %>%
+  tally(prop) %>%
+  ungroup() %>%
+  group_by(name) %>%
+  mutate(relative = (n-lag(n))/lag(n))
+  
+df2 %>% 
+  ggplot(aes(year, relative)) +
+  geom_line(aes(color=relative)) +
+  facet_wrap(~name, ncol=3) +
+  scale_y_continuous(labels=scales::percent) +
+  scico::scale_color_scico(palette="tofino", midpoint = 0, labels=scales::percent) +
+  theme_minimal() +
+  theme(text=element_text(family="Outfit"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x=element_blank(),
+        panel.grid.major.y=element_line(size=.3),
+        plot.margin=margin(.5,.5,.5,.5, unit = "cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=.5, size=16, margin=margin(b=3)),
+        plot.subtitle=element_text(hjust=.5, size=10.5),
+        panel.spacing.y = unit(1.3, "lines"),
+        strip.text=element_text(hjust=0, size=10.5),
+        axis.text=element_text(size=8.5),
+        axis.title=element_blank(),
+        legend.position="top",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, lineheight = 1.2),
+        axis.ticks.x=element_line(color="grey30")
+        ) +
+  labs(title="Names of newborns, relative change (1880-2017)",
+       color="Relative change in the proportion of total births by year",
+       #subtitle="15 most common names by proportion of total births in the US, arranged in alphabetical order",
+       caption="\nNote: Includes 15 most common names by proportion of total births in the US, arranged in alphabetical order. \n#TidyTuesday week 12 | Data source: babynames R package from Hadley Wickham") +
+  guides(color=guide_colorbar(title.position = "top", 
+                              barwidth = unit(19, "lines"),
+                              barheight = unit(.5, "lines")))
+                              
+ggsave("2022_12_p2.png", width=8, height=8, unit="in", bg="white")                              
