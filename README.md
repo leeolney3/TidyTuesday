@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/12 [Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
 * 2022/11 [CRAN/BIOC Vignettes](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_11)  
 * 2022/10 [Erasmus student mobility](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_10)
 * 2022/09 [Alternative Fuel Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_09)
@@ -92,7 +93,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-
+* [Week 12/2022: Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
+<img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12.png" width="49%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12_p2.png" width="49%"> 
+***
 * [Week 08/2022: World Freedom index](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_08)  
 <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2022_08_p2.png" width="36.5%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2022_08_p1.png" width="50%"> 
 ***
