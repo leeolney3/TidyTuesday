@@ -85,4 +85,92 @@ df2 %>%
                               barwidth = unit(19, "lines"),
                               barheight = unit(.5, "lines")))
                               
-ggsave("2022_12_p2.png", width=8, height=8, unit="in", bg="white")                              
+ggsave("2022_12_p2.png", width=8, height=8, unit="in", bg="white")  
+
+# gt table
+library(gt)
+library(gtExtras)
+
+df3a = babynames %>% 
+  filter(name %in% df3$name) %>%
+  group_by(name, year) %>%
+  tally(prop) %>%
+  mutate(n=n*100)
+  
+df3max = df3a %>% group_by(name) %>%
+  filter(n==max(n)) %>%
+  select(name, max_year=year, max_prop=n) 
+  
+df3min = df3a %>% group_by(name) %>%
+  filter(n==min(n)) %>%
+  select(name, min_year=year, min_prop=n)     
+  
+df3c = df3a %>% filter(year==2017) %>%
+  select(name, p17=n)
+
+df3d = df3a %>%
+  group_by(name) %>%
+  summarise(mean_prop=mean(n),
+            timeline=list(n),
+            density=list(n)) %>%
+  left_join(df3max, by="name") %>%
+  left_join(df3min, by="name") %>%
+  left_join(df3c, by="name") %>%
+  arrange(desc(mean_prop)) %>%
+  select(name, mean_prop, min_year, min_prop, max_year, max_prop, density, timeline, p17)
+  
+p3 = df3d %>%
+  gt() %>%
+  gt_theme_538() %>%
+  opt_table_font(
+      font = list(
+        google_font("Roboto"),
+        default_fonts()
+      ),
+      weight = 400
+    ) %>%
+  gt_sparkline(column="timeline", type="sparkline") %>%
+  gt_sparkline(column="density", type="density") %>%
+  tab_spanner(label="Min", columns=c("min_year","min_prop")) %>%
+  tab_spanner(label="Max", columns=c("max_year","max_prop")) %>%
+  cols_label(mean_prop=md("Mean %"),
+             min_year="Year",
+             min_prop="%",
+             max_year="Year",
+             max_prop="%",
+             p17=md("% in 2017")) %>%
+  fmt_number(column=c(mean_prop, min_prop, max_prop, p17),
+             decimals=2) %>%
+  tab_options(data_row.padding = px(7),
+              column_labels.font.size = px(13)) %>%
+  cols_width(3:6~px(55),
+             2~px(65)) %>%
+  cols_align(align="center", columns=c(2:6,9)) %>%
+  gt_color_rows(columns="max_prop", palette="ggsci::green_material") %>%
+  gt_color_rows(columns="p17", palette="ggsci::lime_material") %>%
+  tab_header(title="Names of newborns (1880-2017)",
+             subtitle="15 most common names by proportion of total births in the US, arranged in descending order of mean proportion.") %>%
+  tab_source_note(source_note = "#TidyTuesday week 12 | Data source: babynames R package from Hadley Wickham") %>%
+  tab_style(
+      style = cell_text(weight = 550),
+      locations = cells_title(groups = "title")) %>%
+  tab_style(
+      style = cell_text(size=14.5),
+      locations = cells_body()) %>%
+    tab_style(
+      style = cell_text(
+        color = "grey40",
+        transform = "capitalize"
+      ),
+      locations = cells_column_labels(everything())
+    ) %>%
+  tab_style(
+      style = cell_text(
+        color = "grey40",
+        size=13,
+        transform = "capitalize"
+      ),
+      locations = cells_column_spanners(everything())
+    )
+    
+p3                        
