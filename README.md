@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/13 [Collegiate sports](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_13) 
 * 2022/12 [Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
 * 2022/11 [CRAN/BIOC Vignettes](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_11)  
 * 2022/10 [Erasmus student mobility](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_10)
@@ -93,6 +94,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 13/2022: Collegiate sports](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_13)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_13/2022_13.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_13/2022_13.R)
+***
 * [Week 12/2022: Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
 <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12.png" width="49%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12_p2.png" width="49%"> 
 ***
