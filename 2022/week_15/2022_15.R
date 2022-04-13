@@ -22,7 +22,7 @@ df = indoor_pollution %>%
          lab = str_remove(lab,"World Bank "),
          col = case_when(lab %in% c("Low Income","High Income","Upper Middle Income","Lower Middle Income")~"2", TRUE~"1")) 
          
- df4 %>%
+ df %>%
   ggplot(aes(x=year, y=value, color=col, group=entity)) +
   geom_segment(
     data = tibble(y = seq(0, 15, by = 5), x1 = 1989, x2 = 2020),
@@ -31,7 +31,7 @@ df = indoor_pollution %>%
     color = "#ACBABD",
     size = .3
   ) +
-  ggrepel::geom_text_repel(data = df4 %>% filter(year==max(year)),
+  ggrepel::geom_text_repel(data = df %>% filter(year==max(year)),
                            aes(label=lab, color=col), 
                            direction="y", xlim=c(2019.5, NA), size=3.2, family=f1, fontface="bold",
                            segment.linetype="dotted", min.segment.length = .3, segment.color="grey70") +
@@ -58,3 +58,50 @@ df = indoor_pollution %>%
        caption="#TidyTuesday week 15 | Data from Our World in Data")
        
 ggsave("2022_15.png", bg="#fafafa")
+
+# Indoor vs outdoor pollution (2019)
+dfin = indoor_pollution %>% filter(!is.na(code)) %>% filter(year==max(year)) %>% rename(indoor=value)
+
+dfout = read_csv("data/share-deaths-outdoor-pollution.csv",show_col_types = FALSE) %>%
+  janitor::clean_names() %>% 
+  filter(!is.na(code)) %>%
+  filter(year==max(year)) %>% 
+  rename(outdoor=4)
+  
+dfc = dfin %>% left_join(dfout) %>%
+  pivot_longer(4:5) %>%
+  mutate(region=countrycode(code, origin="iso3c", destination="region")) %>%
+  filter(!is.na(region)) %>%
+  group_by(entity) %>%
+  mutate(diff=diff(value),
+         col=case_when(diff>0~"Outdoor > Indoor", TRUE~"Indoor > Outdoor"))
+         
+font_add_google("Lato")
+f2 = "Lato"
+
+dfc %>%
+  ggplot(aes(y=str_to_title(name), x=value, color=col)) +
+  geom_point(alpha=.7, show.legend=F) +
+  geom_line(aes(group=entity), alpha=.5, key_glyph="rect") +
+  scale_x_continuous(labels=scales::percent_format(scale=1, accuracy=1)) +
+  scale_color_manual(values=c("#E38E2D","#178080")) +
+  scale_y_discrete(expand=c(0.02,0.02)) +
+  facet_wrap(~region, ncol=2) +
+  cowplot::theme_minimal_grid(13) +
+  theme(legend.position = c(0.6,0.1),
+        axis.title=element_blank(),
+        panel.spacing = unit(1.8, "lines"),
+        strip.text=element_text(face="bold"),
+        text=element_text(family=f2),
+        plot.title.position = "plot",
+        legend.title=element_blank(),
+        plot.margin=margin(.5,.5,.5,.5, unit="cm"),
+        plot.subtitle=element_text(margin=margin(b=10)),
+        plot.caption=element_text(size=9)
+        ) +
+  guides(color=guide_legend(override.aes = list(size=5, alpha=.9))) +
+  labs(subtitle="Share of deaths from any cause which are attributed to indoor and outdoor air pollution in 2019.",
+       title="Air pollution",
+       caption="TidyTuesday week 15 | Data from Our World in Data")
+       
+ggsave("2022_15_2.png", bg="#fafafa")                  
