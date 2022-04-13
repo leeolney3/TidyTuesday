@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/15 [Indoor Air Pollution](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_15)
 * 2022/14 [Digital Publications](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_14)
 * 2022/13 [Collegiate sports](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_13) 
 * 2022/12 [Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
@@ -95,6 +96,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 15/2022: Digital Publications](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_15)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_15/2022_15.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_15/2022_15.R)
+***
 * [Week 14/2022: Digital Publications](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_14)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_14/2022_14.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_14/2022_14.R)
 ***
