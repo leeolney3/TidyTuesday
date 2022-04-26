@@ -73,9 +73,9 @@ df2 %>%
         axis.title=element_text(size=11),
         strip.text = element_text(size=10.5, face="bold"),
         ) +
-  labs(y="Volume",x="Notebook",
+  labs(y="Volume",x="Notebook review",
        title="Kaggle Hidden Gems",
        subtitle="Notebook reviews with mention of visuals",
-       caption="\nNotebook in the order of appearance in dataset.\n#TidyTuesday week 17  |  Data from Kaggle by way of Martin Henze (Heads or Tails)")
+       caption="\nEach square represents one notebook review. Notebook review in the order of appearance in dataset.\n#TidyTuesday week 17  |  Data from Kaggle by way of Martin Henze (Heads or Tails)")
        
 ggsave("2022_17.png", height=7.5, width=7.5, bg="#fafafa")
