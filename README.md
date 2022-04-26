@@ -98,7 +98,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 17/2022: CKaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)  
+* [Week 17/2022: Kaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.R)
 ***
 * [Week 16/2022: Crossword Puzzles and Clues](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_16)  
