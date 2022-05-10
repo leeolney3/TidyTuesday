@@ -45,3 +45,60 @@ df3 %>%
   tab_source_note("#TidyTuesday week 19 | Data from Post45 Data by way of Sara Stoudt") %>%
   tab_style(style = list(cell_text(style = "italic", color="black")),
     locations = cells_body(columns = title))
+    
+# Bump chart
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+font_add_google("Source Sans Pro")
+f1 = "Source Sans Pro"
+
+df4 = nyt_full %>% 
+  mutate(yr=year(week)) %>%
+  filter(year==2020) %>%
+  group_by(title_id) %>%
+  mutate(n=n())
+  
+selected = df4 %>% filter(rank==1) %>% count(title_id, sort=T) %>% filter(n>1) %>% pull(title_id)
+
+lab = df4 %>% filter(title_id %in% selected) %>% group_by(title_id) %>% filter(week==min(week))
+
+df4 %>%
+  ggplot(aes(x=week, y=rank)) +
+  geom_point(color="grey", alpha=.8, size=.5) +
+  ggbump::geom_bump(aes(group=title_id), alpha=.7, size=.6, color="grey80") +
+  ggbump::geom_bump(data= df4 %>% filter(title_id %in% selected), 
+                    aes(group=title_id, color=title), 
+                    alpha=.8, size=1, show.legend = F) +
+  geom_point(data= df4 %>% filter(title_id %in% selected),
+             size=.7, shape=21, fill="white", color="black", stroke=.3) +
+  geom_text(data=lab %>% filter(title_id!=414 & title_id!=6601 & title_id!=6126), 
+            aes(y=0.6,label=str_to_title(title), color=title), 
+            size=4, show.legend=F, family=f1, hjust=0, fontface="bold") +
+  geom_text(data=lab %>% filter(title_id %in% c(414,6601,6126)), 
+            aes(y=0.1,label=str_to_title(title),color=title), 
+            size=4, show.legend=F, family=f1, hjust=0, fontface="bold") +
+  scale_x_date(expand=c(0.02,0.02), date_breaks = "1 month", date_labels = "%b") +
+  scale_y_reverse(breaks=seq(1,15,1), expand=c(0.02,0.02),
+                  labels=c("Rank 1","","","4","","","7","","","10","","","13","","")) +
+  MetBrewer::scale_color_met_d("Lakota") +
+  coord_cartesian(clip="off") +
+  theme_minimal(14) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        plot.subtitle = element_text(size=12.5, margin=margin(b=10)),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f1, face="bold", size=15.5),
+        panel.grid=element_blank(),
+        axis.title=element_blank(),
+        axis.ticks=element_line(color="grey50", size=.4),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.text=element_text(color="black"),
+        plot.caption=element_text(hjust=0, color="grey50", size=11),
+        plot.margin=margin(.5,.9,.3,.35, unit="cm"),
+        plot.caption.position = "plot") +
+  labs(title="NY Times Bestsellers 2020",
+       subtitle="Titles with rank==1 for two or more weeks in The New York Times fiction bestseller list, from 2020-01-05 to 2020-12-06.",
+       caption="\n#TidyTuesday week 19 | Data from Post45 Data by way of Sara Stoudt")
+  
+  
