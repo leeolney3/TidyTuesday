@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/19 [NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
 * 2022/18 [Solar/Wind utilities](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_18)
 * 2022/17 [Kaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)
 * 2022/16 [Crossword Puzzles and Clues](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_16)
@@ -99,6 +100,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 19/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.R)
+***
 * [Week 17/2022: Kaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.R)
 ***
