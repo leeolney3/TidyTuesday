@@ -101,4 +101,68 @@ df4 %>%
        subtitle="Titles with rank==1 for two or more weeks in The New York Times fiction bestseller list, from 2020-01-05 to 2020-12-06.",
        caption="\n#TidyTuesday week 19 | Data from Post45 Data by way of Sara Stoudt")
   
+# table 2: top 20 titles by Stephen King
+sel2 = nyt_full %>% filter(author=="Stephen King") %>% count(title_id,title, sort=T) %>%
+  slice(1:20) %>%
+  pull(title_id)
   
+dfs = nyt_full %>% 
+  filter(title_id %in% sel2) %>%
+  mutate(rank1=-1*rank) %>%
+  select(title, rank,rank1, week) %>%
+  group_by(title) %>%
+  summarise(total_weeks=n_distinct(week),
+            highest_rank=min(rank),
+            rank_1=length(rank[rank==1]),
+            rank_distribution=list(rank),
+            sparkline=list(rank1),
+            min_date=min(week),
+            max_date=max(week),
+            ) %>%
+  ungroup() %>%
+  arrange(desc(total_weeks)) %>%
+  mutate(title=case_when(title!="IT"~str_to_title(title),TRUE~title))
+  
+gt(dfs) %>%
+  gt_theme_nytimes() %>%
+  gt_sparkline("rank_distribution", width=35, type="histogram", bw=1) %>%
+  gt_sparkline("sparkline", width=35, label=F) %>%
+  #gt_fa_repeats("rank_1", name="book", palette="#f6bd60") %>%
+  cols_label(total_weeks="Total weeks",
+             highest_rank="Highest rank",
+             rank_1=md("Rank==1<br>count"),
+             rank_distribution="Rank distribution",
+             sparkline="Rank over time",
+             min_date = "Min. date",
+             max_date= "Max. date") %>%
+  tab_header(title="NY Times bestsellers, Stephen King's books",
+             subtitle="20 titles by Stephen King that appeared the most weeks on The New York Times fiction bestseller list from 1977-03-27 to 2020-09-13, arranged in descending order of total weeks.") %>%
+  tab_source_note(source_note = "#TidyTuesday week 19  |  Data from Post45")  
+  
+# table 3: titles with most rank==1, by year, from 1980 to 2019
+y1 = nyt_full %>% 
+  filter(rank==1) %>%
+  count(year, title, author, title_id, rank) %>%
+  group_by(year) %>%
+  filter(n==max(n)) 
+
+y2= y1 %>% 
+  mutate(title=str_to_title(title)) %>%
+  select(year, title, n) %>%
+  ungroup() %>%
+  filter(between(year,1980,2019))
+  
+my_gt_function <- function(x) {
+  gt(x) %>%
+    gt_theme_538() %>%
+    gtExtras::gt_color_rows(columns = year, domain = range(y2$year), 
+                            palette = "ggsci::grey_material") %>%
+    gtExtras::gt_color_rows(columns = n, domain = range(y2$n),
+                            palette = "ggsci::indigo_material") %>%
+    cols_label(n=md("Rank==1<br>week(s)")) %>%
+    opt_table_font(font=list(google_font(name="Roboto"))) 
+}
+
+two_tables <- gt_double_table(y2, my_gt_function, nrows = 23)
+str(two_tables, max.level = 1)
+gtExtras::gt_two_column_layout(two_tables) 
