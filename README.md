@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/20 [Eurovision](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20) 
 * 2022/19 [NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
 * 2022/18 [Solar/Wind utilities](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_18)
 * 2022/17 [Kaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)
