@@ -1,5 +1,5 @@
 # 2022-05-17
-# TidyTuesday week 20, Data from Eurovision
+# TidyTuesday week 20, Data from Eurovision, credits to Tanya Shapiro and Bob Rudis
 
 library(tidyverse)
 library(showtext)
@@ -62,6 +62,6 @@ gf %>%
         ) +
   labs(title="Eurovision Grand Finale Rankings",
        subtitle="From 2004 to 2022, arranged in alphabetical order of artist country",
-       caption="#TidyTuesday week 20 | Data from Eurovision")
+       caption="#TidyTuesday week 20 | Data from Eurovision, credits to Tanya Shapiro and Bob Rudis")
        
 ggsave("2022_20.png",height=8, width=7, bg="white")
