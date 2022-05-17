@@ -65,3 +65,49 @@ gf %>%
        caption="#TidyTuesday week 20 | Data from Eurovision, credits to Tanya Shapiro and Bob Rudis")
        
 ggsave("2022_20.png",height=8, width=7, bg="white")
+
+
+# h/t to Priyanka Mehta @Priyank79286307 for the suggestion to order country by who participated most and who won most
+lev = gf %>% 
+  group_by(artist_country) %>%
+  summarise(highest_rank=min(rank),
+            n=n_distinct(year)) %>%
+  ungroup() %>%
+  arrange(n, desc(highest_rank)) %>%
+  pull(artist_country)
+  
+gf %>%
+  mutate(artist_country=factor(artist_country, levels=lev)) %>%
+  ggplot(aes(x=year, y=	artist_country)) +
+  geom_line(aes(group=artist_country), size=.3, color="grey70") +
+  geom_text(data=gf %>% select(artist_country, n) %>% distinct(),
+            aes(x=2022.5, y=artist_country, label=glue::glue("n= {n}")), 
+            family=f1, color="grey50", size=3.5, hjust=0) +
+  geom_point(shape=21, size=2.5, fill="white") +
+  geom_point(data=gf3, aes(fill=rank_ordinal), size=2.5, shape=21) +
+  scale_fill_manual(values=c("#F50405","#F7C83A","#1CB4EB"), 
+                    guide = guide_legend(order = 1)) +
+  ggnewscale::new_scale_fill() +
+  geom_point(data=gfl, aes(fill="Last"), size=2.5, shape=21) +
+  scale_fill_manual(values=c("grey50")) +
+  scale_x_continuous(position="top", breaks=seq(2005,2020,5),
+                     expand = expansion(mult = c(.02, NA))) +
+  coord_cartesian(clip = "off") +
+  cowplot::theme_minimal_vgrid(12) +
+  theme(text=element_text(family=f1),
+        legend.title = element_blank(),
+        axis.title=element_blank(),
+        axis.line=element_blank(),
+        axis.ticks.y=element_blank(),
+        legend.position = "top",
+        plot.margin=margin(.4,1.4,.3,.4, unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(size=13),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey20", margin=margin(t=13), size=9)
+        ) +
+  labs(title="Eurovision Grand Finale Rankings",
+       subtitle="From 2004 to 2022, artist countries arranged in descending order of total years in Grand Finale\nand highest rank achieved.",
+       caption="#TidyTuesday week 20 | Data from Eurovision, credits to Tanya Shapiro and Bob Rudis") 
+       
+ggsave("2022_20v2.png",height=8, width=7, bg="white") 
