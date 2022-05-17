@@ -60,13 +60,13 @@ gf %>%
         plot.caption.position = "plot",
         plot.caption=element_text(hjust=0, color="grey20", margin=margin(t=13), size=9)
         ) +
-  labs(title="Eurovision Grand Finale Rankings",
+  labs(title="Eurovision Grand Final Rankings",
        subtitle="From 2004 to 2022, arranged in alphabetical order of artist country",
        caption="#TidyTuesday week 20 | Data from Eurovision, credits to Tanya Shapiro and Bob Rudis")
        
 ggsave("2022_20.png",height=8, width=7, bg="white")
 
-
+# v2
 # h/t to Priyanka Mehta @Priyank79286307 for the suggestion to order country by who participated most and who won most
 lev = gf %>% 
   group_by(artist_country) %>%
@@ -106,8 +106,71 @@ gf %>%
         plot.caption.position = "plot",
         plot.caption=element_text(hjust=0, color="grey20", margin=margin(t=13), size=9)
         ) +
-  labs(title="Eurovision Grand Finale Rankings",
-       subtitle="From 2004 to 2022, artist countries arranged in descending order of total years in Grand Finale\nand highest rank achieved.",
+  labs(title="Eurovision Grand Final Rankings",
+       subtitle="From 2004 to 2022, artist countries arranged in descending order of total years in grand final\nand highest rank achieved.",
        caption="#TidyTuesday week 20 | Data from Eurovision, credits to Tanya Shapiro and Bob Rudis") 
        
 ggsave("2022_20v2.png",height=8, width=7, bg="white") 
+
+# eurovision-votes.csv
+# max points network graph for year 2021 and 2022
+# reference: https://bjnnowak.netlify.app/2021/09/30/r-network-analysis-with-tidygraph/
+
+library(tidygraph)
+library(ggraph)
+library(patchwork)
+
+votes = readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-17/eurovision-votes.csv') 
+
+custom_theme <- theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    panel.grid.major = element_blank(),
+    plot.title=element_text(hjust=.5)
+  )
+  
+# y2021
+edges_list = votes %>% 
+  filter(semi_final=="f", jury_or_televoting=="J", is.na(duplicate)) %>%
+  filter(points==12, year==2021) %>%
+  mutate(from = countrycode(from_country, origin="country.name",destination = "iso3n"),
+         to = countrycode(to_country, origin="country.name",destination = "iso3n")) %>%
+  select(from_country, to_country, points)
+
+network = as_tbl_graph(edges_list, directed = TRUE)
+
+p21 = network %>%
+  ggraph(layout="kk") +
+  geom_node_point() +
+  geom_edge_diagonal(color="dimgrey", 
+                      arrow=arrow(angle=40, length=unit(0.1, "cm"))) +
+  geom_node_text(aes(label=name), size=2, color="blue",repel=T) + 
+  custom_theme +
+  theme(plot.background = element_rect(fill="#e9ecef", color=NA)) +
+  labs(title = '2021')
+
+# y2022
+edges_list = votes %>% 
+  filter(semi_final=="f", jury_or_televoting=="J", is.na(duplicate)) %>%
+  filter(points==12, year==2022) %>%
+  mutate(from = countrycode(from_country, origin="country.name",destination = "iso3n"),
+         to = countrycode(to_country, origin="country.name",destination = "iso3n")) %>%
+  select(from_country, to_country, points)
+
+network = as_tbl_graph(edges_list, directed = TRUE)
+
+p22 = network %>%
+  ggraph(layout="kk") +
+  geom_node_point() +
+  geom_edge_diagonal(color="dimgrey", 
+                      arrow=arrow(angle=40, length=unit(0.1, "cm"))) +
+  geom_node_text(aes(label=name), size=2, color="blue",repel=T) + 
+  custom_theme +
+  theme(plot.background = element_rect(fill="#f8f9fa", color=NA)) +
+  labs(title = '2022')
+  
+# combine plot and save
+p21 + p22
+ggsave("network.png", height=4, width=8)  
