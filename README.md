@@ -101,6 +101,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 20/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.R)
+***
 * [Week 19/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.R)
 ***
