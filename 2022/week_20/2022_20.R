@@ -13,13 +13,22 @@ f1 = "Karla"
 eurovision <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-17/eurovision.csv')
 
 # Summary
-eurovision %>%
-  group_by(artist_country) %>%
-  summarise(years_participated = n_distinct(year),
-            highest_rank=min(rank, na.rm = T),
-            lowest_rank=max(rank, na.rm=T),
-            highest_point = max(total_points, na.rm=T),
-            lowest_point=min(total_points, na.rm=T))
+eurovision %>% 
+  filter(year!=2020, section %in% c("final", "grand-final")) %>%
+  group_by(year) %>%
+  mutate(last= case_when(rank==max(rank)~1, TRUE~0),
+         n_host = case_when(host_country==artist_country~1, TRUE~0)) %>%
+  ungroup() %>%
+  group_by(country_emoji, artist_country) %>%
+  summarise(n=n(),
+            n_winner=length(n[winner=="TRUE"]),
+            #win_year=list(year[winner=="TRUE"]),
+            n_last = sum(last),
+            highest_rank=min(rank),
+            min_year=min(year),
+            max_year=max(year),
+            n_host= sum(n_host)) %>%
+  ungroup()
 
 # Wrangle
 gf = eurovision %>% 
