@@ -81,3 +81,54 @@ dfs3 %>%
        
 ggsave("2022_21.png", height=8, width=8, bg="white")
 
+# New Zealand wins
+# Streaks method from: https://data-and-the-world.onrender.com/posts/streaks-in-r/
+font_add_google("IBM Plex Sans Condensed")
+f2 = "IBM Plex Sans Condensed"
+
+font_add_google("IBM Plex Sans")
+f3 = "IBM Plex Sans"
+
+sdf_nz = dfs %>% filter(team=="New Zealand") %>%
+  mutate(lagged=lag(win_lose),
+         start=(win_lose != lagged),
+         start=case_when(id==1~TRUE, TRUE~start),
+         streak_id=cumsum(start)) %>%
+  group_by(streak_id) %>%
+  mutate(streak=row_number()) %>%
+  ungroup() %>%
+  mutate(streak1 = streak * ifelse(win_lose == "win", 1, -1),
+         x=row_number())
+         
+sdf_nz2 = sdf_nz %>% group_by(streak_id) %>%
+  filter(streak==max(streak)) %>%
+  arrange(desc(streak)) %>%
+  ungroup() %>%
+  slice(1:5) %>%
+  mutate(lab = glue::glue("**{toOrdinal::toOrdinal(streak)}** consecutive win<br>on {date}"))
+  
+sdf_nz %>%
+  ggplot(aes(x=x, y=streak)) +
+  geom_col(aes(fill=win_lose), show.legend = F) +
+  geom_richtext(data=sdf_nz2, aes(label=lab, y=streak+2.5), label.color=NA,fill=NA, family=f2,label.padding = grid::unit(rep(0, 4), "pt"), color="white") +
+  scale_fill_manual(values=c("win"="#F6F6F6", "lose"="transparent"), guide="none",) +
+  scale_y_continuous(limits=c(0,50), breaks=seq(-5,50,5),expand = expansion(mult = c(0.01, .05))) +
+  scale_x_continuous(expand=c(0.01,0.01), breaks=seq(0,400,50), limits=c(0,385)) +
+  theme_minimal(12) +
+  theme(text=element_text(family=f3, color="#f8f9fa"),
+        axis.text=element_text(color="#ced4da"),
+        axis.title=element_text(size=11.5,color="#ced4da"),
+        panel.grid=element_blank(),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.ticks=element_line(color="#ced4da", size=.3),
+        plot.background = element_rect(fill="black", color=NA),
+        plot.title=element_text(size=16),
+        plot.subtitle=element_text(size=10),
+        plot.caption = element_text(color="#ced4da", size=9.5, margin=margin(t=13)),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm")) +
+  labs(x="Game number", y="Streak number",
+       title="New Zealand Women's Rugby Sevens Wins",
+       subtitle="From Mar 15, 1997 to Nov 28, 2022",
+       caption="#TidyTuesday week 21 | Data from ScrumQueens by way of Jacquie Tran | Method from Data and The World")           
+
+ggsave("2022_21_p2.png", height=7, width=8)
