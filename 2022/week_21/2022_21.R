@@ -96,15 +96,22 @@ dfs3 = dfs %>%
   
 dfs4 = dfs3 %>% filter(team=="Australia", row_id==max(row_id)) 
 
+dfmin = dfs3 %>% ungroup() %>% group_by(team) %>% filter(margin1==min(margin1,na.rm=T))
+dfmax = dfs3 %>% ungroup() %>% group_by(team) %>% filter(margin1==max(margin1,na.rm=T)) 
+
 dfs3 %>%
   ggplot(aes(x=id, y=margin1)) +
   geom_point(aes(color=win_lose),size=.3, alpha=.9) +
   geom_segment(aes(x=id, xend=id, y=0, yend=margin1, color=win_lose), size=.3, alpha=.9)+
+  # key label
   geom_richtext(data = dfs4, aes(x=id +16, y= 30, label="**Winning**<br>margin"), color="#007352", size=2.8, label.color=NA, lineheight=.8, hjust=0, alpha=.8,label.padding = grid::unit(rep(0, 4), "pt")) +
   geom_richtext(data = dfs4, aes(x=id +16, y= -37, label="**Losing**<br>margin"), color="#F09485", size=2.8, label.color=NA, lineheight=.8, hjust=0,label.padding = grid::unit(rep(0, 4), "pt")) +
-  geom_text(data= dfs3 %>% ungroup() %>%filter(margin1==max(margin1, na.rm=T) | margin1==min(margin1, na.rm=T)), aes(label=margin1,color=win_lose, y=ifelse(margin1==min(margin1),margin1-20,margin1+20)), size=2.5, family=f1)+
   geom_segment(data = dfs4, aes(x=id +15, xend=id+2, y=-20, yend=-7), size=.3, color="grey50", arrow=arrow(length = unit(0.07, "npc"))) +
   geom_segment(data = dfs4, aes(x=id +15, xend=id+2.5, y=38, yend=32), size=.3, color="grey50", arrow=arrow(length = unit(0.07, "npc"))) +
+  # label min max
+  #geom_text(data= dfs3 %>% ungroup() %>%filter(margin1==max(margin1, na.rm=T) | margin1==min(margin1, na.rm=T)), aes(label=margin1,color=win_lose, y=ifelse(margin1==min(margin1),margin1-20,margin1+20)), size=2.5, family=f1)+
+  geom_text(data=dfmin, aes(label=margin1, color=win_lose, y=margin1-20), size=2.5, family=f1) +
+  geom_text(data=dfmax %>% filter(row_id==min(row_id)), aes(label=margin1, color=win_lose, y=margin1+20), size=2.5, family=f1) +
   facet_wrap(~factor(team1,levels=dfs2$team1), ncol=1, strip.position="left") +
   scale_color_manual(values=c("#F09485","#007352")) +
   scale_x_continuous(limits=c(-9,540)) +
@@ -117,7 +124,7 @@ dfs3 %>%
         plot.caption=element_text(margin=margin(t=10), color="grey30", size=8.5),
         strip.placement = "outside",
         legend.position = "none",
-        axis.title.x = element_text(size=8),
+        axis.title.x = element_text(size=8, margin=margin(t=8)),
         panel.spacing = unit(0, "lines"),
         strip.text.y.left= element_markdown(angle=0, hjust=1, lineheight = 1.2),
         plot.margin=margin(.5,.5,.3,.5,unit="cm")) +
