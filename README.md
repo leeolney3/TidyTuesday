@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/21 [Women's Rugby](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_21)   
 * 2022/20 [Eurovision](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20) 
 * 2022/19 [NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
 * 2022/18 [Solar/Wind utilities](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_18)
@@ -101,6 +102,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 21/2022: Women's Rugby](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_21)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_21/2022_21.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_21/2022_21.R)
+***
 * [Week 20/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.R)
 ***
