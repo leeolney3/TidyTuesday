@@ -20,13 +20,19 @@ reputation <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience
 r1 = reputation %>% 
   mutate(name=str_to_title(name),
          name=case_when(name=="P&S"~"Product and\nService", TRUE~name))
+         
+selected = r1 %>% group_by(company) %>%
+  summarise(sd = sd(score)) %>%
+  arrange(desc(sd)) %>%
+  slice(1:3) %>%
+  pull(company)         
 
 r1%>%
   ggplot(aes(fct_rev(name), score, group=company)) +
   geom_line(alpha=.2, size=.3) +
   geom_point(size=.3, alpha=.5) +
-  geom_line(data=r1 %>% filter(company %in% c("Facebook","Target","Nike")), aes(color=company), size=.6) +
-  geom_point(data=r1 %>% filter(company %in% c("Facebook","Target","Nike")), aes(color=company), size=.6) +
+  geom_line(data=r1 %>% filter(company %in% selected), aes(color=company), size=.6) +
+  geom_point(data=r1 %>% filter(company %in% selected), aes(color=company), size=.6) +
   geom_text(data=r1 %>% filter(name=="Citizenship") %>% filter(company %in% c("Facebook","Target","Nike")), aes(color=company, label=company),vjust=-.8, family=f1, fontface="bold", size=4.2) +
   coord_flip(clip="off") +
   scale_y_continuous(limits=c(50,90), expand=c(0,0)) +
