@@ -103,7 +103,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 22/2022: Women's Rugby](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_22)  
+* [Week 22/2022: 2022 Axios-Harris Poll](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_22)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_22/2022_22_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_22/2022_22.R)
 ***
 * [Week 21/2022: Women's Rugby](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_21)  
