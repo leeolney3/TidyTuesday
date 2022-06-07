@@ -1,0 +1,104 @@
+---
+title: "2022_23"
+format: html
+editor: visual
+---
+
+2022-06-07
+
+#TidyTuesday week 23 [Pride Corporate Accountability Project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-07), data from [Data For Progress](https://www.dataforprogress.org/accountable-allies)
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+
+font_add_google("Lato")
+f1 = "Lato"
+font_add_google("Libre Franklin")
+f2 = "Libre Franklin"
+```
+
+```{r import data}
+pride_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_aggregates.csv') %>% janitor::clean_names()
+fortune_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/fortune_aggregates.csv') %>% janitor::clean_names()
+static_list <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/static_list.csv') %>% janitor::clean_names()
+pride_sponsors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_sponsors.csv') %>% janitor::clean_names()
+corp_by_politicians <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/corp_by_politician.csv') %>% janitor::clean_names()
+donors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/donors.csv') %>% janitor::clean_names()
+```
+
+```{r, fig.height=4, fig.width=4}
+cut_point <- 160000
+
+df = pride_aggregates %>%
+  filter(company!="Grand Total") %>%
+  mutate(company=fct_reorder(company, total_contributed, .desc=FALSE),
+         high = ifelse(total_contributed > cut_point, 1, 0),
+         value=case_when(row_number()==1~4,
+                         row_number()==2~2,
+                         TRUE~1)) %>%
+  select(-high, -number_of_states_where_contributions_made,-number_of_politicians_contributed_to) %>%
+  uncount(value) %>%
+  mutate(value=case_when(row_number()==1~total_contributed-(3*cut_point),
+                         row_number()==5~total_contributed-cut_point,
+                         row_number() %in% c(2,3,4,6)~cut_point,
+                         TRUE~total_contributed)) %>%
+  mutate(id=row_number()) %>%
+  mutate(col= case_when(company=="Toyota"~"Toyota",
+                        company=="AT&T"~"AT&T",
+                        company=="Comcast"~"Comcast",
+                        TRUE~"Others"))
+```
+
+```{r}
+df2 = df %>% filter(id %in% c(1,5)) %>%
+  mutate(value1 = cut_point-value) %>%
+  pivot_longer(c(value,value1)) %>%
+  mutate(id2 = row_number())
+```
+
+```{r, fig.height=4, fig.width=4, warning=F, message=F}
+df %>%
+  ggplot(aes(y=value, x=id, fill=col)) +
+  geom_col(data =df %>% filter(!id %in% c(1,5)),width=.7) +
+  geom_rect(data=df %>% filter(id %in% c(2,4,6)), 
+           aes(ymin=cut_point, ymax=cut_point-4000, xmin=id, xmax=id-1, fill=col)) +
+  geom_rect(data=df %>% filter(id %in% c(3)), 
+           aes(ymin=0, ymax=4000, xmin=id, xmax=id-1, fill=col)) +
+  scale_fill_manual(values=c("#39707B","#A3733F","#979795","#A74147")) +
+  ggnewscale::new_scale_fill() +
+  geom_col(data=df2, aes(fill=factor(id2)), width=.7, show.legend = F) +
+  scale_fill_manual(values=c("#A74147","transparent","#39707B","transparent")) +
+  geom_text(data= df %>% filter(!id %in% c(1,2,3,5)), 
+            aes(y=-3000, x=id, color=col, label=company), 
+            hjust=1, size=3.75, fontface="bold", family=f1) +
+  geom_text(data=df2 %>% filter(name=="value1"),
+            aes(label=scales::dollar(total_contributed), y=value, x=id), hjust=-0.1, color="white", size=3.3) +
+  geom_text(data=df %>% filter(between(id,7,17)), aes(label=scales::dollar(total_contributed)), size=3.3, hjust=1.1, color="white") +
+  geom_text(data=df %>% filter(id>17), aes(label=scales::dollar(total_contributed)), size=3.3, hjust=-.1, color="#8a8a88") +
+  scale_color_manual(values=c("#39707B","#A3733F","#8a8a88","#A74147")) +
+  coord_flip() +
+  scale_x_reverse(expand=c(0,0)) +
+  scale_y_continuous(limits=c(-60000,NA), expand=c(0,0)) +
+  theme_void() +
+  theme(text=element_text(family=f2),
+        legend.position = "none",
+        strip.placement = "outside",
+        axis.text=element_blank(),
+        strip.text.y.left = element_text(angle = 0, hjust=1),
+        plot.title.position = "plot",
+        plot.title=element_text(size=14.5, face="bold", hjust=.5),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm")
+        ) +
+  labs(#subtitle="These Pride Sponsors have donated $1,604,440 to Anti_LGBTQ Campaigns",
+       caption="#TidyTuesday week 23 | Source: Data For Progress") +
+  ggtitle(expression(atop(paste("These Pride Sponsors have donated ", 
+    underline(bold("$1,604,440"))," to",paste(bold(" Anti_LGBTQ Campaigns"))))))
+```
+
+```{r}
+ggsave("p1.png",height=8, width=8, bg="white")
+```
