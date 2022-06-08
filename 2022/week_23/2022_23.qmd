@@ -1,0 +1,59 @@
+---
+title: "2022_23"
+format: html
+editor: visual
+---
+
+2022-06-07
+
+#TidyTuesday week 23 [Pride Corporate Accountability Project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-07), data from [Data For Progress](https://www.dataforprogress.org/accountable-allies)
+
+```{r libraries}
+library(tidyverse)
+library(reactablefmtr)
+library(scico)
+```
+
+```{r import data}
+#pride_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_aggregates.csv') %>% janitor::clean_names()
+#fortune_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/fortune_aggregates.csv') %>% janitor::clean_names()
+static_list <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/static_list.csv') 
+#pride_sponsors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_sponsors.csv') %>% janitor::clean_names()
+#corp_by_politicians <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/corp_by_politician.csv') %>% janitor::clean_names()
+#donors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/donors.csv') %>% janitor::clean_names()
+```
+
+```{r}
+fortune_aggregates %>% filter(company == "Grand Total")
+df1= fortune_aggregates %>% filter(company != "Grand Total")
+```
+
+```{r table}
+pal1 = scico::scico(30, palette = 'grayC')
+
+static_list %>% 
+  filter(Company != "Grand Total") %>%
+  rename("Donated to Pride"="Pride?") %>%
+  mutate(`Donated to Pride`=case_when(`Donated to Pride`==TRUE~"Yes", TRUE~"No"),
+         `HRC Business Pledge`=case_when(`HRC Business Pledge`==TRUE~"Yes", TRUE~"No"),
+         color_don = case_when(`Donated to Pride`=="Yes"~"#E1AF00", TRUE~"grey95"),
+         color_hrc = case_when(`HRC Business Pledge`=="Yes"~"#E1AF00", TRUE~"grey95")) %>%
+    reactable(defaultPageSize = 20,theme = fivethirtyeight(),
+    defaultColDef = colDef(maxWidth = 150,format=colFormat(digits = 0)),
+    columns=list(
+      "Company"=colDef(maxWidth = 500),
+      "Amount Contributed Across States" = colDef(format=colFormat(digits=2, prefix = "$ ", separators = TRUE), style=color_scales(.,colors=pal1)),
+      "Donated to Pride"=colDef(maxWidth = 100, align="center", cell=pill_buttons(.,color_ref = "color_don", opacity = 0.8)),
+      "HRC Business Pledge"=colDef(maxWidth = 100, align="center", cell=pill_buttons(.,color_ref = "color_hrc", opacity = 0.8), style = list(borderRight = "1px solid #777")),
+      color_don = colDef(show=FALSE),
+      color_hrc = colDef(show=FALSE),
+      "# of States Where Contributions Made"=colDef(align="center", cell=icon_assign(.,fill_color = "black")),
+      "# of Politicians Contributed to"=colDef(align="center",cell=data_bars(.,force_outside = c(0,30)))
+    )
+    ) %>%
+  google_font("Roboto", font_weight = 300) %>%
+  add_title(title="Contributions from Companies to Anti-LGBTQ+ Campaigns", font_size = 20) %>%
+  add_subtitle(subtitle="Table of 125 companies' political giving to anti-LGBTQ+ politicians in six state, according to Data For Progress", font_size=14, font_weight = "normal", margin=reactablefmtr::margin(t=10,r=20,b=15,l=0)) %>%
+  add_source(source="TidyTuesday week 23 | Source: Data For Progress", font_size = 14, font_weight = "normal")
+```
+
