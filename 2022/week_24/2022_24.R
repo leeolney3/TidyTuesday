@@ -70,4 +70,49 @@ df1a %>% ggplot() +
        title="Drought Conditions in the US",
        subtitle="January 01 2010 to April 01 2022")         
 
-ggsave("2022_24.png", height=7, width=9)         
+ggsave("2022_24.png", height=7, width=9)  
+
+# Plot 2: Oregon drought levels by county
+library(tidycensus)
+library(ggtext)
+font_add_google("Roboto")
+f1 = "Roboto"
+
+x1 = drought_fips %>% 
+  janitor::clean_names() %>%
+  filter(state=="OR") %>%
+  mutate(year=lubridate::year(date),
+         yday = lubridate::yday(date))
+
+x2 = fips_codes %>% filter(state=="OR") %>%
+  mutate(fips=as.character(glue::glue("{state_code}{county_code}"))) %>%
+  select(fips, state_code, county_code, county) %>%
+  mutate(name1=str_trim(str_remove(county,"County")),
+         name1=case_when(name1=="Hood River"~"HoodRiver", TRUE~name1))
+
+x3 = x1 %>% left_join(x2, by = "fips") %>%
+  filter(year<2022)
+  
+range(x1$year)
+
+x3 %>%
+  ggplot(aes(x=yday, y=dsci, group=year)) +
+  geom_line(size=.1, alpha=.8) +
+  geom_line(data= x3 %>% filter(year==2021), size=.5, color="#e63946") +
+  scale_y_continuous("Drought Score",breaks=c(0,250,500)) +
+  scale_x_continuous("Day of year", breaks=c(1,150,300)) +
+  facet_geo(~name1, grid="us_or_counties_grid1") +
+  cowplot::theme_minimal_hgrid(9) +
+  theme(text=element_text(family=f1),
+        axis.title=element_text(size=rel(.9)),
+        axis.line=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_markdown(hjust=.5, size=rel(1.3)),
+        plot.subtitle=element_markdown(hjust=.5, lineheight = 1.2, margin=margin(b=10))
+        ) +
+  labs(title="Oregon Drought Levels in <span style='color:#e63946'>2021</span>",
+       subtitle="Compared to levels from year 2000 to 2020, by county. Drought Score (0 to 500) Zero means that none of<br>the area is abnormally dry or in drought, and 500 means that all of the area is in D4, exceptional drought.",
+       caption="\n#TidyTuesday week 24 |  Source: National Integrated Drought Information System")
+       
+ggsave("2022_24_p2.png", height=8, width=8, bg="white")
+       
