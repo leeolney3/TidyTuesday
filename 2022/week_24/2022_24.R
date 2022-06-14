@@ -39,6 +39,7 @@ df1b = df1 %>% select(state, st, date, 9:13) %>%
 mygrid = us_state_grid1 %>% filter(!code %in% c("DC","HI","AK"))
 
 # Plot
+# inspired by TidyTuesday 2021w30 submissions: Christophe Nicault (https://twitter.com/cnicault/status/1417858091190792192/photo/1), Kaustav Sen (https://twitter.com/kustav_sen/status/1419341345072631811), Maxwel C. Oliveira (1417454551423193091), Johnny Lillis (https://twitter.com/johnny_c_lillis/status/1422222351761092612/photo/1)
 df1a %>% ggplot() +
   geom_col(data=df1a, aes(x=date, y=value, fill=name)) +
   scale_fill_brewer("",palette = "OrRd", labels=c("Abnormally dry","Moderate drought","Severe drought","Extreme drought","Exceptional drought")) +
