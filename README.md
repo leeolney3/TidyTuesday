@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b></summary>
 
 <!-- toc -->
+* 2022/25 [Juneteenth](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_25)
 * 2022/24 [US Drought](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_24)
 * 2022/23 [Pride Corporate Accountability Project](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_23)
 * 2022/22 [2022 Axios-Harris Poll](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_22)  
