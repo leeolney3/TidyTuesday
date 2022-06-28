@@ -5,8 +5,8 @@ My contributions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesda
 My #TidyTuesday visualisations and code are shown below. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
 **List of contributions**
-<details open>
-  <summary><b>2022</b></summary>
+<details>
+  <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
 * 2022/25 [UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)
@@ -109,6 +109,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 ## 2022 
 * [Week 26/2024: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_26/2022_26_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_26/2022_26.R)
+***
+* [Week 25/2024: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_25)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_25/2022_25.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_25/2022_25.R)
 ***
 * [Week 24/2024: US Drought](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_24)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_24/2022_24.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_24/2022_24.R)
