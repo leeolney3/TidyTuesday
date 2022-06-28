@@ -46,14 +46,15 @@ d1 %>% rename(n=prop) %>%
   geom_text(aes(x=xind, y=yind, label=grp), color="white", size=3.5, fontface="bold") +
   facet_wrap(~year) +
   coord_equal(expand=FALSE, clip="off") +
-  scale_fill_manual(values=c("#DB9124","#37363A","#0A7C6E"),labels=c("Female bonus less than male","Same","Female bonus more than male")) + #colors from {MetBrewer}
+  scale_fill_manual(values=c("#DB9124","#37363A","#0A7C6E"),labels=c("Percentage of female employees\npaid a bonus is more than male","Same","Percentage of female employees\npaid a bonus is less than than male")) + #colors from MetBrewer
   theme_void(10) +
   theme(text=element_text(family=f2),
         legend.position="top",
         legend.key.size = unit(.9,"cm"),
         legend.justification = "left",
         legend.title=element_blank(),
-        legend.text=element_text(size=9),
+        legend.text=element_text(size=8.5, lineheight = 1),
+        legend.margin=margin(t=3),
         panel.spacing.x = unit(2, "lines"),
         panel.spacing.y = unit(1, "lines"),
         strip.text=element_text(face="bold", margin=margin(b=5), size=10),
@@ -63,7 +64,7 @@ d1 %>% rename(n=prop) %>%
         plot.margin=margin(.3,.4,.3,.4,unit="cm")
         ) +
   labs(title=("UK Gender Bonus Pay Gap"),
-       subtitle="Porportion of reports by year submitted",
+       subtitle="Porportion of submissions by year",
        caption="\nTidyTuesday week 26  |  Data from gender-pay-gap.service.gov.uk  |  Method from Abdoul Madjid @issa_madjid")
 
-ggsave("2022_26_p1.png", height=5.5, width=6.5, bg="white")
+ggsave("2022_26_p1.png", height=5.5, width=6.5, bg="#f7f7f7")
