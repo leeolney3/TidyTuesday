@@ -46,7 +46,7 @@ d1 %>% rename(n=prop) %>%
   geom_text(aes(x=xind, y=yind, label=grp), color="white", size=3.5, fontface="bold") +
   facet_wrap(~year) +
   coord_equal(expand=FALSE, clip="off") +
-  scale_fill_manual(values=c("#DB9124","#37363A","#0A7C6E"),labels=c("Percentage of female employees\npaid a bonus is less than male","Same","Percentage of female employees\npaid a bonus is more than than male")) + #colors from MetBrewer
+  scale_fill_manual(values=c("#DB9124","#37363A","#0A7C6E"),labels=c("Percentage of female employees\npaid a bonus is less than male","Same","Percentage of female employees\npaid a bonus is more than male")) + #colors from MetBrewer
   theme_void(10) +
   theme(text=element_text(family=f2),
         legend.position="top",
