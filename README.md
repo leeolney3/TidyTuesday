@@ -108,7 +108,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 27/2022: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)  
+* [Week 27/2022: San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/script.R)
 ***
 * [Week 26/2022: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)  
