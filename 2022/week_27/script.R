@@ -86,8 +86,6 @@ x2 = rbind(rent1 %>% filter(nbrhood=="Excelsior / Outer Mission") %>% mutate(nbr
       )
 
 x3 = rbind(x1,x2)
-
-x3 = rbind(x1,x2)
 x4 = x3 %>% filter(year>2002) %>%
   group_by(nbrhood, year) %>%
   summarise(n=n(),
