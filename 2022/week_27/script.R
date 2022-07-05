@@ -104,7 +104,7 @@ shp1 %>% right_join(x4,by = "nbrhood") %>%
         strip.text = element_text(face="bold", size=11.5),
         ) +
   labs(title="Rent in the City of San Francisco ",
-       caption="•  #TidyTuesday week 27  •\nNote: Median rent prices from a total of 54,236 listings, with 10 or more listings by year and neighborhood\nSource: data.sfgov.org & Pennington, Kate (2018). Bay Area Craigslist Rental Housing Posts, 2000-2018. Retrieved from\nhttps://github.com/katepennington/historic_bay_area_craigslist_housing_posts/blob/master/clean_2000_2018.csv.zip.") +
+       caption="•  #TidyTuesday week 27  •\nNote: Median rent prices from a total of 58,679 listings, with 10 or more listings by year and neighborhood\nSource: data.sfgov.org & Pennington, Kate (2018). Bay Area Craigslist Rental Housing Posts, 2000-2018. Retrieved from\nhttps://github.com/katepennington/historic_bay_area_craigslist_housing_posts/blob/master/clean_2000_2018.csv.zip.") +
   guides(fill=guide_colorbar(title.position="top",barwidth = unit(80, units="mm"), barheight = unit(2.5, unit="mm")))
   
 ggsave("p1_v2.png", bg="white", height=8.2, width=7)      
