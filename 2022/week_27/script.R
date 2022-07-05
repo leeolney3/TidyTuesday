@@ -60,7 +60,6 @@ rent1 = rent %>% filter(city=="san francisco") %>%
   mutate(nhood= str_to_title(nhood),
          nhood1=case_when(nhood=="Buena Vista Park / Ashbury Hts / Corona Hts"~"Buena Vista Park/Ashbury Heights",
                           nhood=="Financial District"~"Financial District/Barbary Coast",
-                          nhood=="West Portal / Forest Hills"~"West Portal",
                           nhood=="Bernal"~"Bernal Heights",
                           nhood=="Civic / Van Ness"~"Van Ness/Civic Center",
                           nhood=="Cole Valley"~"Cole Valley/Parnassus Heights",
@@ -69,17 +68,24 @@ rent1 = rent %>% filter(city=="san francisco") %>%
                           nhood=="Soma / South Beach"~"South Beach",
                           nhood=="Usf / Anza Vista"~"Anza Vista",
                           nhood=="Lakeshore"~"Lake Shore",
+                          nhood=="Nopa"~"North Panhandle",
+                          nhood=="Castro"~"Eureka Valley / Dolores Heights",
          TRUE~nhood)) %>%
   rename(nbrhood=nhood1) 
   
-x1 = rent1 %>% filter(!(nbrhood %in% c("Excelsior / Outer Mission","North Beach / Telegraph Hill","Presidio Hts / Laurel Hts / Lake St")))
+x1 = rent1 %>% filter(!(nbrhood %in% c("Excelsior / Outer Mission","North Beach / Telegraph Hill","Presidio Hts / Laurel Hts / Lake St", "West Portal / Forest Hills")))
 x2 = rbind(rent1 %>% filter(nbrhood=="Excelsior / Outer Mission") %>% mutate(nbrhood="Excelsior"),
       rent1 %>% filter(nbrhood=="Excelsior / Outer Mission") %>% mutate(nbrhood="Outer Mission"),
       rent1 %>% filter(nbrhood=="North Beach / Telegraph Hill") %>% mutate(nbrhood="North Beach"),
       rent1 %>% filter(nbrhood=="North Beach / Telegraph Hill") %>% mutate(nbrhood="Telegraph Hill"),
       rent1 %>% filter(nbrhood=="Presidio Hts / Laurel Hts / Lake St") %>% mutate(nbrhood="Presidio Heights"),
       rent1 %>% filter(nbrhood=="Presidio Hts / Laurel Hts / Lake St") %>% mutate(nbrhood="Jordan Park / Laurel Heights"),
-      rent1 %>% filter(nbrhood=="Presidio Hts / Laurel Hts / Lake St") %>% mutate(nbrhood="Lake Street"))
+      rent1 %>% filter(nbrhood=="Presidio Hts / Laurel Hts / Lake St") %>% mutate(nbrhood="Lake Street"),
+       rent1 %>% filter(nbrhood=="West Portal / Forest Hills") %>% mutate(nbrhood="West Portal"),
+       rent1 %>% filter(nbrhood=="West Portal / Forest Hills") %>% mutate(nbrhood="Forest Hill")
+      )
+
+x3 = rbind(x1,x2)
 
 x3 = rbind(x1,x2)
 x4 = x3 %>% filter(year>2002) %>%
