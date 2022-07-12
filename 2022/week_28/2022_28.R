@@ -76,10 +76,10 @@ p1 = ggplot() +
         plot.margin=margin(.5,.5,.4,.5, unit="cm"),
         #plot.background = element_rect(fill="grey98", color=NA)
         ) +
-  labs(y="Total Movement", x="Date of flight", 
+  labs(y="Movements", x="Date of flight", 
        caption="\nNote: Number total IFR movement from Network Manager and/or Airport Operator, the average of both sources were used when available.\nYearly average movement for 2022 is calculated from Jan 01, 2022 to May 31, 2022.\nTidyTuesday week 28  •  Source: Eurocontrol",
        title="Movements of the 3 busiest airports in France",
-       subtitle="Yearly average and daily total IFR movement (number of IFR arrivals minus number total IFR movements) by airport,\nfrom Jan 01, 2016 to May 31, 2022.\n")
+       subtitle="Yearly average and daily IFR movement (number of IFR departures plus IFR arrivals) by airport,\nfrom Jan 01, 2016 to May 31, 2022.\n")
               
 ggsave("2022_28.png", p1, height=7, width=7, bg="white")       
           
