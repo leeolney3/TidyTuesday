@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/28 [European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)
 * 2022/27 [San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)
 * 2022/26 [UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)
 * 2022/25 [Juneteenth](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_25)
@@ -108,6 +109,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 28/2022: European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/2022_28.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/script.R)
+***
 * [Week 27/2022: San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/p1_v2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/script.R)
 ***
