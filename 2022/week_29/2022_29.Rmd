@@ -1,0 +1,123 @@
+---
+title: "TidyTuesday week 29"
+date: "2022-07-19"
+output: html_notebook
+---
+
+TidyTuesday Week 29 Technology Adoption
+
+Source: Charles Kenny and George Yang. 2022. “Technology and Development: An Exploration of the Data.” CGD Working Paper 617. Washington, DC: Center for Global Development. https://www.cgdev.org/publication/technology-anddevelopment-exploration-data
+
+```{r libraries}
+library(tidyverse)
+options(dplyr.summarise.inform = FALSE)
+library(shadowtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Inter")
+f1 = "Inter"
+font_add_google("PT Sans")
+f2 = "PT Sans"
+```
+
+```{r data}
+# from paper page 18 and 19
+data = tibble::tribble(
+           ~grp,                                                                             ~label, ~Num..Countries.in.Fixed.Sample, ~Year,    ~Mean, ~Standard.Deviation, ~Weighted.Mean, ~Weighted.Standard.Deviation, ~`Poor/Rich.Mean`,
+  "Agriculture",                           "Aggregate kg of fertilizer consumed per ha arable land",                            110L, 1960L,     59.2,                 133,           27.6,                         83.2,            0.0179,
+  "Agriculture",                           "Aggregate kg of fertilizer consumed per ha arable land",                            110L, 2020L,      177,                 308,            162,                          195,            0.0705,
+  "Agriculture",                                  "Agricultural tractors in use per ha arable land",                             42L, 1960L,  0.00979,               0.022,         0.0113,                       0.0125,             0.046,
+  "Agriculture",                                  "Agricultural tractors in use per ha arable land",                             42L, 2010L,   0.0385,              0.0518,         0.0245,                       0.0293,            0.0253,
+  "Agriculture",                         "Combine harvesters - threshers in use per ha arable land",                             22L, 1960L,  0.00154,              0.0019,        0.00308,                      0.00248,             0.166,
+  "Agriculture",                         "Combine harvesters - threshers in use per ha arable land",                             22L, 2010L,  0.00472,              0.0111,        0.00312,                      0.00751,              0.51,
+  "Agriculture",                                       "Milking machines in use per ha arable land",                             25L, 1960L,  0.00924,              0.0146,        0.00669,                       0.0134,           0.00896,
+  "Agriculture",                                       "Milking machines in use per ha arable land",                             25L, 1990L,    0.021,              0.0362,         0.0176,                       0.0318,            0.0251,
+  "Agriculture", "Pesticide fungicides and bactericides agricultural use tonnes per ha arable land",                            137L, 1990L,  0.00176,             0.00617,       0.000393,                      0.00192,            0.0214,
+  "Agriculture", "Pesticide fungicides and bactericides agricultural use tonnes per ha arable land",                            137L, 2020L,  0.00176,              0.0037,       0.000505,                      0.00191,            0.0621,
+  "Agriculture",                  "Pesticide herbicides agricultural use tonnes per ha arable land",                            134L, 1990L,  0.00218,              0.0108,       0.000602,                      0.00246,            0.0243,
+  "Agriculture",                  "Pesticide herbicides agricultural use tonnes per ha arable land",                            134L, 2020L,  0.00275,             0.00701,        0.00123,                      0.00383,            0.0346,
+  "Agriculture",                "Pesticide insecticides agricultural use tonnes per ha arable land",                            139L, 1990L,  0.00271,              0.0154,       0.000394,                       0.0014,            0.0338,
+  "Agriculture",                "Pesticide insecticides agricultural use tonnes per ha arable land",                            139L, 2020L,  0.00331,              0.0129,       0.000401,                      0.00136,            0.0668,
+       "Energy",                                      "Electric power consumption (KWH) per capita",                            109L, 1970L,     1470,                2400,           1200,                         2170,            0.0274,
+       "Energy",                                      "Electric power consumption (KWH) per capita",                            109L, 2010L,     4530,                6640,           3060,                         3430,            0.0252,
+       "Energy",                                          "Electricity from hydro (TWH) per capita",                             75L, 1980L,  1.3e-06,            3.71e-06,       4.44e-07,                     1.34e-06,            0.0279,
+       "Energy",                                          "Electricity from hydro (TWH) per capita",                             75L, 2020L, 1.59e-06,            5.13e-06,       6.39e-07,                     1.19e-06,             0.161,
+       "Energy",                                        "Electricity from nuclear (TWH) per capita",                             75L, 1980L, 5.39e-07,            1.23e-06,        3.5e-07,                     7.97e-07,          0.000391,
+       "Energy",                                        "Electricity from nuclear (TWH) per capita",                             75L, 2020L, 6.55e-07,            1.37e-06,       4.39e-07,                     9.48e-07,             0.349,
+       "Energy",                               "Electricity from other renewables (TWH) per capita",                             75L, 1980L, 3.09e-08,            1.04e-07,       1.82e-08,                     4.42e-08,            0.0757,
+       "Energy",                               "Electricity from other renewables (TWH) per capita",                             75L, 2020L, 4.47e-07,            1.91e-06,       1.07e-07,                     2.06e-07,            0.0873,
+       "Energy",                                          "Electricity from solar (TWH) per capita",                             78L, 1990L, 2.58e-11,            1.69e-10,       8.64e-11,                     3.39e-10,           0.00108,
+       "Energy",                                          "Electricity from solar (TWH) per capita",                             78L, 2020L, 1.12e-07,            1.47e-07,       1.13e-07,                     1.34e-07,             0.127,
+       "Energy",                                           "Electricity from wind (TWH) per capita",                             75L, 1990L, 4.74e-10,            3.91e-09,       4.57e-11,                     1.17e-09,                 0,
+       "Energy",                                           "Electricity from wind (TWH) per capita",                             75L, 2020L, 3.39e-07,            5.37e-07,       2.28e-07,                     3.24e-07,            0.0499,
+       "Energy",                       "Electricity Generating Capacity, 1000 kilowatts per capita",                             90L, 1950L, 0.000119,            0.000185,       0.000149,                     0.000183,            0.0314,
+       "Energy",                       "Electricity Generating Capacity, 1000 kilowatts per capita",                             90L, 2000L, 0.000978,             0.00116,       0.000793,                      0.00101,            0.0214,
+       "Energy",                                 "Gross output of electric energy (TWH) per capita",                             30L, 1930L,  3.8e-07,             6.2e-07,       2.12e-07,                     3.38e-07,            0.0607,
+       "Energy",                                 "Gross output of electric energy (TWH) per capita",                             30L, 2020L, 7.45e-06,            4.99e-06,       6.35e-06,                     3.29e-06,             0.333,
+     "Industry",                           "Aluminum primary production, in metric tons per capita",                             44L, 1910L, 0.000126,            0.000431,       4.73e-05,                     0.000172,                 0,
+     "Industry",                           "Aluminum primary production, in metric tons per capita",                             44L, 2010L,   0.0201,              0.0629,        0.00785,                       0.0166,           0.00742,
+     "Industry",                                  "Steel demand in thousand metric tons per capita",                             56L, 1980L, 0.000246,            0.000247,        0.00037,                        3e-04,             0.073,
+     "Industry",                                  "Steel demand in thousand metric tons per capita",                             56L, 2020L, 0.000216,             0.00016,       0.000216,                     0.000159,             0.142,
+     "Industry",                              "Steel production in thousand metric tons per capita",                             54L, 1980L, 0.000485,             0.00175,        0.00019,                     0.000327,           0.00776,
+     "Industry",                              "Steel production in thousand metric tons per capita",                             54L, 2020L, 0.000315,            0.000513,        0.00031,                        3e-04,            0.0654,
+    "Transport",                                     "Air transport, passengers carried per capita",                            102L, 1970L,    0.155,               0.284,          0.127,                        0.226,            0.0357,
+    "Transport",                                     "Air transport, passengers carried per capita",                            102L, 2020L,    0.464,                1.18,          0.229,                         0.46,             0.011,
+    "Transport",                                  "Civil aviation passenger-KM traveled per capita",                             21L, 1930L,    0.306,               0.363,          0.101,                        0.238,            0.0913,
+    "Transport",                                  "Civil aviation passenger-KM traveled per capita",                             21L, 1990L,      857,                 765,            218,                          453,            0.0477,
+    "Transport",                                "Civil aviation ton-KM of cargo carried per capita",                             25L, 1950L,    0.762,                1.09,          0.172,                         0.51,            0.0753,
+    "Transport",                                "Civil aviation ton-KM of cargo carried per capita",                             25L, 2020L,     53.2,                66.7,           12.2,                         26.1,            0.0597,
+    "Transport",                                       "Commercial vehicles (bus, taxi) per capita",                             25L, 1930L,  0.00306,             0.00505,        0.00665,                      0.00949,            0.0422,
+    "Transport",                                       "Commercial vehicles (bus, taxi) per capita",                             25L, 2020L,   0.0836,              0.0822,          0.146,                        0.158,               0.3
+  )
+
+data = data %>% janitor::clean_names()
+```
+
+
+```{r plot}
+data %>%
+  ggplot(aes(x=year, y=poor_rich_mean, group=label, color=grp)) +
+  geom_segment(data=tibble(x=1910,xend=2022, y=seq(0.1,0.5,0.1)),
+               aes(x=x, xend=xend, y=y, yend=y), inherit.aes = FALSE, color="grey80", size=.3) +
+  annotate(geom="segment", x=1910,xend=2022, y=0, yend=0,color="grey20", size=.3) +
+  geom_point(alpha=.9,show.legend = FALSE) +
+  geom_line(alpha=.9,key_glyph=draw_key_rect) +
+  ggrepel::geom_text_repel(data=t1 %>% filter(year==max(year)) %>% slice_max(order_by =poor_rich_mean, n = 5), aes(label=str_wrap(label,20)), size=3.2, hjust=0, direction="y", xlim=c(2022.5, NA), lineheight=.7,family=f2) +
+  ggrepel::geom_text_repel(data=t1 %>% filter(year==max(year)) %>% slice_min(order_by =poor_rich_mean, n = 2), aes(label=str_wrap(label,20)), size=3.2, hjust=0, direction="y", xlim=c(2022.5, NA), lineheight=.7, segment.linetype="dotted",family=f2) +
+  geom_text(data=t1 %>% filter(year==min(year)), aes(x=year+3, y=poor_rich_mean+.018,label=str_wrap(label,30)), size=3.2,lineheight=.7, hjust=0, family=f2) +
+  geom_text(data=t1 %>% filter(year==1930) %>% filter(poor_rich_mean==max(poor_rich_mean)), aes(x=year-5, y=poor_rich_mean+.033,label=str_wrap(label,16)), size=3.2,lineheight=.7, hjust=0,family=f2) +
+  geom_text(data=t1 %>% filter(poor_rich_mean==max(poor_rich_mean)), aes(x=year-35, y=poor_rich_mean-.06,label=str_wrap(label,20)), size=3.2,lineheight=.7, hjust=0,family=f2) +
+  coord_cartesian(clip="off", expand=FALSE) +
+  scale_x_continuous(limits=c(NA,2051), breaks=seq(1910,2020,10)) +
+  scale_color_manual("Sector:",values=c("#EE533D","#fba612","#0F737A","#83B7C1")) +
+  cowplot::theme_minimal_grid(11, line_size = .3) +
+  theme(legend.position = c(.05,.89),
+        legend.title=element_text(size=9.3, face="bold"),
+        legend.text=element_text(size=9),
+        panel.grid.major = element_blank(),
+        axis.ticks.x=element_line(color="grey20", size=.3),
+        axis.ticks.y=element_line(size=.3, color=c("grey20",rep("grey80",6))),
+        text=element_text(family=f1),
+        axis.title.y = element_text(size=9),
+        axis.title.x = element_text(size=9, hjust=.4),
+        axis.text=element_text(size=8.4, color="grey20"),
+        axis.ticks.length=unit(.25, "cm"),
+        plot.caption = element_text(hjust=0,color="grey40", size=7.5),
+        plot.caption.position = "plot",
+        plot.background=element_rect(fill="#fdfffc",color=NA),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=8.5),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")
+        ) +
+  labs(x="Year", y="Poor-rich ratio",
+  title="Technology Adoption", subtitle=str_wrap("Poor-rich ratio start and end points by production technology. The poor-rich ratio gives the average adoption rate in the bottom quintile of the GDP per capita distribution in that year divided
+by the adoption rate of the top quintile GDP per capita distribution. For non-agricultural variables, weights are total population, while for agricultural variables, weights are land area.",120),
+caption="#TidyTuesday Week 29\nSource: Charles Kenny and George Yang. 2022. “Technology and Development: An Exploration of the Data.” CGD Working Paper 617.\nWashington, DC: Center for Global Development. https://www.cgdev.org/publication/technology-anddevelopment-exploration-data") 
+
+ggsave("2022_29.png", height=7, width=7)
+```
+
