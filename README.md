@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/29 [Technology adoption](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_29)
 * 2022/28 [European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)
 * 2022/27 [San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)
 * 2022/26 [UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)
