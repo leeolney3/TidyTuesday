@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/30 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_30)
 * 2022/29 [Technology adoption](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_29)
 * 2022/28 [European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)
 * 2022/27 [San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)
@@ -110,6 +111,10 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 30/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)  
+* Recreation of The Economist's annual change in population [chart](https://blog.datawrapper.de/wp-content/uploads/2022/07/image6-2.png) from [The pecking order of the world’s population is soon to change, July 14](https://www.economist.com/graphic-detail/2022/07/14/the-pecking-order-of-the-worlds-population-is-soon-to-change?utm_medium=social-media.content.np&utm_source=twitter&utm_campaign=editorial-social&utm_content=discovery.content&%3Ffsrc%3Dscn%2F=tw%2Fdc)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/script.R)
+***
 * [Week 28/2022: European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/2022_28.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/script.R)
 ***
