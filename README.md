@@ -111,6 +111,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 30/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_30)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.R)
+***
 * [Week 28/2022: European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/2022_28.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/script.R)
 ***
