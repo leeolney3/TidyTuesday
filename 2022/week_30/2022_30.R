@@ -18,7 +18,7 @@ f1 = "Barlow"
 drivers <- load_drivers(season = 2022) %>% 
   filter(code != "HUL")
 fastestlaps <- function(dr) {
-  get_driver_telemetry(2022, 10, driver = dr, fastest_only = TRUE)
+  get_driver_telemetry(2022, 11, driver = dr, fastest_only = TRUE)
 }
 austria <- purrr::map_df(unique(drivers$code), fastestlaps)
 
