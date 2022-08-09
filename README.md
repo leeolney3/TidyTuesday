@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/32 [Ferris wheels](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_32)
 * 2022/30 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_30)
 * 2022/29 [Technology adoption](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_29)
 * 2022/28 [European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)
@@ -111,6 +112,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 32/2022: Ferris wheels](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_32)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.R)
+***
 * [Week 30/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_30)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.R)
 ***
