@@ -113,8 +113,11 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 33/2022: Open Source Psychometrics](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_33)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.R)
+* [Week 33/2022: Open Source Psychometrics](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_33) 
+
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.R) 
+
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33_2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.R)
 ***
 * [Week 32/2022: Ferris wheels](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_32)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.R)
