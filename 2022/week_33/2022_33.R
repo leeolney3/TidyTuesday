@@ -115,3 +115,55 @@ reactable(data1, theme = fivethirtyeight(centered = TRUE, header_font_size = 11)
   add_title("Futurama Characters Personalities", margin = margin(0, 0, 8, 0), font_size = 22) %>% 
   add_subtitle("Personalities of ten Futurama characters from 10 (out of 400) personality questions, arranged in alphabetical order of character name.", align="left", font_size = 13, font_weight = "normal", font_color = "grey30",margin = margin(0, 0, 10, 0)) %>%
   add_source("TidyTuesday week 33 •  Data from Open-Source Psychometrics Project courtesy of Tanya Shapiro", font_size = 12, font_color = "grey30")  
+  
+# {reactable} table 2
+selected= psych_stats %>% filter(char_name=="Philip J. Fry") %>%
+  select(question, personality, avg_rating) %>%
+  mutate(joined = glue::glue("{personality}_{question}")) %>%
+  arrange(desc(avg_rating)) %>%
+  slice(1:20) %>%
+  pull(joined)
+
+or= psych_stats %>% filter(char_name=="Philip J. Fry") %>%
+  select(question, personality, avg_rating) %>%
+  mutate(joined = glue::glue("{personality}_{question}")) %>%
+  arrange(desc(avg_rating)) %>%
+  slice(1:20) %>%
+  pull(personality)
+  
+data= psych_stats %>% 
+  mutate(joined = glue::glue("{personality}_{question}")) %>%
+  filter(joined %in% selected) %>%
+  distinct() %>%
+  select(uni_name, char_name, personality,avg_rating) %>%
+  pivot_wider(names_from = personality, values_from = avg_rating, values_fn = list) %>%
+  unnest(cols = everything()) %>%
+  drop_na() %>%
+  select(2,1,or) %>%
+  arrange(desc(messy)) %>%
+  select(1:7) %>%
+  mutate(color_pal=case_when(char_name=="Philip J. Fry"~"#EEA000",TRUE~"#C4BCAC"))
+
+c1 = characters %>% select(uni_name,char_name=name, image_link)
+data=data %>% left_join(c1, by=c("uni_name","char_name")) %>%
+  relocate(image_link) %>%
+  arrange(desc(messy),desc(impulsive), desc(disorganized), desc(clumsy), desc(orange))    
+  
+reactable(data,
+          theme = fivethirtyeight(centered = TRUE, header_font_size = 11),
+          defaultPageSize = 100,
+          defaultColDef = colDef(align="left",
+            cell = data_bars(data, 
+                             fill_color_ref = "color_pal", 
+                             fill_opacity = 0.8,
+                             round_edges = TRUE,
+                             text_position = "center")),
+          columns = list(color_pal = colDef(show = FALSE),
+                         image_link=colDef(name = "", maxWidth = 30,style = background_img()),
+                         char_name=colDef("Character",minWidth=120,style = list(borderRight = "1px solid #777")),
+                         uni_name=colDef("Universe", minWidth = 200))
+) %>%
+  google_font(font_family = "Barlow") %>%
+  add_title("Characters with similar attributes to Phillip J. Fry", margin = margin(0, 0, 8, 0), font_size = 22) %>% 
+  add_subtitle("This table shows the average scores of the 5 highest personality traits of Futurama's Phillip J. Fry and 16 other characters from other universes that share his top 20 traits by average score.", align="left", font_size = 13, font_weight = "normal", font_color = "grey30",margin = margin(0, 0, 8, 0)) %>%
+  add_source("TidyTuesday week 33 •  Data from Open-Source Psychometrics Project courtesy of Tanya Shapiro", font_size = 12, font_color = "grey30")  
