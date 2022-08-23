@@ -35,8 +35,8 @@ p1 = data %>% mutate(date=lubridate::ymd(release_date)) %>%
   geom_point(aes(color=type), alpha=.5, size=.7, show.legend = FALSE) +
   scale_y_continuous(limits=c(0,5000), expand=c(0.00,0.00),position="right") +
   scale_x_date(date_breaks = "1 year", date_labels = "'%y", expand=c(0.025,0.025)) +
-  scale_color_manual(values=c("#32CE7B","#9051A4")) +
-  scale_fill_manual(values=c("#32CE7B","#9051A4")) +
+  scale_color_manual(values=c("#26924A","#803998")) +
+  scale_fill_manual(values=c("#26924A","#803998")) +
   coord_cartesian(clip="off") +
   cowplot::theme_minimal_grid(11.5) +
   theme(text=element_text(family=f2),
@@ -52,9 +52,9 @@ p1 = data %>% mutate(date=lubridate::ymd(release_date)) %>%
         plot.margin=margin(.4,.4,.3,.4,unit="cm")) +
   labs(x="Release date",
        y="Freq (MHz)",
-       title="<span style='color:#32CE7B'>CPUs</span> have higher frequencies, but <span style='color:#9051A4'>GPUs</span> are catching up.",
+       title="<span style='color:#26924A'>CPUs</span> have higher frequencies, but <span style='color:#803998'>GPUs</span> are catching up.",
        subtitle="Frequency (in MHz) of CPUs and GPUs released from Jan 01, 2000 to Apr 13, 2021",
-       caption="TidyTuesday week 34 | Data source: Summarizing CPU and GPU Design Trends with Product Data")
+       caption="TidyTuesday week 34 | Source: Summarizing CPU and GPU Design Trends with Product Data")
 
-ggsave("2022_34.png", p1, height=6, width=8, bg="white")
+ggsave("2022_34.png", p1, height=6, width=8, bg="#fafafa")
 ```
