@@ -53,7 +53,7 @@ p1 = data %>% mutate(date=lubridate::ymd(release_date)) %>%
   labs(x="Release date",
        y="Freq (MHz)",
        title="<span style='color:#26924A'>CPUs</span> have higher frequencies, but <span style='color:#803998'>GPUs</span> are catching up.",
-       subtitle="Frequency (in MHz) of CPUs and GPUs released from Jan 01, 2000 to Apr 13, 2021",
+       subtitle="Frequency (in MHz) of CPUs and GPUs released between Jan 01, 2000 and Apr 13, 2021",
        caption="TidyTuesday week 34 | Source: Summarizing CPU and GPU Design Trends with Product Data")
 
 ggsave("2022_34.png", p1, height=6, width=8, bg="#fafafa")
