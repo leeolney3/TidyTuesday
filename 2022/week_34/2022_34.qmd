@@ -32,11 +32,11 @@ p1 = data %>% mutate(date=lubridate::ymd(release_date)) %>%
   drop_na(date,freq_m_hz) %>%
   ggplot(aes(date,freq_m_hz)) +
   geom_mark_hull(aes(group=type, fill=type, color=type, label = type),show.legend = FALSE,expand = unit(2.5, "mm"), alpha=.1, con.cap = 0, label.fontsize = 11, label.family = f2, con.size = .4) +
-  geom_point(aes(color=type), alpha=.5, size=.7, show.legend = FALSE) +
+  geom_point(aes(fill=type), alpha=.5, show.legend = FALSE, shape=21, color="white", stroke=.2) +
   scale_y_continuous(limits=c(0,5000), expand=c(0.00,0.00),position="right") +
   scale_x_date(date_breaks = "1 year", date_labels = "'%y", expand=c(0.025,0.025)) +
-  scale_color_manual(values=c("#26924A","#803998")) +
   scale_fill_manual(values=c("#26924A","#803998")) +
+  scale_color_manual(values=c("#26924A","#803998")) +
   coord_cartesian(clip="off") +
   cowplot::theme_minimal_grid(11.5) +
   theme(text=element_text(family=f2),
