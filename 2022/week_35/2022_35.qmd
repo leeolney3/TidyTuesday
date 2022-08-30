@@ -1,0 +1,87 @@
+---
+title: "Pell Awards"
+date: "2022-08-30"
+format: html
+editor: visual
+---
+
+TidyTuesday week 35 Pell Awards, data from [U.S. Department of Education]
+
+```{r load libaries}
+#| message: false
+library(tidyverse)
+library(geofacet)
+library(usmap)
+library(patchwork)
+library(ggh4x)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Sora")
+f1 = "Sora"
+font_add_google("Manrope")
+f2 = "Manrope"
+```
+
+```{r read in data}
+pell <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-30/pell.csv') %>% janitor::clean_names()
+```
+
+```{r wrangle}
+d1= pell %>% 
+  filter(state %in% c(.northeast_region ,.north_central_region,.midwest_region ,.south_region, .west_region)) %>%
+  group_by(year, state) %>%
+  summarise(value=sum(award, na.rm=TRUE)) %>%
+  ungroup() %>%
+  mutate(reg = case_when(state %in% .northeast_region~"Northeast region",
+                         state %in% .midwest_region~"Midwest region",
+                         state %in% .south_region ~"South region",
+                         state %in% .west_region ~"West region",
+                         TRUE~"other"))
+```
+
+```{r}
+d1 %>% filter(state=="CA")
+```
+
+```{r line and ribbon plot function}
+theme1= cowplot::theme_minimal_grid(10)+
+  theme(text=element_text(family=f2),
+        axis.title=element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.ticks.length=unit(.25, "cm"))
+
+plot1= function(region){
+d1%>%
+  ggplot(aes(year, value)) +
+  geom_line(data=d1 %>% filter(reg !=region),aes(group=state), color="grey",size=.4) +
+  geom_ribbon(data=d1%>% filter(reg ==region) %>% group_by(year) %>% summarise(ymin=min(value), ymax=max(value)), aes(year, ymin=ymin, ymax=ymax), inherit.aes = FALSE, alpha=.3, fill="#83c5be") +
+  geom_line(data=d1 %>% filter(reg ==region),aes(group=state), color="#006d77",size=.4) +
+  geom_text(data=d1 %>% filter(reg ==region) %>% filter(year==max(year)) %>% slice_max(value,n=2), aes(label=state), color="#006d77", hjust=-.2, fontface="bold", size=3.3) +
+  scale_y_continuous(expand=c(0,0),limits=c(0,4000000000), labels = scales::dollar_format(scale = .000000001, suffix = "B")) +
+  scale_x_continuous(expand = expansion(mult = c(.02, .06)),guide = "axis_minor",minor_breaks = seq(1999, 2017, by = 1)) +
+  coord_cartesian(clip="off") +
+  theme1 +labs(title=region)}
+```
+
+```{r plot}
+a =plot1("Midwest region")
+b =plot1("Northeast region")
+c =plot1("South region")
+d = plot1("West region")
+
+patchwork = a + b + c + d
+patchwork + plot_annotation(
+  title = 'Pell Grants',
+  subtitle = 'Award amount in USD by year and state, from 1999 to 2017.',
+  caption = 'TidyTuesday week 35  •  Data: US Department of Education ',
+  theme=theme(plot.title=element_text(hjust=.5, face="bold", size=16, family=f1), plot.subtitle=element_text(hjust=.5, size=10, family=f2), plot.caption=element_text(color="grey25", size=8.5, family=f2), plot.margin=margin(.5,.5,.4,.5,unit="cm"), plot.background = element_rect(fill="#FFF0F1", color=NA))
+) 
+
+ggsave("2022_35.png", height=7, width=8)
+```
+```
+
