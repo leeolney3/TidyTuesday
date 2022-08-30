@@ -115,7 +115,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 35/2022: CHIP Dataset](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_35)  
+* [Week 35/2022: Pell Grants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_35)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.qmd)
 ***
 * [Week 34/2022: CHIP Dataset](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_34)  
