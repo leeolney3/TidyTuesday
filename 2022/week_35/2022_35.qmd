@@ -5,8 +5,6 @@ format: html
 editor: visual
 ---
 
-TidyTuesday week 35 Pell Awards, data from [U.S. Department of Education]
-
 ```{r load libaries}
 #| message: false
 library(tidyverse)
@@ -41,10 +39,6 @@ d1= pell %>%
                          state %in% .south_region ~"South region",
                          state %in% .west_region ~"West region",
                          TRUE~"other"))
-```
-
-```{r}
-d1 %>% filter(state=="CA")
 ```
 
 ```{r line and ribbon plot function}
@@ -83,5 +77,5 @@ patchwork + plot_annotation(
 
 ggsave("2022_35.png", height=7, width=8)
 ```
-```
+
 
