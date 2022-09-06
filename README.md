@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/35 [Lego sets](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_36)
 * 2022/35 [Pell Grants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_35)
 * 2022/34 [CHIP Dataset](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_34)
 * 2022/33 [Open Source Psychometrics](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_33)
@@ -115,6 +116,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 36/2022: Lego sets](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_36)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36.R) 
+***
 * [Week 35/2022: Pell Grants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_35)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.qmd)
 ***
