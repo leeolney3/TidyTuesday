@@ -92,7 +92,7 @@ d2 %>% drop_na(image) %>%
         plot.margin=margin(.5,.5,.4,.5,unit="cm"),
         plot.caption=element_text(margin=margin(t=10))) +
   labs(title=str_to_upper("Lego Colors"),
-       subtitle="**One brick represents 1% of bricks by set year** from 2022 to 2021, including seven most common soild lego colors <br>(Black, Light Bluish Gray, White, Red, Blue, Tan, and Yellow).",
+       subtitle="**One brick represents 1% of bricks by set year** from 2002 to 2021, including seven most common soild lego colors <br>(Black, Light Bluish Gray, White, Red, Blue, Tan, and Yellow).",
        caption="TidyTuesday week 35  •  Data from rebrickable.com")
        
 ggsave("2020_36.png", height=7, width=7, bg="white")                                
