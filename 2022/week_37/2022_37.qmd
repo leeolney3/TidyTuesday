@@ -64,13 +64,13 @@ voronoi <- data %>%
 voronoi_join = st_join(voronoi, data)
 
 ggplot() +
-  geom_sf(data=outline, aes(geometry=geometry), size=.2, color="#4a4e69") +
-  geom_sf(data=voronoi, aes(geometry=geometry), size=.2, show.legend = FALSE, color="#4a4e69", alpha=.9, fill="white") +
-  geom_sf(data=data, shape=21, fill="#eb5e28", color="white", size=1, stroke=.3) +
+  geom_sf(data=outline, aes(geometry=geometry), size=.2, color="#22223b") +
+  geom_sf(data=voronoi, aes(geometry=geometry), size=.2, show.legend = FALSE, color="#22223b", alpha=.9, fill="white") +
+  geom_sf(data=data, shape=21, fill="#eb5e28", color="white", size=1.2, stroke=.3) +
   scale_fill_manual(values=pal) +
-  coord_sf(xlim=c(-84.82016,-80.51889), expand=FALSE) +
+  coord_sf(xlim=c(-84.9,-80.5), expand=FALSE) +
   cowplot::theme_map(10) +
-  theme(plot.title=element_text(family=f1, face="plain", color="white")) +
+  theme(plot.title=element_text(family=f1, hjust=.02, face="plain", color="#22223b")) +
   labs(title = s)
 }
 
@@ -82,10 +82,10 @@ patchwork +
   plot_annotation(title="Bigfoot Sightings in Ohio",
                   subtitle="Locations of 277 reports by season",
                   caption="#TidyTuesday week 37   •  Data source: Bigfoot Field Researchers Organization (BFRO) by way of Data.World",
-                  theme=theme(plot.title=element_text(face="bold", family=f1, color="white"),
-                              plot.subtitle=element_text(family=f2, color="white", size=9.5),
-                              plot.caption = element_text(size=8,hjust=0, color="grey95", family=f2),
-                              plot.background = element_rect(fill="#22223b", color=NA),
+                  theme=theme(plot.title=element_text(face="bold", family=f1, color="#22223b"),
+                              plot.subtitle=element_text(family=f2, color="#22223b", size=9.5),
+                              plot.caption = element_text(size=8,hjust=0, color="#22223b", family=f2),
+                              plot.background = element_rect(fill="#fafafc", color=NA),
                               plot.margin=margin(.5,.5,.5,.5,unit="cm")))
 
 # save
