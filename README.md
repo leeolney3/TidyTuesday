@@ -117,6 +117,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 37/2022: Bigfoot](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_37)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_37/2022_37.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_37/2022_37.qmd)
+***
 * [Week 36/2022: Lego sets](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_36)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2020_36.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36.R)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36_2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36.R)
