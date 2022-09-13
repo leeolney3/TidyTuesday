@@ -4,13 +4,13 @@ format: html
 editor: visual
 ---
 
-2022-09-13 TidyTuesday week 37, Bigfoot Sightings Data: Bigfoot Field Researchers Organization (BFRO) by way of Data.World
+2022-09-13 [TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 37 Bigfoot Sightings, Data from [Bigfoot Field Researchers Organization (BFRO)](https://data.world/timothyrenner/www.bfro.net) by way of [Data.World](https://data.world/timothyrenner/bfro-sightings-data)
 
 ```{r libraries}
 #| message: false
 library(tidyverse)
-library(maps)
-library(ggtext)
+library(sf)
+library(patchwork)
 library(showtext)
 showtext_opts(dpi = 300)
 showtext_auto(enable = TRUE)
@@ -28,42 +28,67 @@ f2 = "Fira Sans"
 bigfoot <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-13/bfro_reports_geocoded.csv')
 ```
 
-```{r get polygons}
-state = map_data("state")
-ohio = subset(state, region=="ohio")
-counties = map_data("county")
-ohio_county = subset(counties, region=="ohio")
-```
+```{r plot 1}
+#| warning: false
+# Voronoi diagram inspired by/code adapted from @VictimOfMaths https://twitter.com/VictimOfMaths/status/1323627698141515776 and @_ansgar https://twitter.com/_ansgar/status/1556282682115497987
 
-```{r plot, fig.height=3.5, fig.width=4}
-d1 = bigfoot %>% drop_na(latitude,longitude) %>% select(-observed) %>%
-  filter(season!="Unknown", state=="Ohio") 
+d2 = bigfoot %>% drop_na(latitude,longitude) %>% select(-observed) %>%
+  filter(state=="Ohio") 
 
-p1 = ggplot() + 
-  geom_polygon(data=ohio_county, aes(x=long, y=lat, group=group),color="white",size=.2, fill="grey90") +
-   geom_point(data=d1, aes(x=longitude, y=latitude, fill=moon_phase), shape=21, color="white", size=2, stroke=.2) +
-  scale_fill_stepsn(name="Moon Phase:", colours = rev(PNWColors::pnw_palette("Bay",100)), na.value = "grey70", breaks=c(.01,.25,.5,.75,.99)) +
-  coord_fixed(1.3, xlim=c(-84.8203,-80.5187)) +
-  facet_grid(vars(classification), vars(season)) + #switch = "y"
-  cowplot::theme_map(11) +
-  theme(text=element_text(color="white",family=f2),
-        legend.position = "top",
-        plot.margin=margin(.5,.6,.5,.4, unit="cm"),
-        legend.margin=margin(l=15, b=5),
-        legend.title=element_text(size=10, margin=margin(t=8)),
-        legend.text=element_text(size=10),
-        strip.text=element_text(face="bold", size=10.7, family=f1),
-        strip.text.y.left = element_text(angle=0),
-        plot.title = element_text(hjust=.01, family=f1, size=14),
-        plot.subtitle = element_text(hjust=.012, color="grey90", size=10),
-        plot.caption.position = "plot",
-        plot.background=element_rect(fill="#545454", color=NA),
-        plot.caption = element_markdown(color="grey80",size=8.5,family=f2,lineheight=1.1, hjust=0, margin=margin(t=15))) +
-  labs(caption="According to BFRO classification, ***Class A*** reports involve clear sightings in circumstances where misinterpretation or misidentification of<br>other animals can be ruled out with greater confidence. ***Class B*** incidents are observed at a great distance or in poor lighting conditions<br>and incidents in any other circumstance that did not afford a clear view of the subject are considered Class B reports<br><br>#TidyTuesday week 37 | Data source: Bigfoot Field Researchers Organization (BFRO) by way of Data.World",
-       title=("Bigfoot Sightings in Ohio"),
-       subtitle="Season, BFRO classification and moon phase of 277 reports.") +
-  guides(fill = guide_colorbar(title.position = "top", title.hjust = .5, 
-                                barwidth = unit(10, "lines"), barheight = unit(.5, "lines")))
+# function to create plot for each season
+p = function(s){
+c1 = d2 %>% filter(state=="Ohio") %>% filter(season==s) %>%
+  select(lon=longitude, lat= latitude)
 
-ggsave("2022_37.png", p1, height=6.8, width=8)
+outline= read_sf("data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp") %>% filter(NAME=="Ohio")
+
+data = st_as_sf(x=c1, coords=c("lon","lat"), crs="+proj=longlat +datum=WGS84") %>%
+  st_transform(crs=raster::crs(state))
+
+voronoi <- data %>% 
+  st_union() %>%
+  st_voronoi() %>%
+  st_collection_extract()
+
+voronoi <- voronoi[unlist(st_intersects(data,voronoi))] %>%
+  st_intersection(outline)
+
+voronoi <- data %>% 
+  st_combine() %>% 
+  st_voronoi() %>% 
+  st_cast() %>% 
+  st_intersection(outline) %>%
+  st_cast() %>% 
+  st_sf()
+
+voronoi_join = st_join(voronoi, data)
+
+ggplot() +
+  geom_sf(data=outline, aes(geometry=geometry), size=.2, color="#4a4e69") +
+  geom_sf(data=voronoi, aes(geometry=geometry), size=.2, show.legend = FALSE, color="#4a4e69", alpha=.9, fill="white") +
+  geom_sf(data=data, shape=21, fill="#eb5e28", color="white", size=1, stroke=.3) +
+  scale_fill_manual(values=pal) +
+  coord_sf(xlim=c(-84.82016,-80.51889), expand=FALSE) +
+  cowplot::theme_map(10) +
+  theme(plot.title=element_text(family=f1, face="plain", color="white")) +
+  labs(title = s)
+}
+
+# combine plots 
+patchwork = (p("Spring") + p("Summer")) | (p("Fall") + p("Winter"))
+
+# add annotations
+patchwork +
+  plot_annotation(title="Bigfoot Sightings in Ohio",
+                  subtitle="Locations of 277 reports by season",
+                  caption="#TidyTuesday week 37   •  Data source: Bigfoot Field Researchers Organization (BFRO) by way of Data.World",
+                  theme=theme(plot.title=element_text(face="bold", family=f1, color="white"),
+                              plot.subtitle=element_text(family=f2, color="white", size=9.5),
+                              plot.caption = element_text(size=8,hjust=0, color="grey95", family=f2),
+                              plot.background = element_rect(fill="#22223b", color=NA),
+                              plot.margin=margin(.5,.5,.5,.5,unit="cm")))
+
+# save
+ggsave("2022_37.png", height=4.5, width=8.5)
+
 ```
