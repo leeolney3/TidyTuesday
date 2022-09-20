@@ -46,27 +46,29 @@ st_bbox(plants2_sf)
 base = rnaturalearth::ne_countries(return="sf") %>% st_transform(crs="+proj=moll +lon_0=0 +x_0=0 +y_0=0") #  MollWeide Projection
 ```
 
-```{r plot map}
-p1=ggplot() +
-  geom_sf(data=base, size=.2, color="grey70", fill=NA) +
-  geom_sf(data=plants2_sf, size=1, shape=21, fill="#7aa7c3", stroke=.1, color="#F6F7F1") +
-  geom_sf(data=plants_sf, aes(fill=DF), size=1.6, shape=21, stroke=.1, color="white") +
+```{r, fig.height=3.5, fig.width=5}
+ggplot() +
+  geom_sf(data=base, size=.3, fill="#222233", color="#333344") +
+  geom_sf(data=plants2_sf, size=1, shape=21, fill="#4C7C86", stroke=.1, color="#333344") +
+  geom_sf(data=plants_sf, aes(fill=DF), size=1.5, shape=21, stroke=.1, color="#333344") +
   coord_sf(x=c(-10680466, 15361372), ylim=c(-5583376,7732762)) +
-  scale_fill_stepsn(name="Dilution Factor:",colours = viridis::rocket(n = 5, begin = 0.1, end = .9), breaks=seq(0,10,2)) +
+  scale_fill_stepsn(name="Dilution Factor:",colours = viridis::rocket(n = 5, begin = 0.5, end = 1), breaks=seq(0,10,2)) +
   cowplot::theme_map() +
-  theme(text=element_text(family=f1),
+  theme(text=element_text(family=f1, color="white"),
         legend.position = "top",
         legend.title=element_text(size=12.5),
         legend.text=element_text(size=11.5),
+        plot.background=element_rect(fill="#333344", color=NA),
         plot.title=element_markdown(face="plain", size=16, lineheight=1.2, margin=margin(b=15)),
-        plot.caption=element_text(family=f2, color="grey40",hjust=0, size=9.5, margin=margin(t=15)),
+        plot.caption=element_text(family=f2, color="#CCCCDD",hjust=0, size=9.5, margin=margin(t=15)),
         plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
-  labs(title="**2,533** out of **58,502** <span style='color:#4B83A6'><b>waste water treatment plants</b></span> show a dilution factor of less than 10,<br>which represents a common threshold for **environmental concern**",
+  labs(title="**2,533** out of **58,502** <span style='color:#70a3ae'><b>waste water treatment plants</b></span> show a dilution factor of less than 10,<br>which represents a common threshold for **environmental concern**",
        caption="TidyTuesday week 38\nData: Ehalt Macedo, H., Lehner, B., Nicell, J., Grill, G., Li, J., Limtong, A., and Shakya, R.:Distribution and characteristics of wastewater treatment\nplants within the global river network, Earth Syst. Sci. Data, 14, 559–577, https://doi.org/10.5194/essd-14-559-2022, 2022.") +
-  guides(fill=guide_colorsteps(barwidth = unit(7, "lines"), barheight = unit(.7, "lines")))
+  guides(fill=guide_colorsteps(barwidth = unit(7, "lines"), barheight = unit(.6, "lines")))
 
-ggsave("2022_38.png", p1, height=7, width=10, bg="white")
+ggsave("2022_38.png", height=7, width=9.7, bg="white")
 ```
+
 
 ```{r income classification}
 # source: https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups
