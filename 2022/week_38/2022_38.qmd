@@ -59,16 +59,15 @@ ggplot() +
         legend.title=element_text(size=12.5),
         legend.text=element_text(size=11.5),
         plot.background=element_rect(fill="#333344", color=NA),
-        plot.title=element_markdown(face="plain", size=16, lineheight=1.2, margin=margin(b=15)),
+        plot.title=element_markdown(face="plain", size=15.8, lineheight=1.2, margin=margin(b=15)),
         plot.caption=element_text(family=f2, color="#CCCCDD",hjust=0, size=9.5, margin=margin(t=15)),
         plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
-  labs(title="**2,533** out of **58,502** <span style='color:#70a3ae'><b>waste water treatment plants</b></span> show a dilution factor of less than 10,<br>which represents a common threshold for **environmental concern**",
+  labs(title="**2,533** out of **58,502** <span style='color:#70a3ae'><b>wastewater treatment plants</b></span> show a dilution factor of less than 10,<br>which represents a common threshold for **environmental concern**",
        caption="TidyTuesday week 38\nData: Ehalt Macedo, H., Lehner, B., Nicell, J., Grill, G., Li, J., Limtong, A., and Shakya, R.:Distribution and characteristics of wastewater treatment\nplants within the global river network, Earth Syst. Sci. Data, 14, 559–577, https://doi.org/10.5194/essd-14-559-2022, 2022.") +
   guides(fill=guide_colorsteps(barwidth = unit(7, "lines"), barheight = unit(.6, "lines")))
 
-ggsave("2022_38.png", height=7, width=9.7, bg="white")
+ggsave("2022_38.png", height=7, width=9.73, bg="white")
 ```
-
 
 ```{r income classification}
 # source: https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups
@@ -84,7 +83,3 @@ HydroWASTE_v10 %>% left_join(class, by="CNTRY_ISO") %>% filter(CNTRY_ISO!="VEN")
   ungroup() %>% filter(grp=="DF<10") %>% arrange(desc(prop)) %>%
   select(-grp)
 ```
-
-
-
-
