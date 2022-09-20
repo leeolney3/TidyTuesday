@@ -1,0 +1,88 @@
+---
+title: "2022_38"
+format: html
+editor: visual
+---
+
+TidyTuesday week 38 [Hydro Wastewater plants](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-09-20), data from [Macedo et al, 2022](https://figshare.com/articles/dataset/HydroWASTE_version_1_0/14847786/1) by way of [Data is Plural](https://www.data-is-plural.com/archive/2022-05-04-edition/).
+
+```{r libraries}
+#| message: false
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Barlow")
+f1 = "Barlow"
+font_add_google("Inter")
+f2 = "Inter"
+```
+
+```{r data}
+HydroWASTE_v10 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-20/HydroWASTE_v10.csv')
+```
+
+```{r sf}
+plants= HydroWASTE_v10 %>% filter(DF<10) # plants with dilution factor of less than 10
+plants2= HydroWASTE_v10 %>% filter(!DF<10) # plants with dilution factor of 10 or more
+
+# Convert to sf and transfrom to MollWeide Projection
+sf_use_s2(FALSE) #reference: https://github.com/r-spatial/sf/issues/1856
+plants_sf = st_as_sf(x=plants, coords=c("LON_WWTP","LAT_WWTP"), crs="+proj=longlat +datum=WGS84") %>%
+  st_transform(crs="+proj=moll +lon_0=0 +x_0=0 +y_0=0")
+plants2_sf = st_as_sf(x=plants2, coords=c("LON_WWTP","LAT_WWTP"), crs="+proj=longlat +datum=WGS84") %>%st_transform(crs="+proj=moll +lon_0=0 +x_0=0 +y_0=0")
+
+# Check bbox 
+st_bbox(plants_sf)
+st_bbox(plants2_sf)
+
+# get world map and transfrom to MollWeide Projection 
+base = rnaturalearth::ne_countries(return="sf") %>% st_transform(crs="+proj=moll +lon_0=0 +x_0=0 +y_0=0") #  MollWeide Projection
+```
+
+```{r plot map}
+p1=ggplot() +
+  geom_sf(data=base, size=.2, color="grey70", fill=NA) +
+  geom_sf(data=plants2_sf, size=1, shape=21, fill="#7aa7c3", stroke=.1, color="#F6F7F1") +
+  geom_sf(data=plants_sf, aes(fill=DF), size=1.6, shape=21, stroke=.1, color="white") +
+  coord_sf(x=c(-10680466, 15361372), ylim=c(-5583376,7732762)) +
+  scale_fill_stepsn(name="Dilution Factor:",colours = viridis::rocket(n = 5, begin = 0.1, end = .9), breaks=seq(0,10,2)) +
+  cowplot::theme_map() +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.title=element_text(size=12.5),
+        legend.text=element_text(size=11.5),
+        plot.title=element_markdown(face="plain", size=16, lineheight=1.2, margin=margin(b=15)),
+        plot.caption=element_text(family=f2, color="grey40",hjust=0, size=9.5, margin=margin(t=15)),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
+  labs(title="**2,533** out of **58,502** <span style='color:#4B83A6'><b>waste water treatment plants</b></span> show a dilution factor of less than 10,<br>which represents a common threshold for **environmental concern**",
+       caption="TidyTuesday week 38\nData: Ehalt Macedo, H., Lehner, B., Nicell, J., Grill, G., Li, J., Limtong, A., and Shakya, R.:Distribution and characteristics of wastewater treatment\nplants within the global river network, Earth Syst. Sci. Data, 14, 559–577, https://doi.org/10.5194/essd-14-559-2022, 2022.") +
+  guides(fill=guide_colorsteps(barwidth = unit(7, "lines"), barheight = unit(.7, "lines")))
+
+ggsave("2022_38.png", p1, height=7, width=10, bg="white")
+```
+
+```{r income classification}
+# source: https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups
+class=readxl::read_xlsx("data/CLASS.xlsx") %>% janitor::clean_names() %>%
+  select(CNTRY_ISO=code, income_group)
+
+# proportion of "DF<10" by World Bank country income-level classifications
+HydroWASTE_v10 %>% left_join(class, by="CNTRY_ISO") %>% filter(CNTRY_ISO!="VEN") %>%
+  mutate(grp=case_when(DF<10~"DF<10", TRUE~"DF>=10")) %>%
+  count(income_group, grp) %>%
+  group_by(income_group) %>%
+  mutate(total=sum(n),prop=n/sum(n) ) %>%
+  ungroup() %>% filter(grp=="DF<10") %>% arrange(desc(prop)) %>%
+  select(-grp)
+```
+
+
+
+
