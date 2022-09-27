@@ -1,0 +1,154 @@
+---
+title: "2022_39"
+date: "2022-09-27"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 39 [Artists in the USA](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-09-27), data from [arts.gov](https://www.arts.gov/impact/research/arts-data-profile-series/adp-31/data-tables) by way of [Data is Plural](https://www.data-is-plural.com/archive/2022-09-21-edition/)
+
+```{r libraries}
+library(tidyverse)
+library(ggtext)
+library(colorspace)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("JetBrains Mono")
+font_add_google("Eczar","ec", bold.wt = 600)
+font_add_google("Open Sans")
+font_add_google("Open Sans","os",bold.wt = 600)
+```
+
+```{r data}
+artists <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-27/artists.csv')
+```
+
+### Section 1: Tile map
+
+```{r grid}
+# us grid reference: https://blog.datawrapper.de/wp-content/uploads/2022/05/image5-1.png
+grid= data.frame(
+  stringsAsFactors = FALSE,
+               row = c(8L,5L,4L,3L,1L,6L,5L,4L,
+                       3L,6L,5L,4L,3L,3L,4L,5L,6L,7L,8L,3L,4L,5L,
+                       6L,7L,2L,3L,4L,5L,6L,7L,3L,4L,5L,6L,7L,4L,
+                       5L,6L,7L,3L,4L,5L,6L,8L,2L,3L,4L,5L,1L,2L,4L),
+               col = c(1L,1L,1L,1L,1L,2L,2L,2L,
+                       2L,3L,3L,3L,3L,4L,4L,4L,4L,4L,4L,5L,5L,5L,
+                       5L,5L,6L,6L,6L,6L,6L,6L,7L,7L,7L,7L,7L,8L,
+                       8L,8L,8L,9L,9L,9L,9L,9L,10L,10L,10L,10L,11L,
+                       11L,11L),
+              code = c("HI","CA","OR","WA","AK",
+                       "AZ","UT","NV","ID","NM","CO","WY","MT","ND","SD",
+                       "NE","KS","OK","TX","MN","IA","MO","AR","LA",
+                       "WI","IL","IN","KY","TN","MS","MI","OH","WV","NC",
+                       "AL","PA","VA","SC","GA","NY","NJ","MD","DC",
+                       "FL","VT","MA","CT","DE","ME","NH","RI")
+) %>%
+  mutate(state=state.name[match(code,state.abb)],
+         state=case_when(code=="DC"~"District of Columbia", TRUE~state)) 
+
+# alt grid with PR from {geofacet} package
+# grid = geofacet::us_state_with_DC_PR_grid3 %>%
+#   mutate(abb=state.abb[match(code,state.name)],
+#          state=case_when(name=="Puerto Rico CW"~"Puerto Rico", TRUE~name),
+#          abb=case_when(code=="District of Columbia"~"DC", 
+#                        code=="Puerto Rico CW"~"PR",
+#                        TRUE~abb))  
+```
+
+```{r wrangle}
+artists1= artists %>% filter(type=="Designers") %>%
+  select(state, race, location_quotient) %>%
+  left_join(grid, by="state") %>%
+  mutate(label=case_when(!is.na(location_quotient)~code))
+
+summary(artists1$location_quotient)
+```
+
+```{r plot, fig.height=3.5, fig.width=4}
+#| warning: false
+p1= artists1 %>%
+  ggplot(aes(x=col, y=-row, fill=location_quotient)) +
+  geom_point(size=6.4, shape=21, stroke=.35) +
+  geom_text(aes(label=label, color= after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), size=2.6, family="JetBrains Mono") +
+  colorspace::scale_fill_continuous_divergingx(palette = 'RdYlGn',mid = 1,breaks=c(0,.5,1,1.5,2,2.4), labels=c("0","0.5","1","1.5","2","2.4")) +
+  facet_wrap(~race) +
+  coord_fixed(clip="off") +
+  cowplot::theme_map(12) +
+  theme(text=element_text(family="ec"),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size=10.5),
+        legend.margin=margin(b=7),
+        axis.title=element_blank(),
+        strip.text = element_text(size=11.5,face="bold", margin=margin(b=10)),
+        panel.spacing.x = unit(2, "lines"),
+        panel.spacing.y = unit(2.5, "lines"),
+        plot.subtitle = element_markdown(size=11, color="grey10", margin=margin(b=10,t=3)),
+        plot.title=element_text(size=14,margin=margin(b=8)),
+        plot.caption = element_markdown(color="grey30",hjust=0, lineheight=1.1, margin=margin(t=25)),
+        plot.margin=margin(.7,.7,.5,.7, unit="cm"),
+        ) +
+  labs(caption="Location quotients (LQ) measure an artist occupation's concentration in the labor force, relative to the U.S. labor force share. For<br>example, an LQ of 1.2 indicates that the state's labor force in an occupation is 20 percent greater than the occupation's national<br>labor force share. An LQ of 0.8 indicates that the state's labor force in an occupation is 20 percent below the occupation's national<br>labor force share.<br><br>TidyTuesday week 39  •  Source: arts.gov by way of Data is Plural",
+       title="Designers in the USA",
+       subtitle="**Location quotients**, Artists in the Workforce: National and State Estimates for 2015-2019.",
+       ) +
+  guides(fill = guide_colorbar(barwidth = unit(12, "lines"), barheight = unit(.4, "lines")))
+
+ggsave("2022_39_p1.png",p1,height=7, width=8, bg="white")
+```
+
+### Section 2: Facetted barcode plot
+
+-   strip-panel background fill inspired by Georgios Karamanis @geokaramanis
+
+```{r}
+artists2 = artists %>% mutate(abb=state.abb[match(state,state.name)],
+                              abb=case_when(state=="District of Columbia"~"DC", 
+                                            state=="Puerto Rico CW"~"PR", TRUE~abb))
+
+artists3= artists2 %>% group_by(race, type) %>%
+  arrange(desc(location_quotient)) %>%
+  slice(1) %>% ungroup() %>% filter(location_quotient<10)
+
+```
+
+```{r, fig.height=3.75, fig.width=4}
+#| warning: false
+col = "#f72585"
+p2 = artists2 %>%
+  ggplot(aes(x=location_quotient, y=0)) +
+  geom_point(shape="|", size=5, alpha=.3) +
+  geom_point(data=artists3, shape="|", size=5, color=col) +
+  geom_point(data=artists2 %>% filter(location_quotient>10), shape="|", size=5, color=col) +
+  geom_text(data= artists3, aes(label=abb), hjust=-.3, size=3, family="JetBrains Mono", color=col) +
+geom_text(data= artists2 %>% filter(location_quotient>10), aes(label=abb), hjust=1.3, size=3, family="JetBrains Mono", color=col) +
+  facet_grid(rows=vars(str_wrap(type,25)), cols=vars(race),switch = "y") +
+  coord_cartesian() +
+  cowplot::theme_map(10.8)+
+  theme(text=element_text(family="Open Sans"),
+        panel.background = element_rect(fill="grey95", color=NA),
+        strip.text.y.left = element_text(size=8.8,angle = 0, family="os",face="bold"),
+        strip.text.x.top=element_text(margin=margin(b=8), family="os",face="bold"),
+        panel.spacing.y = unit(.5, "lines"),
+        axis.ticks.x=element_line(size=.3),
+        axis.text.x=element_text(size=8),
+        axis.ticks.length=unit(.2, "cm"),
+        axis.title.x = element_text(size=9, margin=margin(t=5)),
+        plot.margin=margin(.7,.7,.5,.5, unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(size=13.5),
+        plot.caption.position = "plot",
+        plot.caption=element_markdown(size=8.3,color="grey30",hjust=0, lineheight=1.2,margin=margin(t=13)),
+        plot.subtitle = element_markdown(lineheight=1.3, margin=margin(b=15)))+
+  labs(x="Location quotients", title=str_to_upper("Artists in the USA"),
+       subtitle="**Location quotients** from *Artists in the Workforce: National and State Estimates for 2015-2019*. Each line represents a state, and<br>the state with the highest location quotient by artist type and race group is labeled.",
+       caption="Note: *Location quotients (LQ)* measure an artist occupation's concentration in the labor force, relative to the U.S. labor force share. For<br>example,an LQ of 1.2 indicates that the state's labor force in an occupation is 20 percent greater than the occupation's national labor force<br>share. An LQ of 0.8 indicates that the state's labor force in an occupation is 20 percent below the occupation's national labor force share.<br><br>TidyTuesday week 39  •  Source: arts.gov by way of Data is Plural")
+
+ggsave("2022_39_p2.png",p2, height=7.5, width=8, bg="white")
+```
