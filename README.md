@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/39 [Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)
 * 2022/38 [Hydro Wastewater plants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_38)
 * 2022/37 [Bigfoot](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_37)
 * 2022/36 [Lego sets](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_36)
@@ -104,14 +105,18 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 * 2021/03 [Art Collections](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_03)
 * 2021/02 [Transit Cost Project](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_02)
 * 2021/01 [Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2021_01)
-* 2020/52 [Big Mac Index](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_52)
-* 2020/48 [Washington Trails](https://github.com/leeolney3/TidyTuesday/tree/main/2020/2020_48)
+* 2020/52 [Big Mac Index](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2020_52)
+* 2020/48 [Washington Trails](https://github.com/leeolney3/TidyTuesday/tree/main/2021/2020_48)
 <!-- tocstop -->
 </details>
 
 
 ***
 ## 2022 
+* [Week 38/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
+***
 * [Week 38/2022: Hydro Wastewater plants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_38)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.qmd)
 ***
