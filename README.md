@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/40 [Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)
 * 2022/39 [Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)
 * 2022/38 [Hydro Wastewater plants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_38)
 * 2022/37 [Bigfoot](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_37)
@@ -113,6 +114,9 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
+* [Week 40/2022: Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_40.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_40.qmd)
+***
 * [Week 38/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
