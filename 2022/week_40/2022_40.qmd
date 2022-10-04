@@ -1,0 +1,76 @@
+---
+title: "2022_40"
+date: "2022-10-04"
+format: html
+editor: visual
+---
+
+Product Hunt products, data comes from [components.one](https://components.one/posts/gamer-and-nihilist-product-hunt) by way of [Data is Plural](https://www.data-is-plural.com/archive/2022-09-28-edition/#:~:text=t%20Factle%5D-,Tech%20products%20promoted.,-For%20%E2%80%9CThe)
+
+```{r libraries}
+#| message: false
+library(tidyverse)
+library(lubridate)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r font}
+font_add_google("Inter")
+f1 = "Inter"
+```
+
+```{r data}
+product_hunt <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-04/product_hunt.csv')
+```
+
+```{r wrangle}
+# products with mac tag
+df1= product_hunt %>% filter(str_detect(category_tags,"MAC")) %>%
+  mutate(rdate= ymd(release_date),
+         ryear=year(rdate),
+         grp=case_when(is.na(product_of_the_day_date)~"No", TRUE~"Yes")) %>%
+  add_count(ryear) %>% 
+  mutate(y= glue::glue("**{ryear}**<br><span style = 'font-size:7pt'>(n={n})</span>"))
+
+year(df1$rdate) = 2020 #change to a leap year
+```
+
+
+```{r, fig.height=3.5, fig.width=3.5}
+df1 %>%
+  ggplot(aes(x=rdate, y=fct_rev(factor(y)))) +
+  ggbeeswarm::geom_beeswarm(aes(size=upvotes, color=grp), method="square", alpha=.6, cex=.9) +
+  geom_richtext(data=df1 %>% slice_max(upvotes,n=2), aes(label=glue::glue("***{name}***: **{scales::comma(upvotes)}** upvotes ")), size=2.8, hjust=0, nudge_y = .4, fill=NA, color="#C96E00") +
+  scale_size_area("Upvotes count:",guide=guide_legend(override.aes = list(shape=21)), breaks=c(1000,4000,8000)) +
+  scale_color_manual("Is product of the day?",values=c("#002542","#C96E00")) +
+  scale_x_date(date_labels = "%b") +
+  cowplot::theme_minimal_grid(10.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.box = 'vertical',
+        legend.justification = 'left',
+        legend.box.just = 'left',
+        legend.spacing.y = unit(-0,"cm"),
+        legend.title=element_text(size=8.7),
+        legend.text=element_text(size=8.5),
+        legend.margin=margin(l=-31),
+        plot.margin=margin(.7,.7,.5,.7,unit="cm"),
+        axis.title=element_blank(),
+        axis.text.y=element_markdown(hjust=.5, lineheight = 1),
+        axis.text.x = element_text(size=8.5),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, size=7.5, color="grey30", margin=margin(t=13))) +
+  guides(color=guide_legend(order=1, override.aes = list(size=3.5, shape=15, alpha=.7))) +
+  labs(title="2,947 Mac products on Product Hunt by release date",
+       caption="TidyTuesday week 40 | Source: components.one by way of Data is Plural")
+```
+
+```{r}
+ggsave("2022_40.png", height=7, width=7, bg="#fafafa")
+```
+
+
