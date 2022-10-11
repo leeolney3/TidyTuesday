@@ -1,0 +1,111 @@
+---
+title: "2022_41"
+date: "2022-10-11"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 41 [Ravelry data](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-10-11)
+ravelry.com, data from from [ravelry.com](https://www.ravelry.com/yarns/) by way of [Alice Walsh](https://github.com/awalsh17)
+
+```{r libraries}
+library(tidyverse)
+library(ggtext)
+library(gt)
+library(gtExtras)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Barlow")
+font_add_google("Barlow Semi Condensed")
+```
+
+```{r data}
+yarn <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-11/yarn.csv')
+```
+
+### Histogram + interval plot
+* trying out stat_histinterval from {ggdist}
+```{r}
+yarn1= yarn %>% 
+  mutate(yarn_weight_name=na_if(yarn_weight_name, "No weight specified"),
+         yw = fct_lump(yarn_weight_name,10)) %>% 
+  drop_na(yw, rating_average) %>%
+  group_by(yw) %>%
+  mutate(n=n(),
+         lab=glue::glue("{yw}<br><span style = 'font-size:8pt'>(n={scales::comma(n)})</span>")) %>%
+  ungroup() %>%
+  mutate(lab=fct_reorder(lab, rating_average,.fun=median)) 
+```
+
+```{r, fig.height=2.75, fig.width=4}
+p1 = yarn1 %>%
+  ggplot(aes(lab, rating_average)) +
+  ggdist::stat_histinterval(aes(fill=lab),position = position_nudge(x =-.3), show.legend = FALSE, alpha=.8) +
+  geom_text(data=yarn1 %>% group_by(lab) %>% summarise(rating_average=median(rating_average)),
+            aes(label=rating_average), size=3.3, family="Barlow") +
+  geom_text(data=yarn1 %>%group_by(lab) %>%summarise(rating_average=median(rating_average)) %>% ungroup() %>% filter(row_number()==1), aes(label="Median:"),size=2.5, family="Barlow", vjust=-1.2, hjust=.35) +
+  scale_fill_manual(values=c(rep("#FFD807",8), rep("#2BCCC9",3))) +
+  scale_x_discrete(position="top") +
+  scale_y_continuous(expand=c(0.01,0.01), position="right") +
+  theme_minimal(12, base_family="Barlow") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title.y.right =element_text(size=9, margin=margin(l=5)),
+        axis.title.x=element_blank(),
+        axis.text=element_text(color="black"),
+        axis.text.x.top = element_markdown(vjust=1, lineheight = 1.1, family="Barlow Semi Condensed"), 
+        plot.margin = margin(.7,.7,.5,.7, unit="cm"),
+        plot.caption=element_text(hjust=0, size=8, color="grey30"),
+        plot.caption.position = "plot",
+        plot.title.position = "plot",
+        plot.title=element_markdown(size=13, margin=margin(b=13)),
+        plot.background = element_rect(fill="#F9F9F9", color="NA")
+        ) +
+  labs(caption="\nTidyTuesday week 41  |  Source: ravelry.com by way of Alice Walsh",
+       title="Average rating of **Ravelry** knitting/crochet recipes by yarn weight category",
+       y="Average Rating")
+
+ggsave("2022_41.png",p1, height=5.5, width=8)
+```
+
+
+### {gt} table, gt_plt_dist
+```{r}
+tab1 = yarn1 %>% group_by(yw) %>%
+  summarise(n=n(),
+            Median=median(rating_average),
+            Boxplot=list(rating_average),
+            Density= list(rating_average),
+            Histogram=list(rating_average),
+            Rug=list(rating_average)
+            ) %>%
+  ungroup() %>%
+  arrange(desc(Median)) 
+```
+
+```{r}
+tab1 %>%
+  gt(rowname_col = "yw") %>%
+  gt_theme_espn() %>%
+  tab_spanner(label="Average rating", columns=Median:Histogram) %>%
+  gt_plt_dist(Boxplot, type="boxplot", line_color = "#2B6999", fill_color = "#B2C616") %>%
+  gt_plt_dist(Density,line_color = "#2B6999", fill_color = "#B2C616") %>%
+  gt_plt_dist(Histogram, type="histogram", bw=1,line_color = "#2B6999", fill_color = "#2B6999") %>%
+  gt_plt_dist(Rug, type="rug_strip") %>%
+  cols_label(Rug="Rug Strip") %>%
+  fmt_number(columns=n, decimals = 0) %>%
+  cols_width(n~px(90), Median~px(90)) %>%
+  tab_header(title="Ravelry knitting/crochet recipes", subtitle="Average rating of recipes by yarn weight category") %>%
+  tab_source_note(source_note = "TidyTuesday week 41  •  Source: ravelry.com by way of Alice Walsh")
+```
+
+
+
+
+
+
+
