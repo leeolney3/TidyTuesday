@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/42 [Stranger Things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)
 * 2022/41 [Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_41)
 * 2022/40 [Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)
 * 2022/39 [Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)
@@ -115,7 +116,10 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 41/2022: Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)  
+* [Week 41/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.qmd)
+***
+* [Week 41/2022: Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_41)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_41/2022_41_1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_41.qmd)
 ***
 * [Week 40/2022: Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)  
