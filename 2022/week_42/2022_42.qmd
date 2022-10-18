@@ -1,0 +1,89 @@
+---
+title: "2022_42"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 42 [Stranger things dialogue](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-10-18), data from [8flix.com](https://8flix.com/collections/transcripts/stranger-things-2/) - prepped by [Dan Fellowes](https://twitter.com/FilmicAesthetic) & [Jonathan Kitt](https://twitter.com/KittJonathan).
+
+```{r libraries}
+#| message: false
+library(tidyverse)
+library(ggtext)
+library(lubridate)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r font}
+font_add_google("Archivo")
+f1 = "Archivo"
+```
+
+### Section One: Stringr Things
+Data: [Stranger Things Script Data](https://github.com/filmicaesthetic/stringr-things)
+Source: [8flix.com](https://8flix.com/collections/transcripts/stranger-things-2/) and [Dan @filmicaesthetic](https://twitter.com/FilmicAesthetic/status/1579954933113442306)
+
+```{r data}
+#| message: false
+episodes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-18/episodes.csv')
+script = readr::read_csv("https://raw.githubusercontent.com/filmicaesthetic/stringr-things/main/data/stranger_things_all_dialogue.csv")
+```
+
+```{r run times}
+# Run times from Netflix
+run= script %>% select(season, episode) %>% distinct() %>%
+  mutate(duration= c(49,56,52,51,53,47,42,55,48,56,51,46,58,52,46,48,62,51,50,50,53,52,60,55,78,78,77,64,79,76,75,98,85,150), duration_sec=duration*60,
+         end_time=hms::hms(duration_sec),
+         start_time=hms::parse_hms("00:00:00"))
+
+# duration = script %>% group_by(season, episode) %>%
+#   summarise(end_time=hms::as_hms(max(end_time)),
+#             start_time=hms::as_hms(min(start_time)))
+```
+
+
+```{r plot, fig.height=3, fig.width=4}
+ggplot() +
+  geom_rect(data=run, aes(xmin=start_time, xmax=end_time, ymin=episode-.4, ymax=episode+.4), fill="grey", alpha=.2) +
+  geom_rect(data=script %>% filter(stage_direction %in% c("[sighs]","[chuckles]")),
+            aes(xmin=start_time, xmax=end_time, ymin=episode-.4, ymax=episode+.4, fill=stage_direction, color=stage_direction),size=.3, show.legend = FALSE) +
+ scale_y_reverse(breaks=seq(1,10,2), labels=c("Ep.1","3","5","7","9")) +
+  scale_x_time(breaks=scales::date_breaks(width="15 mins")) +
+  scale_color_manual(values=c("#033D5C","#E52929")) +
+  scale_fill_manual(values=c("#033D5C","#E52929")) +
+  coord_cartesian(xlim=c(0,4200), expand=FALSE, clip="off") +
+  facet_grid(rows = vars(season), scales = "free_y", switch = "y", space = "free_y", labeller =labeller(season=c("1"="Season 1","2"="Season 2","3"="Season 3","4"="Season 4"))) +
+  cowplot::theme_minimal_grid(11, line_size=.3) +
+  theme(text=element_text(family=f1),
+        axis.ticks.y=element_blank(),
+        axis.ticks.x=element_line(size=.2),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.text.y=element_text(size=8, margin=margin(r=-5)),
+        axis.text.x=element_text(size=8),
+        axis.title.y=element_blank(),
+        axis.title.x=element_text(size=9),
+        strip.text=element_text(size=10),
+        strip.placement = "outside",
+        panel.grid.major.y = element_blank(),
+        panel.spacing = unit(.8, "lines"),
+        plot.caption.position = "plot",
+        plot.caption=element_markdown(hjust=0, color="grey50", size=8, lineheight = 1.2, margin=margin(t=10)),
+        plot.title.position = "plot",
+        plot.title=element_markdown(),
+        plot.subtitle=element_text(color="grey40"),
+        plot.margin=margin(.5,0,.3,.5, unit="cm")
+        ) +
+  labs(caption="Note: Multiple episodes (s03e08 and all episodes in season 4 with the exception s04e03) exceeds the duration of 70 minutes shown in this graphic. However,<br>the sighs and chuckles in these episodes occur before the 70 minutes mark.<br><span style='color:grey20';>TidyTuesday week 42  •  Source: 8flix.com - prepped by Dan Fellowes and Jonathan Kitt.</span>",
+       title="<span style='color:#E52929'>295 sighs</span> and <span style='color:#033D5C'>202 chuckles</span> in Stranger Things' transcript",
+       subtitle="Stage directions with sighs and chuckles in Stranger Things season 1 (2016) to 4 (2022)\n", 
+       x="Time (hms)") +
+  geom_text(data=run %>% filter(season==1, episode==8),
+            aes(x=end_time, y=3, label="Running time"), size=2.5, family=f1, color="grey30", hjust=0) +
+  geom_segment(data=run %>% filter(season==1, episode==3),
+               aes(x=hms::parse_hms("00:54:40"), xend=end_time, y=episode, yend=episode), color="grey70", size=.3, arrow = arrow(length = unit(0.15, "cm")))
+
+ggsave("2022_42.png", height=6, width=8, bg="white")
+```
+
