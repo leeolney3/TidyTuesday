@@ -1,0 +1,85 @@
+---
+title: "2022_43"
+date: "2022-11-01"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 43 (2022-10-25) [Great British Bakeoff](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-10-25), data from [{bakeoff} package](https://bakeoff.netlify.app/) by Alison Hill, Chester Ismay, and Richard Iannone.
+
+```{r libraries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Archivo Narrow")
+f1 = "Archivo Narrow"
+font_add_google("Archivo")
+f2 = "Archivo"
+font_add_google("Roboto Serif")
+f3 = "Roboto Serif"
+```
+
+```{r data}
+#| message: false
+bakers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-25/bakers.csv')
+
+episodes = readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-25/episodes.csv")
+```
+
+```{r wrangle}
+b1=bakers %>% 
+  filter(percent_episodes_appeared>=80) %>%
+  mutate(baker_full=case_when(series_winner==1~glue::glue("**{baker_full}**"),TRUE~glue::glue("{baker_full}")),
+         pct_ep = case_when(series_winner==1~101,TRUE~percent_episodes_appeared)) %>%
+  arrange(desc(pct_ep)) %>%
+  mutate(baker_full=fct_rev(fct_inorder(baker_full))) %>%
+  pivot_longer(technical_highest:technical_median) %>%
+  mutate(name=str_to_title(str_replace(name,"technical_","")),
+         name=factor(name, levels=c("Highest","Median","Lowest"))) %>%
+  rename(Series=series)
+```
+
+```{r plot, fig.height=3.5, fig.width=3.5}
+pal1= c("#059AAE","#0E23A2","#AB28D7")
+b1 %>%
+  ggplot(aes(x=value, y=baker_full)) +
+  geom_line(aes(group=baker_full), size=.3, color="grey50") +
+  geom_point(aes(fill=name, color=name,shape=name)) +
+  scale_x_continuous(position="top", breaks=c(1,3,5,7,9,11)) +
+  scale_shape_manual(values=c(24,21,25)) +
+  scale_color_manual(values=pal1) +
+  scale_fill_manual(values=pal1) +
+  facet_wrap(~Series, scales = "free", ncol=2,strip.position="left",labeller = label_both) +
+  theme_minimal(base_family=f2) +
+  theme(legend.position = "none",
+        strip.placement = "outside",
+        panel.grid = element_blank(),
+        panel.spacing.x = unit(1.8, "lines"),
+        panel.spacing.y = unit(.8, "lines"),
+        panel.grid.major.y = element_blank(),
+        axis.title=element_blank(),
+        axis.text.x = element_text(size=7.5),
+        axis.text.y = element_markdown(family=f1),
+        axis.ticks=element_line(size=.3, color="grey20"),
+        strip.text = element_text(family=f3, size=8.5,color="black",margin=margin(0,0,0,0)),
+        plot.margin=margin(.5,.5,.5,.5, unit="cm"),
+        legend.justification = "left",
+        plot.caption.position = "plot",
+        plot.caption=element_text(color="grey50", size=7.5, hjust=0, margin=margin(t=15)),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f3),
+        plot.subtitle = element_markdown(size=8.2, lineheight = 1.3, color="grey20", margin=margin(b=8)),
+        ) +
+  labs(caption="TidyTuesday week 43 | Source: {bakeoff} package from Alison Hill, Chester Ismay, and Richard Iannone",
+       title="The Great British Bake Off",
+       subtitle="Technical Challenges <span style='color:#059AAE'>**highest**</span>, <span style='color:#0E23A2'>**median**</span> and <span style='color:#AB28D7'>**lowest**</span> rankings of Bakers that appeared in 50% or more episodes in the participated<br>series. Bakers arranged in descending order of episodes appeared percentage, and the series winners are highlighted in bold.")
+```
+
+```{r}
+ggsave("2022_43.png", height=7, width=7, bg="#fafafa")
+```
