@@ -1,0 +1,84 @@
+---
+title: "2022_44"
+date: "2022-11-01"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 44 [Horror Movies](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-11-01), data from [The Movie Database](https://www.themoviedb.org/) and [Tanya Shapiro's Horror Movies](https://github.com/tashapiro/horror-movies) 
+
+```{r libraries}
+#| message: false
+library(tidyverse)
+library(lubridate)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Josefin Sans")
+f1 = "Josefin Sans"
+```
+
+```{r data}
+horror_movies <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-01/horror_movies.csv')
+```
+
+```{r}
+horror_movies %>% count(genre_names, sort=TRUE)
+```
+
+```{r wrangle}
+df1= horror_movies %>% filter(status=="Released") %>%
+  mutate(year=year(ymd(release_date)),month=month(ymd(release_date)),
+         genre_names=str_to_lower(genre_names),
+         comedy=case_when(str_detect(genre_names, "comedy")~"Comedy", TRUE~"Others")) %>%
+  filter(between(year,1990,2019)) %>%
+  count(year, month, comedy) %>%
+  group_by(year, month) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(comedy=="Comedy") %>%
+  mutate(decade = if_else(year >= 2000,
+                          paste0(year  %/% 10 * 10, "'s"),
+                          paste0((year - 1900) %/% 10 * 10, "'s")))
+```
+
+```{r plot, fig.height=4, fig.width=3.5}
+pal = c("#FFAE00","#0C7D74","#DB2516")
+
+df1 %>%
+  ggplot(aes(x=month,y=prop, color=factor(decade, levels=c("2010's","2000's","90's")))) +
+  ggdist::stat_slab(aes(fill=factor(decade, levels=c("2010's","2000's","90's"))), alpha=.6, size=.5)+
+  geom_point(position = position_nudge(x = -.1), size=1, alpha=.5,  
+             show.legend = FALSE) +
+  scale_fill_manual(values=pal) +
+  scale_color_manual(values=pal) +
+  scale_y_continuous(limits=c(0,NA), expand=c(0,0)) +
+  scale_x_reverse(breaks=seq(1,12,1), labels=format(ISOdate(2019,1:12,1),"%B"), expand=c(.01,.01)) +
+  coord_flip(clip = "off") +
+  cowplot::theme_minimal_grid(11.5, color="#313640", line_size = .3) +
+  theme(text=element_text(color="#D9D9D9", family=f1),
+        axis.text = element_text(color="#D9D9D9", size=9.5),
+        axis.text.y = element_text(vjust=0, size=10),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.title=element_blank(),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.margin=margin(l=-60, b=-12),
+        legend.title=element_blank(),
+        panel.grid.major.x = element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(size=14),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, size=8.5, color="#A6A6A6"),
+        plot.background = element_rect(fill="#05080D", color=NA),
+        plot.margin=margin(.5,.9,.5,.5,unit="cm"),
+        )  +
+  labs(title="Horror Comedies",
+       subtitle="Proportion of released horror movies that are horror comedies by release decade and month. Each point\nrepresents a year from 1990 to 2019.",
+       caption="\n#TidyTuesday week 44 | Data from The Movie Database and Tanya Shapiro")
+
+ggsave("2022_44.png", height=8, width=7)
+```
