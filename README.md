@@ -10,6 +10,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 <!-- toc -->
 * 2022/44 [Horror Movies](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)
+* 2022/43 [Great British Bakeoff](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_43)
 * 2022/42 [Stranger Things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)
 * 2022/41 [Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_41)
 * 2022/40 [Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)
