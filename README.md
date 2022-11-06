@@ -118,7 +118,10 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 41/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)  
+* [Week 44/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_44.qmd)
+***
+* [Week 42/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.qmd)
 ***
 * [Week 41/2022: Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_41)  
