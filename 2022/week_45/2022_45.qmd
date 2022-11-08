@@ -1,0 +1,114 @@
+---
+title: "2022_45"
+date: "2022-11-08"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 42 [Radio Stations](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-11-08), data from [Wikipedia](https://en.wikipedia.org/wiki/Lists_of_radio_stations_in_the_United_States) courtesy of [Frank Hull](https://github.com/frankiethull/fm_stations/tree/main)
+
+```{r libraries}
+library(tidyverse)
+library(cartogram)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r font}
+font_add_google("Inter")
+f1 = "Inter"
+```
+
+```{r data}
+state_stations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-08/state_stations.csv')
+
+station_info <-readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-08/station_info.csv')
+
+joined =state_stations |> dplyr::right_join(station_info, by = c("call_sign"))
+
+sf = tigris::states(cb=TRUE) %>%
+  filter(!STUSPS %in% c("AK","HI","PR","GU","AS","MP","VI","DC"))
+sf = sf::st_transform(sf, crs = "ESRI:102003") #USA Contiguous Albers Equal Area Conic ESRI
+```
+
+```{r wrangle}
+# get top 4 format by count
+selected= state_stations %>% 
+  mutate(format=str_remove_all(format,"'"),
+         format=str_trim(str_to_lower(format))) %>% count(format, sort=TRUE) %>%
+  slice(1:4) %>% pull(format)
+
+# proportion of state's radio stations in the respective format
+s2 = state_stations %>% 
+  mutate(format=str_remove_all(format,"'"),
+         format=str_trim(str_to_lower(format))) %>%
+  group_by(state) %>%
+  mutate(total=n()) %>%
+  ungroup() %>%
+  count(state, total, format) %>%
+  filter(format %in% selected) %>%
+  mutate(prop=n/total) %>%
+  mutate(STUSPS=str_replace_all(state,"_"," "),
+         STUSPS=state.abb[match(STUSPS,state.name)])%>%
+  filter(!STUSPS %in% c("AK","HI","PR","GU","AS","MP","VI","DC"))
+```
+
+```{r sf}
+# Non-Overlapping Circles Cartogram
+sf_co= sf %>% left_join(s2 %>% filter(format=="country"), by="STUSPS") %>%
+  mutate(prop=replace_na(prop,0))
+prov1 <- cartogram_dorling(sf_co, weight = "prop") 
+
+sf_va = sf %>% left_join(s2 %>% filter(format=="variety"), by="STUSPS")
+prov2 <- cartogram_dorling(sf_va, weight = "prop")
+
+sf_ch = sf %>% left_join(s2 %>% filter(format=="classic hits"), by="STUSPS")
+prov3 <- cartogram_dorling(sf_ch, weight = "prop") 
+
+sf_nt = sf %>% left_join(s2 %>% filter(format=="news/talk"), by="STUSPS") %>%
+  mutate(prop=replace_na(prop,0))
+prov4 <- cartogram_dorling(sf_nt, weight = "prop") 
+
+sf_combined = rbind(prov1, prov2, prov3, prov4) %>% mutate(format=str_to_title(format))
+```
+
+```{r plot, fig.height=3.5, fig.width=3.5}
+sf_combined %>%
+  ggplot(aes(fill=prop)) +
+  geom_sf(size=.2, color="black") +
+  geom_sf_text(data= sf_combined,aes(label=STUSPS, size=prop, color=I(ifelse(prop<0.05,"black","white"))), family=f1) +
+  scale_size_area(max_size = 5, guide="none") +
+  scico::scale_fill_scico(breaks=c(0.002,0.05,0.10,0.15,0.18), labels=scales::percent) +
+  scale_color_identity() +
+  facet_wrap(~factor(format,levels=c("Country","Variety","Classic Hits","News/Talk"))) +
+  coord_sf() +
+  theme_minimal(10,base_family = f1) +
+  theme(axis.text=element_blank(),
+        axis.title=element_blank(),
+        panel.grid = element_line(size=.3, color="grey85"),
+        panel.spacing.x = unit(2, "lines"),
+        panel.spacing.y = unit(2, "lines"),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.title=element_blank(),
+        strip.text=element_text(face="bold", size=10.5),
+        plot.title=element_text(face="bold", size=12.5),
+        plot.subtitle = element_text(color="grey20"),
+        plot.caption = element_text(hjust=0,color="grey30", margin=margin(t=10)),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm")
+        ) +
+  guides(fill=guide_colorbar(barwidth = unit(11,"lines") ,barheight = unit(.5,"lines"))) +
+  labs(fill="Percentage",
+       title="Radio Stations in the Lower 48 States",
+       subtitle="Percentage of State's radio stations in the formats: country, variety, classic hits and news/talk.",
+       caption="#TidyTuesday week 45 | Source: Wikipedia")
+
+ggsave("2022_45.png", height=7, width=7.2, bg="white")
+```
+
+
+
+
+
+
