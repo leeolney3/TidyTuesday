@@ -186,7 +186,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 * [Week 21/2022: Women's Rugby](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_21)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_21/2022_21.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_21/2022_21.R)
 ***
-* [Week 20/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20)  
+* [Week 20/2022: Eurovision](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_20)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_20/2022_20.R)
 ***
 * [Week 19/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
