@@ -1,0 +1,72 @@
+---
+title: "2022_47"
+date: "2022-11-22"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 47 [UK Museums](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-11-22), data from [Mapping Museums project](https://museweb.dcs.bbk.ac.uk/data) by way of [Data Is Plural](https://www.data-is-plural.com/)
+
+Citation: Data downloaded from the Mapping Museums website at www.mappingmuseums.org, Accessed on 2022-11-22.
+
+```{r libraries}
+library(tidyverse)
+library(sf)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Libre Franklin", bold.wt = 600)
+f1 = "Libre Franklin"
+font_add_google("Archivo Narrow")
+f2 = "Archivo Narrow"
+```
+
+```{r data}
+museums <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-22/museums.csv')
+
+england = rnaturalearth::ne_countries(country = 'united kingdom', type='map_units',scale = 'medium',returnclass = "sf") %>% 
+  filter(geounit=="England") 
+england2 = st_transform(england, 7405) #British National Grid
+```
+
+```{r wrangle}
+df1 = museums %>% filter(str_detect(Admin_area,"England")) %>%
+  select(Latitude,Longitude,Subject_Matter) %>%
+  separate(Subject_Matter, c("subject1","subject2"), "-") %>%
+  mutate(subject1=str_trim(str_replace_all(subject1,"_"," ")))
+
+selected= df1 %>% count(subject1,sort=TRUE) %>% slice(1:15) %>% pull(subject1)
+
+#2089 rows
+df2 = df1 %>% filter(subject1 %in% selected) %>% mutate(subject1 = factor(subject1, levels=selected))
+
+df3 = sf_project(from = st_crs(4326), to = st_crs(7405), df2[, c("Longitude", "Latitude")]) |> as.data.frame()
+df4 = cbind(df2,df3)
+```
+
+```{r plot, fig.height=3.3, fig.width=4}
+df4 %>% ggplot() +
+  geom_sf(data=england2, color=NA, fill="grey95") +
+  geom_bin2d(aes(V1,V2), bins=30) +
+  facet_wrap(~subject1, ncol=5) +
+  scico::scale_fill_scico(palette="bamako", direction=-1,trans="pseudo_log", breaks=c(1,10,30),
+                          guide=guide_colorbar(barheight = unit(.5, "lines"),barwidth = unit(10, "lines"))) +
+  cowplot::theme_map(12.4) +
+  theme(legend.position = "top",
+        legend.justification = "center",
+        legend.title=element_blank(),
+        panel.spacing.y = unit(.9, "lines"),
+        panel.spacing.x = unit(.8, "lines"),
+        text=element_text(family=f2),
+        plot.title=element_text(hjust=.5, family=f1, size=12.5),
+        plot.caption=element_text(family=f1, color="grey30", size=7.5, margin=margin(t=10)),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm")) +
+  labs(title="Museums in England by subject matter",
+       caption="#TidyTuesday week 47 | Source: MuseWeb by way of Data Is Plural")
+
+ggsave("2022.47.png",height=7, width=8, bg="white")
+```
+
