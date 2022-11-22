@@ -9,6 +9,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/47 [UK Museums](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_47)
+* 2022/45 [Radio Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_45)
 * 2022/44 [Horror Movies](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)
 * 2022/43 [Great British Bakeoff](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_43)
 * 2022/42 [Stranger Things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)
@@ -118,8 +120,14 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 44/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_44.qmd)
+* [Week 47/2022: UK Museums](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_47)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022.47.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022_47.qmd)
+***
+* [Week 45/2022: Radio Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_45)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_45/2022_45.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022_47.qmd)
+***
+* [Week 44/2022: Horror Movies](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)  
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.qmd)
 ***
 * [Week 42/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.qmd)
