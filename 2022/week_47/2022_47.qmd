@@ -18,8 +18,8 @@ showtext_auto(enable = TRUE)
 ```
 
 ```{r fonts}
-font_add_google("Libre Franklin", bold.wt = 600)
-f1 = "Libre Franklin"
+font_add_google("Open Sans", bold.wt = 600)
+f1 = "Open Sans"
 font_add_google("Archivo Narrow")
 f2 = "Archivo Narrow"
 ```
@@ -58,10 +58,9 @@ df4 %>% ggplot() +
   theme(legend.position = "top",
         legend.justification = "center",
         legend.title=element_blank(),
-        panel.spacing.y = unit(.9, "lines"),
-        panel.spacing.x = unit(.8, "lines"),
+        panel.spacing = unit(.8, "lines"),
         text=element_text(family=f2),
-        plot.title=element_text(hjust=.5, family=f1, size=12.5),
+        plot.title=element_text(hjust=.5, family=f1, size=13),
         plot.caption=element_text(family=f1, color="grey30", size=7.5, margin=margin(t=10)),
         plot.margin=margin(.5,.5,.3,.5,unit="cm")) +
   labs(title="Museums in England by subject matter",
