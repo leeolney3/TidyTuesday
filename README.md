@@ -9,6 +9,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2022</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2022/47 [FIFA World Cup](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_48)
 * 2022/47 [UK Museums](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_47)
 * 2022/45 [Radio Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_45)
 * 2022/44 [Horror Movies](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)
@@ -120,33 +121,12 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 47/2022: UK Museums](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_47)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022.47.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022_47.qmd)
-***
-* [Week 45/2022: Radio Stations](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_45)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_45/2022_45.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_47/2022_47.qmd)
-***
-* [Week 44/2022: Horror Movies](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_44)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_44/2022_44.qmd)
-***
-* [Week 42/2022: Stranger things dialogue](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_42)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_42/2022_42.qmd)
-***
-* [Week 41/2022: Ravelry data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_41)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_41/2022_41_1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_41.qmd)
-***
-* [Week 40/2022: Product Hunt products](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_40)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_40.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_40/2022_40.qmd)
-***
 * [Week 38/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 ***
 * [Week 38/2022: Hydro Wastewater plants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_38)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.qmd)
-***
-* [Week 37/2022: Bigfoot](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_37)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_37/2022_37_1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_37/2022_37_1.qmd)
 ***
 * [Week 36/2022: Lego sets](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_36)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2020_36.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_36/2022_36.R)  
@@ -155,32 +135,11 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 * [Week 35/2022: Pell Grants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_35)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_35/2022_35.qmd)
 ***
-* [Week 34/2022: CHIP Dataset](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_34)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_34/2022_34.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_34/2022_34.qmd)
-***
-* [Week 33/2022: Open Source Psychometrics](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_33) 
-
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.R) 
-
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33_2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_33/2022_33.R)
-***
-* [Week 32/2022: Ferris wheels](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_32)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_32/2022_32.R)
-***
-* [Week 30/2022: Bring your own data](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_30)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_30/2022_30.R)
-***
 * [Week 28/2022: European flights](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_28)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/2022_28.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_28/script.R)
 ***
 * [Week 27/2022: San Francisco Rentals](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_27)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/p1_v2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_27/script.R)
-***
-* [Week 26/2022: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_26)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_26/2022_26_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_26/2022_26.R)
-***
-* [Week 25/2022: UK Gender pay gap](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_25)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_25/2022_25.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_25/2022_25.R)
 ***
 * [Week 24/2022: US Drought](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_24)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_24/2022_24.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_24/2022_24.R)
@@ -199,24 +158,6 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 ***
 * [Week 19/2022: NYTimes best sellers](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_19)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_19/2022_19.R)
-***
-* [Week 17/2022: Kaggle Hidden Gems](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_17)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_17/2022_17.R)
-***
-* [Week 16/2022: Crossword Puzzles and Clues](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_16)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_16/2022_16.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_16/2022_16.R)
-***
-* [Week 15/2022: Digital Publications](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_15)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_15/2022_15.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_15/2022_15.R)
-***
-* [Week 14/2022: Digital Publications](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_14)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_14/2022_14.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_14/2022_14.R)
-***
-* [Week 13/2022: Collegiate sports](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_13)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_13/2022_13.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_13/2022_13.R)
-***
-* [Week 12/2022: Baby names](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_12)  
-<img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12.png" width="49%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_12/2022_12_p2.png" width="49%"> 
 ***
 * [Week 08/2022: World Freedom index](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_08)  
 <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2022_08_p2.png" width="36.5%"> <img src="https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_08/2022_08_p1.png" width="50%"> 
