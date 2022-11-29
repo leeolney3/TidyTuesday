@@ -1,0 +1,159 @@
+---
+title: "2022_48"
+date: "2022-11-29"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 47 [World Cup](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-11-29), data from [FIFA World Cup](https://www.kaggle.com/datasets/evangower/fifa-world-cup) 
+
+```{r libraries}
+library(tidyverse)
+library(ggtext)
+library(tidygraph)
+library(ggraph)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Space Grotesk")
+font_add_google("Archivo")
+```
+
+```{r}
+wcmatches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-29/wcmatches.csv')
+worldcups <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-29/worldcups.csv')
+
+# data with team_id from Joshua C. Fjelstul (2022). worldcup: The Fjelstul World Cup Database. R package version 0.1.0.
+team = readr::read_csv("https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-csv/teams.csv")
+```
+
+### Network graph
+
+```{r wrangle}
+wcmatches1= wcmatches %>% 
+  mutate(home_team=case_when(home_team=="FR Yugoslavia"~"Yugoslavia",
+                             home_team=="China PR"~"China",
+                             TRUE~home_team)) %>%
+  mutate(away_team=case_when(away_team=="FR Yugoslavia"~"Yugoslavia",
+                             away_team=="China PR"~"China",
+                             TRUE~away_team)) %>%
+  left_join(team %>% select(team_id, team_name), by=c("home_team"="team_name")) %>%
+  rename(home_id=team_id) %>%
+  left_join(team %>% select(team_id, team_name), by=c("away_team"="team_name")) %>%
+  rename(away_id = team_id) %>%
+  filter(!is.na(away_id))
+```
+
+```{r edges}
+# reference: https://bjnnowak.netlify.app/2021/09/30/r-network-analysis-with-tidygraph/
+edges_list = wcmatches1 %>% select(home_id, away_id) %>%
+  mutate(home_id= parse_number(home_id)*-1, away_id=parse_number(away_id)*-1) %>%
+  count(home_id, away_id) %>%
+  mutate(max=pmax(home_id, away_id),min=pmin(home_id, away_id)) %>% 
+  unite(check, c(min, max), remove = FALSE) %>%
+  distinct(check,.keep_all = TRUE) %>%
+  select(from=home_id, to=away_id,n)
+
+team1 = team %>% mutate(team_id=parse_number(team_id)*-1) %>%
+  mutate(cont = countrycode::countrycode(team_name, origin="country.name", destination="continent")) %>%
+  mutate(cont=case_when(team_name %in% c("Czechoslovakia","East Germany","England","Northern Ireland","Scotland","Wales","Serbia and Montenegro","Yugoslavia")~"Europe", 
+                         team_name =="Dutch East Indies"~"Asia",
+                        TRUE~cont))
+
+edges_list = edges_list %>% left_join(team1, by=c("from"="team_id")) %>%
+  select(-from) %>% rename(from=team_code) %>%
+  left_join(team1, by=c("to"="team_id")) %>%
+  select(-to) %>% rename(to=team_code) %>%
+  select(from, to, n)
+
+network <- as_tbl_graph(edges_list, directed = FALSE)
+```
+
+```{r nodes}
+c1 = team1 %>% filter(cont=="Africa")
+c2 = team1 %>% filter(cont=="Americas")
+c3 = team1 %>% filter(cont=="Asia")
+c4 = team1 %>% filter(cont=="Europe")
+c5 = team1 %>% filter(cont=="Oceania")
+
+graph = network %>%
+  activate(nodes) %>%
+  mutate(cont = case_when((name%in%c1$team_code)~"Africa",
+                          (name%in%c2$team_code)~"Americas",
+                          (name%in%c3$team_code)~"Asia",
+                          (name%in%c4$team_code)~"Europe",
+                          (name%in%c5$team_code)~"Oceania",
+                          ))
+```
+
+```{r network graph, fig.height=4, fig.width=4}
+ggraph(graph= graph, layout = "stress") +
+  geom_edge_diagonal(aes(edge_width=n),color = "grey", alpha = 0.7, show.legend = FALSE) +
+  scale_edge_width(range=c(.2,1.5)) +
+  geom_text(aes(x,y,label=name, color=cont), size=3.7, family="Space Grotesk", fontface="bold", key_glyph=draw_key_point)  +
+  scale_color_manual(values=c("#BF9800","#B6337E","#02A0C6","#14017C","#CD1B1D")) +
+  theme_void(12, base_family = "Archivo")  +
+  theme(plot.title=element_text(hjust=.5, face="bold"),
+        plot.subtitle=element_text(hjust=.5,size=10),
+        plot.caption=element_text(size=8.5, color="grey40", margin=margin(t=-10)),
+        plot.margin=margin(.4,.4,.3,.4,unit="cm"),
+        legend.position = "top",
+        legend.margin=margin(t=4,b=-15),
+        legend.text=element_text(size=9.5),
+        legend.title=element_text(size=9.5)) +
+  labs(title="FIFA World Cup Team Matchups",
+       subtitle="900 matches played by 82 teams from 1930 to 2018",
+       caption="#TidyTuesday week 48 | Source: FIFA World Cup",
+       color="Continent:")
+
+ggsave("2022_48_p1.png", height=8, width=8, bg="white")
+```
+
+### Top 4 from 1930 to 2018 
+
+```{r wrangle}
+worldcups1 = worldcups %>% pivot_longer(winner:fourth) %>%
+  mutate(name1 = case_when(name=="winner"~1,name=="second"~2, name=="third"~3,name=="fourth"~4))
+
+matchn = wcmatches %>% select(year,home_team, away_team) %>%
+  pivot_longer(!year) %>%
+  count(value)
+```
+
+```{r plot, fig.height=3.5, fig.width=3.5}
+worldcups1 %>% 
+  mutate(value=case_when(value=="USA"~"United States", TRUE~value)) %>%
+  left_join(matchn, by="value") %>%
+  ggplot(aes(x=factor(name1), y=year)) +
+  geom_richtext(aes(label=value, fill=n,color=after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), size=3.2, label.padding = grid::unit(rep(3, 4), "pt"), label.color = NA, family="Archivo") +
+  scico::scale_fill_scico(palette="lapaz", end=.9, direction=-1) +
+  scale_y_reverse(breaks=unique(worldcups1$year)) +
+  scale_x_discrete(labels=c("Winner","Second","Third","Fourth"),position="top") +
+  guides(fill=guide_colourbar(barwidth = unit(10, "lines"),barheight = unit(.4, "lines"))) +
+  cowplot::theme_minimal_grid(11, line_size = .3) +
+  theme(text=element_text(family="Archivo"),
+        axis.text.x.top = element_text(face="bold"),
+        legend.position = "top",
+        legend.text=element_text(size=9),
+        legend.title=element_text(size=9),
+        legend.margin=margin(l=-27),
+        axis.title=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(margin=margin(b=10)),
+        plot.caption=element_text(size=8, color="grey30"),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm")
+        )+
+  labs(fill="Matches played\nby team:",
+       title="FIFA World Cup Winners, 1930 - 2018",
+       caption="#TidyTuesday week 48 | Source: FIFA World Cup")
+
+ggsave("2022_48_p2.png", bg="white")
+```
+
+
+
+
+
