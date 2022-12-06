@@ -1,0 +1,86 @@
+---
+title: "2022_49"
+date: "2022-12-06"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 49 [World Cup](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-12-06), data from [{elevators}](https://github.com/EmilHvitfeldt/elevators) R package by Emil Hvitfeldt.
+
+```{r libraries}
+library(tidyverse)
+library(sf)
+library(biscale)
+library(cowplot)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Hahmlet")
+f1 = "Hahmlet"
+font_add_google("Archivo")
+f2 = "Archivo"
+font_add_google("Archivo Narrow")
+f3 = "Archivo Narrow"
+```
+
+```{r data}
+elevators <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-12-06/elevators.csv')
+
+# zip code boundaries from https://catalog.data.gov/dataset/zip-code-boundaries
+zip = read_sf("ZIP_CODE_040114/ZIP_CODE_040114.shp")
+```
+
+```{r wrangle}
+e1 = elevators %>% filter(ZIP_CODE>100000000) %>% mutate(ZIP_CODE=ZIP_CODE/10000)
+e2 = elevators %>% filter(ZIP_CODE<100000000) 
+
+e3= rbind(e1,e2) %>% 
+  mutate(ZIPCODE=as.character(ZIP_CODE),
+         DV_SPEED_FPM=parse_number(DV_SPEED_FPM))
+
+e4= e3 %>% left_join(zip %>% as.data.frame(),by = "ZIPCODE") %>%
+  select(ZIPCODE,DV_SPEED_FPM,DV_CAPACITY_LBS) %>%
+  drop_na() %>%
+  group_by(ZIPCODE) %>%
+  summarise(DV_SPEED_FPM=median(DV_SPEED_FPM),
+            DV_CAPACITY_LBS=median(DV_CAPACITY_LBS)) %>%
+  filter(ZIPCODE!="0",ZIPCODE!="99999") 
+
+e5 = bi_class(e4, x = DV_CAPACITY_LBS, y = DV_SPEED_FPM, style = "quantile", dim = 3)
+```
+
+```{r, fig.height=3.5, fig.width=3.5}
+#| warning: false
+#| message: false
+# palettes here: https://cran.r-project.org/web/packages/biscale/vignettes/bivariate_palettes.html
+plot = zip %>% right_join(e5, by = "ZIPCODE") %>%
+  ggplot() +
+  geom_sf(aes(fill=bi_class), color="white") +
+  coord_sf(expand=FALSE) +
+  bi_scale_fill(pal = "BlueYl", dim = 3) +
+  cowplot::theme_map(12) +
+  theme(legend.position = "none",
+        text=element_text(family=f2),
+        plot.title = element_text(margin=margin(t=25, b=-30), family=f1, size=15),
+        plot.subtitle = element_text(lineheight=1.2,margin=margin(t=40, b=-45)),
+        plot.background = element_rect(color=NA, fill="#fafafa"),
+        plot.margin=margin(0,.75,.3,.75,unit="cm"),
+        plot.caption=element_text(hjust=.5, size=8, color="grey20"),
+        ) +
+  labs(title="Elevators in New York City",
+       subtitle="Median capacity (lbs) and speed (feet/minute)\nof registered elevator devices by zip code",
+       caption="#TidyTuesday week 49 | Source: {elevators} R Package")
+
+legend=bi_legend(pal = "BlueYl",dim = 3,size = 8, xlab = "Capacity (lbs) ",ylab = "Speed (feet/minute) ") +
+  theme(text=element_text(family=f3, size=10),
+        plot.background = element_rect(color=NA, fill="#fafafa"))
+
+ggdraw() +
+  draw_plot(plot, 0, 0, 1, 1) +
+  draw_plot(legend, 0.015, .63, 0.22, 0.22)
+
+ggsave("2022_49.png", height=7.5, width=7.5)
+```
