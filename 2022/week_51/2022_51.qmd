@@ -5,7 +5,7 @@ format: html
 editor: visual
 ---
 
-[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 51 [Weather Forecast Accuracy](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-12-20), data from [https://www.weather.gov/](https://www.weather.gov/) 
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 51 [Weather Forecast Accuracy](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-12-20), data from <https://www.weather.gov/>
 
 Geofacet treemap inspired by [Cédric Scherer](https://twitter.com/cedscherer/status/1379493675684786185)
 
@@ -30,7 +30,13 @@ cities <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
 outlook_meanings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-12-20/outlook_meanings.csv')
 ```
 
-```{r wrangle}
+```{r grid}
+grid=geofacet::us_states_territories_grid1 %>% filter(code %in% df1$state)
+```
+
+```{r "p1"}
+#| warning: false
+#| message: false
 df1 = weather_forecasts %>% 
   filter(possible_error=="none",high_or_low=="high") %>%
   select(date, high_or_low,forecast_temp,observed_temp,city,state) %>%
@@ -42,13 +48,6 @@ df1 = weather_forecasts %>%
   group_by(state) %>%
   count(grp) %>%
   mutate(prop=n/sum(n))
-```
-
-
-```{r "p1", fig.height=3.2, fig.width=4}
-#| warning: false
-#| message: false
-grid=geofacet::us_states_territories_grid1 %>% filter(code %in% df1$state)
 
 df1 %>% 
   ggplot(aes(area=prop, fill=grp, subgroup=state)) +
@@ -69,7 +68,46 @@ df1 %>%
   labs(caption="#TidyTuesday week 51 | Source: USA National Weather Service",
        title="High Temperature Forecast Accuracy by State",
        subtitle="Forecasts and observations from 167 cities from Jan 1, 2021 to May 30, 2022")
-
-ggsave("2022_51.png",height=6.4, width=8,bg="#fafafa")
+ggsave("2022_51_high.png",height=6.4, width=8,bg="#fafafa")
 ```
+
+
+```{r "p2"}
+#| warning: false
+#| message: false
+df2 = weather_forecasts %>% 
+  filter(possible_error=="none",high_or_low=="high") %>%
+  select(date, high_or_low,forecast_temp,observed_temp,city,state) %>%
+  drop_na() %>%
+  mutate(grp=case_when(forecast_temp>observed_temp+2~"Forecast > Observed + 2°F",
+                       forecast_temp<observed_temp-2~"Forecast < Observed - 2°F",
+                       TRUE~"Forecast = Observed ± 2°F",
+                       )) %>%
+  group_by(state) %>%
+  count(grp) %>%
+  mutate(prop=n/sum(n))
+
+df2 %>% 
+  ggplot(aes(area=prop, fill=grp, subgroup=state)) +
+  geom_treemap(color="#fafafa", start="topleft", layout="scol")+
+  scale_fill_manual(name="Proportion:",values=c("#C7948D","#007252","#FFC301")) +
+  geofacet::facet_geo(~state,grid=grid) +
+  cowplot::theme_map(10) +
+  theme(legend.position = c(.5,.965),
+        legend.justification = "center",
+        legend.title = element_text(size=8.5),
+        legend.text = element_text(size=8.5),
+        text=element_text(family=f2),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm"),
+        plot.title=element_text(hjust=.5, family=f1),
+        plot.subtitle = element_text(hjust=.5),
+        plot.caption=element_text(color="grey30", hjust=.5, size=7)
+        ) +
+  labs(caption="#TidyTuesday week 51 | Source: USA National Weather Service",
+       title="High Temperature Forecast Accuracy by State",
+       subtitle="Forecasts and observations from 167 cities from Jan 1, 2021 to May 30, 2022")
+
+ggsave("2022_51_high2.png",height=6.4, width=8,bg="#fafafa")
+```
+
 
