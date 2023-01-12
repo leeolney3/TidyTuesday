@@ -124,7 +124,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 ***
 ## 2022 
-* [Week 38/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
+* [Week 39/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 ***
