@@ -1,0 +1,80 @@
+---
+title: "2023_02"
+date: "2023-01-10"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 2 [Project FeederWatch](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-01-10/readme.md), data from <https://feederwatch.org/explore/raw-dataset-requests/>
+
+-   Trying out {ggmap} and {ggdensity} R packages this week.
+
+```{r libraries}
+library(tidyverse)
+library(ggmap)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r font}
+font_add_google("Barlow")
+f1 = "Barlow"
+```
+
+```{r data}
+feederwatch <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-10/PFW_2021_public.csv')
+site_data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-10/PFW_count_site_data_public_2021.csv')
+```
+
+```{r}
+# valid observations with country and state/province
+feederwatch |> 
+  filter(valid==1, !subnational1_code %in% c("XX-","PM-")) |>
+  count(subnational1_code)
+```
+
+### US and Canada
+
+```{r, warning=FALSE, message=FALSE, fig.height=3, fig.width=4}
+qmplot(longitude, latitude, data=df1, geom="blank", zoom=4, maptype = "toner-lite") +
+  ggdensity::geom_hdr(aes(fill = after_stat(probs)), alpha = .5) +
+  scale_fill_viridis_d(option = "plasma") +
+  cowplot::theme_map(12) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.justification = "left",
+        plot.caption = element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm"),
+        ) +
+  labs(title="Bird sightings in U.S. and Canada",
+       caption="TidyTuesday week 2 | Source: Project FeederWatch",
+       fill="Probability")
+ggsave("export/2023_02_p1.png", height=6.2, width=8, bg="white")
+```
+
+### Mid-Atlantic division
+
+```{r}
+df2= df1 |> filter(str_detect(subnational1_code,"US")) |> 
+  mutate(stabb=str_sub(subnational1_code, start= -2)) |>
+  filter(stabb %in% usmap::.mid_atlantic) 
+```
+
+```{r, warning=FALSE, message=FALSE, fig.height=3.5, fig.width=3.5}
+qmplot(longitude, latitude, data=df2, geom="blank", zoom=7, maptype = "toner-lite") +
+  ggdensity::geom_hdr(aes(fill = after_stat(probs)), alpha = .5) +
+  scale_fill_viridis_d(option = "plasma") +
+  cowplot::theme_map(12.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.justification = "left",
+        plot.caption = element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm"),
+        ) +
+  labs(title="Bird sightings in New Jersey, New York and Pennsylvania",
+       caption="TidyTuesday week 2 | Source: Project FeederWatch",
+       fill="Probability")
+
+ggsave("export/2023_02_p2.png", height=7, width=6.5, bg="white")
+```
