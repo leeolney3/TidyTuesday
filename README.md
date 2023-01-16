@@ -7,8 +7,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 **List of contributions**
 
 <b>2023</b>
-* 2023/03 [Art History](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_02)
-* 2023/02 [Project FeederWatch](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_03)
+* 2023/03 [Art History](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_03)
+* 2023/02 [Project FeederWatch](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_02)
 
 <details>
   <summary><b>2022</b> (click to expand)</summary>
