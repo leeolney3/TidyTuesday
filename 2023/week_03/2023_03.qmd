@@ -68,8 +68,8 @@ artists1 |>
         ) +
   labs(x="Space ratio", y="Edition number (year)",
        caption="#TidyTuesday week 3 | Data source: arthistory data package",
-       title="Artist's space in <span style='color:grey30'>Janson’s History of Art</span> and <span style='color:grey30'>Gardner’s Art Through the Ages</span>",
-       subtitle=str_wrap("Space ratio by edition and nationality intwo of the most popular art history textbooks used in the American education system. Space ratio is the area in centimeters squared of both the text and the figure of a particular artist in a given edition divided by the area in centimeters squared of a single page of the respective edition.",115))
+       title="Artist's space in <span style='color:grey35'>Janson’s History of Art</span> and <span style='color:grey35'>Gardner’s Art Through the Ages</span>",
+       subtitle=str_wrap("Space ratio by edition and nationality in two of the most popular art history textbooks used in the American education system. Space ratio is the area in centimeters squared of both the text and the figure of a particular artist in a given edition divided by the area in centimeters squared of a single page of the respective edition.",115))
 
 ggsave("export/2023_03.png", height=8, width=8, bg="#fafafa")
 ```
