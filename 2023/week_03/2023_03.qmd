@@ -1,0 +1,77 @@
+---
+title: "2022_03"
+date: "2023-01-17"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 3 [Art history data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-01-17/readme.md), data from [arthistory data package](https://saralemus7.github.io/arthistory/).
+
+```{r load libraries}
+library(tidyverse)
+library(ggdist)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Atkinson Hyperlegible")
+f1 = "Atkinson Hyperlegible"
+font_add_google("Archivo")
+f2 = "Archivo"
+```
+
+```{r import data}
+artists <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-17/artists.csv')
+```
+
+```{r wrangle}
+artists1= artists |> #filter(book=="Gardner") |>
+  mutate(nat=case_when(artist_nationality=="American"~"American artists",
+                       TRUE~"Artists of other nationalities"),
+         grp=case_when(edition_number<9~"A",TRUE~"B"),
+         book_long=case_when(book=="Gardner"~"Gardner’s Art Through the Ages",
+                             book=="Janson"~"Janson’s History of Art"),
+         lab=glue::glue("{edition_number} <span style='color:grey50'>({year})</span>")) |>
+  arrange(edition_number, year) |>
+  mutate(lab=fct_rev(fct_inorder(factor(lab))))
+
+artists2 = artists1 |>
+  group_by(book_long, nat, edition_number, year, lab) |>
+  summarise(min=min(space_ratio_per_page_total),
+            max=max(space_ratio_per_page_total))
+```
+
+```{r "p1", fig.height=4, fig.width=4}
+artists1 |>
+  ggplot(aes(x=space_ratio_per_page_total, y=lab)) +
+  geom_segment(data=artists2, aes(x=min, xend=max, y=lab, yend=lab), color="grey90", size=5) +
+  geom_point(shape="|", size=3.5, alpha=.5)+
+  scale_x_continuous(limits=c(0,4),expand=c(0,0)) +
+  facet_grid(rows=vars(fct_rev(factor(book_long))), cols=vars(nat), scales="free", space="free") +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        plot.margin=margin(.5,.7,.5,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40"),
+        plot.subtitle = element_text(color="grey30"),
+        plot.title=element_markdown(),
+        panel.spacing = unit(1.2, "lines"),
+        strip.text.x = element_text(size=12, face="bold.italic",color="grey30"),
+        strip.text.y = element_text(size=12,face="bold.italic",margin=margin(l=10), color="grey30"),
+        axis.title = element_text(size=11, family=f2),
+        axis.text.y=element_markdown(hjust=0, family=f2, size=10),
+        axis.text.x=element_text(family=f2, size=10)
+        ) +
+  labs(x="Space ratio", y="Edition number (year)",
+       caption="#TidyTuesday week 3 | Data source: arthistory data package",
+       title="Artist's space in <span style='color:grey30'>Janson’s History of Art</span> and <span style='color:grey30'>Gardner’s Art Through the Ages</span>",
+       subtitle=str_wrap("Space ratio by edition and nationality intwo of the most popular art history textbooks used in the American education system. Space ratio is the area in centimeters squared of both the text and the figure of a particular artist in a given edition divided by the area in centimeters squared of a single page of the respective edition.",115))
+
+ggsave("export/2023_03.png", height=8, width=8, bg="#fafafa")
+```
+
+
