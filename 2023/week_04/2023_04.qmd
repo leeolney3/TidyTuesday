@@ -7,7 +7,7 @@ editor: visual
 
 [TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 4 [Alone](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-01-24/readme.md), data from [Alone data package](https://github.com/doehm/alone) by Dan Oehm.
 
-```{r}
+```{r load libaries}
 library(tidyverse)
 library(ggtext)
 library(showtext)
@@ -15,7 +15,7 @@ showtext_opts(dpi = 300)
 showtext_auto(enable = TRUE)
 ```
 
-```{r}
+```{r load font}
 font_add_google("Atkinson Hyperlegible")
 f1 = "Atkinson Hyperlegible"
 ```
@@ -69,7 +69,7 @@ geom_text(data=. %>% filter(result==1, season==7), aes(label=str_wrap(name,10)),
   geom_text(data=. %>% filter(result==1, season==4, age==35), aes(label="Jim Baird &\nTed Baird",y=days_lasted+3), size=3.2, hjust=0, lineheight=.8) +
   geom_text(data=. %>% filter(result==1, season==1), aes(label="Winners:",y=days_lasted+2), size=3.5, hjust=0,nudge_x = .35, color="grey40") 
 
-ggsave("export/2022_04.png", height=7, width=8, bg="white")  
+ggsave("export/2023_04.png", height=7, width=8, bg="white")  
 ```
 
 
