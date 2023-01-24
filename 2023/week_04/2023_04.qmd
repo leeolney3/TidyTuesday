@@ -1,0 +1,138 @@
+---
+title: "2023_04"
+date: "2023-01-24"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 4 [Alone](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-01-24/readme.md), data from [Alone data package](https://github.com/doehm/alone) by Dan Oehm.
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r}
+font_add_google("Atkinson Hyperlegible")
+f1 = "Atkinson Hyperlegible"
+```
+
+```{r data}
+survivalists <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-24/survivalists.csv')
+loadouts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-24/loadouts.csv')
+episodes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-24/episodes.csv')
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-24/seasons.csv')
+```
+
+```{r "p1",fig.height=3.5, fig.width=4}
+survivalists1= survivalists |>
+  left_join(seasons, by="season")|>
+  arrange(days_lasted) |>
+  mutate(seasonlong=glue::glue("<span style='font-size:11pt;color:black'>Season {season}</span><br>{location}<br>(n={n_survivors})")) |>
+  group_by(seasonlong) |>
+  mutate(last=case_when(result==max(result)~1,TRUE~0)) |>
+  ungroup() 
+
+survivalists1 |>
+  ggplot(aes(x=fct_rev(seasonlong), y=days_lasted)) +
+  geom_line(data=. %>% filter(result==1),aes(group=result), color="grey60") +
+  scale_color_identity() +
+  geom_point(aes(fill=age, shape=medically_evacuated), size=3.4, stroke=.5) +
+  scale_shape_manual(values=c(21,23), guide=guide_legend(title.position = "top")) +
+  scale_fill_gradientn(colors=rev(PNWColors::pnw_palette("Lake")),guide=guide_colorbar(title.position = "top", order=1, barheight = unit(.5,"lines"),barwidth = unit(10,"lines"))) +
+  scale_y_continuous(expand=c(0.02,0.02)) +
+  coord_flip() +
+  theme_minimal(13, base_family = f1) +
+  theme(axis.text.y=element_markdown(lineheight = 1, color="grey50", size=10),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size=12),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.title = element_text(size=12.5),
+        legend.margin=margin(t=5,b=-1),
+        panel.grid.minor = element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_markdown(hjust=.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40", margin=margin(t=10)),
+        plot.margin=margin(.5,.75,.4,.5,unit="cm")) +
+  labs(y="Number of days lasted in the game before tapping out or winning", 
+       x="Season number", fill="Age:", shape="Medically evacuated:",
+       caption="Note: There were 7 teams of 2 in Season 4.\nTidyTuesday week 4 | Source: Alone data package by Dan Oehm",
+       title="**Alone TV series**: Number of days lasted by 94 survivalists across 9 seasons") +
+  geom_text(data=. %>% filter(result==1, season %in% c(1,2,5,6,8,9)), aes(label=name, y=days_lasted+2), size=3.2, hjust=0) +
+  geom_text(data=. %>% filter(result==1, season==3), aes(label=str_wrap(name,10), y=days_lasted+2), size=3.2, hjust=0, lineheight=.8) +
+geom_text(data=. %>% filter(result==1, season==7), aes(label=str_wrap(name,10)), size=3.2, lineheight=.8, nudge_x = .45, hjust=1) +
+  geom_text(data=. %>% filter(result==1, season==4, age==35), aes(label="Jim Baird &\nTed Baird",y=days_lasted+3), size=3.2, hjust=0, lineheight=.8) +
+  geom_text(data=. %>% filter(result==1, season==1), aes(label="Winners:",y=days_lasted+2), size=3.5, hjust=0,nudge_x = .35, color="grey40") 
+
+ggsave("export/2022_04.png", height=7, width=8, bg="white")  
+```
+
+
+```{r "p2", fig.height=3.5, fig.width=4}
+loadouts |>
+  count(season,name,item) |>
+  group_by(season) |>
+  count(item) |>
+  left_join(seasons, by="season") |>
+  mutate(prop=n/n_survivors,
+         rank = dense_rank(desc(prop)),
+         seasonlong=glue::glue("Season {season}")) |>
+  filter(prop==1) |>
+  ggplot(aes(item,prop)) +
+  ggchicklet::geom_chicklet(aes(fill=item),show.legend=FALSE) +
+  geom_text(aes(label=item,y=0.02), hjust=0, size=4, family=f1, color="white") +
+  scale_fill_manual(values=rev(NatParksPalettes::natparks.pals("Torres"))) +
+  facet_wrap(~seasonlong, scales="free_y") +
+  coord_flip(expand=FALSE) +
+  cowplot::theme_map() +
+  theme(text=element_text(family=f1),
+        plot.title=element_text(margin=margin(b=14)),
+        strip.text = element_text(hjust=0, margin=margin(l=0, b=5)),
+        panel.spacing.x = unit(2, "lines"),
+        panel.spacing.y = unit(1.5, "lines"),
+        plot.margin=margin(.5,.5,.3,.5, unit="cm"),
+        plot.caption=element_text(hjust=0, color="grey40", margin=margin(t=15))
+        ) +
+   labs(caption="TidyTuesday week 4 | Source: Alone data package by Dan Oehm",
+       title="Alone TV series: Loadout item carried by all survivalists by season")
+```
+
+
+```{r "p3", fig.height=3.5, fig.width=4}
+loadouts1 = loadouts |>
+  left_join(survivalists, by=c("season","name")) |>
+  mutate(grp=case_when(item=="Fishing gear"~"Fishing gear",TRUE~"Other"),
+         seasonlong=glue::glue("Season {season}"))
+
+selected = loadouts1 |>
+  count(name, seasonlong, grp) |>
+  filter(grp=="Other", n==10) |>
+  arrange(desc(n)) |>
+  pull(name)
+
+loadouts1 |>
+  ggplot(aes(x=result, y=item_number)) +
+  geom_rect(data=. %>% filter(name %in% selected, seasonlong!="Season 1"), aes(xmin=result-.4, xmax=result+.4, ymin=0,ymax=11), fill="transparent", color="grey40") +
+  geom_point(aes(color=grp, shape=grp), size=2.5) +
+  facet_wrap(~seasonlong) +
+  scale_shape_manual(values=c(17,16)) +
+  scale_y_reverse(breaks=c(10,1)) +
+  scale_x_reverse(breaks=c(10,1)) +
+  scale_color_manual(values=c("red","grey")) +
+  cowplot::theme_minimal_grid(13) +
+  theme(panel.grid = element_blank(),
+        legend.position = "top",
+        plot.title.position = "plot",
+        plot.margin=margin(.5,.75,.3,.5,unit="cm")) +
+  labs(x="Place finished in the season", y="Item number",
+       shape="",color="",
+       title="4 out of 94 survivalists did not have fishing gear across 9 seasons of Alone")
+```
+
+
+
