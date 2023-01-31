@@ -1,0 +1,123 @@
+---
+title: "2023_05"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 5 [Pet Cats UK](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-01-31/readme.md), data from the Movebank for [Movebank for Animal Tracking Data](https://www.datarepository.movebank.org/handle/10255/move.882) via [Data is Plural](https://themarkup.org/data-is-plural/2023/01/25/from-jazz-solos-to-cats-on-the-move#:~:text=Giuseppe%20Sollazzo%5D-,Cats%20on%20the%20move,-.%20Between%202013).
+
+Citation: Kays R, Dunn RR, Parsons AW, Mcdonald B, Perkins T, Powers S, Shell L, McDonald JL, Cole H, Kikillus H, Woods L, Tindle H, Roetman P (2020) The small home ranges and large local ecological impacts of pet cats. Animal Conservation. doi:10.1111/acv.12563
+
+Citation: McDonald JL, Cole H (2020) Data from: The small home ranges and large local ecological impacts of pet cats \[United Kingdom\]. Movebank Data Repository. doi:10.5441/001/1.pf315732
+
+```{r load libaries}
+library(tidyverse)
+library(geosphere)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Archivo")
+f1 = "Archivo"
+
+font_add_google("Barlow", bold.wt = 500)
+f2 = "Barlow"
+```
+
+```{r import data}
+cats_uk <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-31/cats_uk.csv')
+cats_uk_reference <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-31/cats_uk_reference.csv')
+```
+
+```{r wrangle}
+df = cats_uk |>
+  filter(visible==TRUE) |>
+  mutate(date=ymd(as.Date(timestamp))) 
+
+df1 = df |>
+  group_by(tag_id,date) |>
+  arrange(timestamp, .by_group = TRUE) |>
+  mutate(day_id = row_number(),
+         long = lag(location_long), 
+         lat = lag(location_lat)) |>
+  select(date,timestamp, location_long, location_lat, long, lat,day_id,) |>
+  ungroup() |>
+  filter(day_id!=1) |>
+  mutate(dist = distGeo(cbind(long, lat), cbind(location_long, location_lat)))
+
+selected = df |>
+  group_by(tag_id) |>
+  summarise(ndays=n_distinct(date)) |>
+  arrange(ndays) |>
+  filter(ndays==1) |>
+  pull(tag_id)
+
+df2 = df1 |>
+  filter(! tag_id %in% selected) |>
+  group_by(tag_id, date) |>
+  summarise(dist_d = sum(dist)) |>
+  ungroup() |>
+  group_by(tag_id) |>
+  mutate(mean = mean(dist_d, na.rm=TRUE),
+         med = median(dist_d, na.rm=TRUE),
+         min=min(dist_d, na.rm=TRUE),
+         max=max(dist_d, na.rm=TRUE))
+
+df3 = df2 |>
+  select(tag_id, mean) |>
+  distinct() |>
+  left_join(cats_uk_reference, by="tag_id") |>
+  filter(animal_reproductive_condition %in% c("Spayed","Neutered"),
+         !is.na(age_years)) |>
+  ungroup() |>
+  mutate(grp=case_when(age_years==0~"Kitten\n(up to 1 year)",
+                       between(age_years,1,6)~"Young adult\n(1 - 6 years)",
+                       between(age_years,7,10)~"Mature adult\n(7 - 10 years)",
+                       age_years>10 ~"Senior\n(>10 years)"),
+         grp = factor(grp, levels=c("Kitten\n(up to 1 year)","Young adult\n(1 - 6 years)","Mature adult\n(7 - 10 years)","Senior\n(>10 years)")),
+         animal_reproductive_condition=case_when(animal_reproductive_condition=="Spayed"~"Spayed (female)", animal_reproductive_condition=="Neutered"~"Neutered (male)"),
+         ncatlong= case_when(n_cats==1~"**1** cat",
+                         n_cats>1~paste0("**",{n_cats},"**"," ","cats")))
+```
+
+```{r plot}
+theme1= cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        plot.margin=margin(.5,.7,.3,.5, unit="cm"),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, size=8.3, color="grey45", lineheight = 1.1, margin=margin(t=10)),
+        plot.title.position = "plot",
+        plot.title=element_text(size=16),
+        plot.subtitle=element_text(lineheight=1.1, size=10,margin=margin(b=10), color="grey20"),
+        axis.title = element_text(size=11),
+        axis.text.y = element_markdown(hjust=0,margin=margin(l=3)),
+        axis.text.x = element_text(margin=margin(b=3)),
+        legend.title=element_text(size=10.8, face="bold"),
+        legend.text=element_text( size=10.3),
+        legend.position = "top",
+        legend.box = 'vertical', 
+        legend.box.just = 'left',
+        legend.box.margin = margin(l=-45),
+        legend.spacing.y=unit(.3,"lines"))
+```
+
+```{r, fig.height=3.5, fig.width=3.5}
+df3 |>
+  ggplot(aes(mean,fct_rev(ncatlong),
+             shape=animal_reproductive_condition, fill=grp, order=grp)) +
+  ggdist::geom_dots(group=NA, layout="hex", color="grey50") +
+  scale_shape_manual(values=c(22,24)) +
+  scale_fill_manual(values=c("#dd5129","#fab255","#43b284","#0f7ba2")) + #from MetBrewer
+  theme1 +
+  labs(x="Average distance travelled per day (meters)", 
+       y="Number of cats in the house",
+       fill="Age group:", color="Age group:", shape="Reproductive condition:",
+       title="Pet cats on the move (UK)",
+       subtitle="Estimate average (minimum) distance travelled per day by 93 neutered/spayed pet cats surveyed in the UK\nbetween June 2017 and November 2017. The distance in meters is an estimate of the shortest distance\nbetween two sensor measurement locations.",
+       caption="#TidyTuesday week 5 | Data: Movebank for Animal Tracking Data via Data is Plural\nSources:Kays R, Dunn RR, Parsons AW, Mcdonald B, Perkins T, Powers S, Shell L, McDonald JL, Cole H, Kikillus H, Woods L,\nTindle H, Roetman P (2020) The small home ranges and large local ecological impacts of pet cats. Animal Conservation.\ndoi:10.1111/acv.12563. McDonald JL, Cole H (2020) Data from: The small home ranges and large local ecological impacts of\npet cats [United Kingdom]. Movebank Data Repository. doi:10.5441/001/1.pf315732") 
+
+ggsave("export/2023_05.png", height=7, width=7, bg="#fafafa")
+```
