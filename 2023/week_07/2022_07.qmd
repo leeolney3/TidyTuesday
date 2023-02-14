@@ -1,0 +1,70 @@
+---
+title: "2023_07"
+date: "2023-02-14"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 7 [Hollywood Age Gaps](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-02-14/readme.md), data from [Hollywood Age Gap](https://hollywoodagegap.com/) via [Data Is Plural](https://www.data-is-plural.com/archive/2018-02-07-edition/)
+
+```{r load libraries}
+library(tidyverse)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Archivo")
+f1 = "Archivo"
+font_add_google("Sora")
+f2 = "Sora"
+font_add_google("Archivo Narrow")
+f3 = "Archivo Narrow"
+```
+
+```{r import data}
+age_gaps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-14/age_gaps.csv')
+```
+
+```{r}
+# #Age gaps of 1155 couples from 838 movies released between 1935 and 2022
+# age_gaps |> 
+#   ggplot(aes(release_year, age_difference)) +
+#   geom_point(alpha=.3)
+```
+
+```{r p1, fig.height=3.25, fig.width=4}
+# interval strip plot reference: https://z3tt.github.io/beyond-bar-and-box-plots/
+age_gaps |>
+  filter(release_year>=1990) |>
+  ggplot(aes(x=release_year, y=age_difference)) +
+  ggdist::stat_interval(.width = c(.5, .8, 1), linewidth=5, alpha=.9) +
+  geom_point( alpha=.4, shape=95, size=6) +
+  scale_color_manual(name="Level:",values=c("#e1bed6","#748a4f","#ffbc3b"),labels = function(x) paste0(as.numeric(x)*100, "%")) +
+  scale_x_continuous(expand=c(0.01,0.01)) +
+  scale_y_continuous(expand=c(0.03,0.03)) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        legend.box.background = element_rect(fill="white", color=NA),
+        legend.position = c(.82,.8),
+        plot.margin = margin(.5,.75,.3,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.title = element_text(hjust=.5, family=f2, size=16),
+        plot.subtitle = element_text(hjust=.5, lineheight = 1.1),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40")) +
+  labs(x="Movie release year", y="Age difference in years",
+       title=str_to_upper("Hollywood’s romantic age gaps"),
+       subtitle="The age difference in years between movie love interests (actors' age). 987 couples\nfrom 708 movies released between 1990 and 2022. Each line represents a couple.",
+       caption="#TidyTuesday week 7 | Data from Hollywood Age Gap via Data Is Plural") +
+  annotate(geom="curve", x=2007.9, xend=2006, y=52, yend=50.3, curvature=.25,arrow = arrow(length = unit(0.2, "cm")), color="grey50") +
+   annotate(geom="curve", x=1999.8, xend=2002, y=51, yend=49.2, curvature=-.25,arrow = arrow(length = unit(0.2, "cm")), color="grey50") +
+  annotate(geom="richtext", x=2008, y=50, label="50 years age gap between<br>Peter O'Toole and Jodie<br>Whittaker in Venus (2006)", hjust=0, vjust=0.4,size=3.5, lineheight=1.1,label.color = NA,label.padding = grid::unit(rep(0, 4), "pt"), family=f3,color="grey10") +
+  annotate(geom="richtext", x=1999.8, y=49, label="49 years age gap between<br>Michael Caine and Do Thi Hai Yen<br>in The Quiet American (2002)", hjust=1, vjust=0.4,size=3.5, lineheight=1.1,label.color = NA,label.padding = grid::unit(rep(0, 4), "pt"), family=f3, color="grey10") 
+
+ggsave("export/2022_07.png",height=6.5, width=8, bg="#fafafa")
+```
+
+
+
