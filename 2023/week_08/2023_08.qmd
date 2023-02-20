@@ -1,0 +1,98 @@
+---
+title: "2023_08"
+date: "2023-02-21"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 7 [Hollywood Age Gaps](Bob Ross Paintings), data from [Bob Ross Paintings](https://github.com/jwilber/Bob_Ross_Paintings/blob/master/data/bob_ross_paintings.csv) via [Bob Ross Colors data package](https://github.com/frankiethull/BobRossColors)
+
+```{r libraries}
+library(tidyverse)
+library(BobRossColors) #https://github.com/frankiethull/BobRossColors
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r fonts}
+font_add_google("Sora")
+f1 = "Sora"
+
+font_add_google("Atkinson Hyperlegible")
+f2 = "Atkinson Hyperlegible"
+```
+
+```{r data}
+bob_ross <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-21/bob_ross.csv')
+```
+
+```{r wrangle}
+df1 = bob_ross |>
+  group_by(season) |>
+  summarise(across(where(is.logical), sum)) |>
+  pivot_longer(!season) |>
+  filter(str_detect(name, "Blue")|str_detect(name, "Green")) |>
+  mutate(color=str_trim(str_remove_all(name, "_")),
+         name=str_replace_all(name,"_"," ")
+         ) |>
+  left_join(unique_bob_ross_colors, by="color") |>
+  ungroup() |>
+  group_by(name) |>
+  mutate(total=sum(value)) |>
+  expand_grid(x=1:13) |>
+  mutate(grp=case_when(x<=value~paste(color_hex), TRUE~paste("#F2F2F2")),
+         name=glue::glue("<span style='color:{color_hex}'><b>{name}</b><br>{total} episodes</span>"))
+```
+
+
+```{r gradient text}
+#gradient text code from: https://github.com/samiaab1990/30-day-map-challenge/blob/main/lines/netherlands_bike_map.R
+pal<-colorRampPalette(c("#021E44","#0A3410"))
+title<-"Blues and Greens in Bob Ross Paintings"
+title_no_space<-str_remove_all(title," ")
+pal_n<-pal(nchar(title_no_space)+6)
+make_title<-""
+
+for(i in 1:nchar(title))
+{
+  j = i 
+  if(substr(title,i,i) !=" ")
+  {
+    make_title<-paste0(make_title,"<span style='font-family:Sora;color:",pal_n[j],";'>",substr(title,i,i),"</span>")
+  } else
+  {
+    make_title<-paste0(make_title," ")
+    j = i - 1
+  }
+  
+}
+
+map_color<-colorRampPalette(colors=c(pal_n[as.integer(nchar(title)/2)],"#FFFFFF"))(10)[2]
+```
+
+```{r "p1", fig.height=3, fig.width=4}
+df1 |>
+  ggplot(aes(x, season, color=grp, fill=after_scale(colorspace::lighten(color,.3)))) +
+  geom_point(size=2.2, shape=21, stroke=.7) +
+  scale_color_identity() +
+  scale_y_reverse(breaks=seq(1,31,5), expand=c(0.02,0.02)) +
+  scale_x_continuous(breaks=seq(1,13,4)) +
+  facet_wrap(~name, nrow=1) +
+  theme_minimal(base_size = 12.5, base_family = f2) +
+  theme(strip.text = element_markdown(hjust=0, lineheight = 1.1, size=12),
+        panel.grid.minor = element_blank(),
+        panel.spacing = unit(1,"line"),
+        plot.margin=margin(.5,.8,.4,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_markdown(face="bold", size=15.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(color="grey40",hjust=0, margin=margin(t=10))) +
+  labs(x="Number of episodes",y="Season",
+       title=make_title,
+       caption="#TidyTuesday week 8 | Source: Jared Wilber's data on Bob Ross Paintings via @frankiethull Bob Ross Colors data package")
+
+ggsave("export/2022_08.png", height=6, width=8, bg="white")
+```
+
