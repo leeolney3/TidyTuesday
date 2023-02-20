@@ -7,6 +7,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 **List of contributions**
 
 <b>2023</b>
+* 2023/08 [Bob Ross Paintings](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_08)
 * 2023/07 [Hollywood Age Gap](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_07)
 * 2023/05 [Pet Cats UK](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_05)
 * 2023/04 [Alone TV series](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_04)
