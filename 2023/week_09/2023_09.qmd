@@ -1,0 +1,83 @@
+---
+title: "2023_09"
+date: "2023-02-28"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 9 [African Language Sentiment](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-02-28/readme.md), data from [AfriSenti: Sentiment Analysis dataset for 14 African languages](https://github.com/afrisenti-semeval/afrisent-semeval-2023)
+
+```{r load libaries}
+library(tidyverse)
+library(ggforce)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Roboto")
+font_add_google("Atkinson Hyperlegible")
+f1 = "Roboto"
+f2 = "Atkinson Hyperlegible"
+```
+
+```{r read in data}
+afrisenti <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/afrisenti.csv')
+languages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/languages.csv')
+language_scripts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/language_scripts.csv')
+language_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/language_countries.csv')
+country_regions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/country_regions.csv')
+```
+
+```{r}
+df1 = afrisenti |> select(-tweet,-intended_use) |>
+  left_join(languages, by="language_iso_code") |>
+  mutate(label=str_to_title(label)) |> 
+  count(language, label) |>
+  group_by(language) |>
+  mutate(total=sum(n),
+         prop1=n/sum(n)) |>
+  ungroup() |>
+  mutate(prop2=total/nrow(df2)) |>
+  mutate(total=scales::comma(total)) 
+
+df2 = df1 |>
+  filter(label=="Positive") |>
+  arrange(desc(prop1)) |>
+  mutate(total=fct_inorder(as.factor(total)))
+```
+
+```{r p1, warning=FALSE, message=FALSE, fig.height=3.5, fig.width=4}
+# variable column width chart
+df1 |>
+  ggplot(aes(x=fct_rev(factor(language)), y=prop1, fill=label)) +
+  geom_col(aes(width=prop2)) +
+  geom_text(data=df1 |> filter(prop2>.04), aes(label=scales::percent(prop1, accuracy=1)),position = position_stack(vjust = 0.5), family=f1, size=3.8, color="white")+
+  ggforce::facet_col(~factor(total, levels=df2$total), strip.position="right", scales="free_y",space="free") +
+  scale_fill_manual(values=c("#AC23E0","#0E24A3","#019CA6")) +
+  scale_y_continuous(position="right", breaks=c(0.25, 0.56, 0.84), labels=c("<span style='color:#019CA6'>Positive</span>","<span style='color:#0E24A3'>Neutral</span>","<span style='color:#AC23E0'>Negative</span>")) +
+  coord_flip(expand=FALSE) +
+  theme_minimal(base_family = f1, base_size = 13) +
+  theme(axis.title = element_blank(),
+        axis.ticks=element_blank(),
+        axis.text.y.left = element_text(color="black"),
+        axis.text.x.top = element_markdown(face="bold", size=12),
+        panel.grid=element_blank(),
+        strip.text.y.right = element_text(color="grey30",angle=0, hjust=1, margin=margin(l=3)),
+        panel.spacing = unit(0.2, "lines"),
+        strip.clip = "off",
+        legend.position = "none",
+        plot.margin=margin(.5,.8,.3,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.title = element_text(family=f2, face="bold", size=14.5),
+        plot.subtitle =element_text(lineheight=1, color="grey20",size=10.2, margin=margin(b=13)),
+        plot.caption.position = "plot",
+        plot.caption = element_text(lineheight=1, hjust=0, size=9.5,color="grey45", margin=margin(t=10))) +
+  labs(title="Twitter Sentiment Analysis of 14 African Languages",
+       subtitle="Distribution of 111,720 sample tweets by language and sentiment label assigned by native speakers. Xitsonga tweets\nhad the largest proportion of positive labels (48%) and Swahili tweets had the lowest proportion of negative labels (11%).",
+       caption="#TidyTuesday week 9\nSource: AfriSenti: Sentiment Analysis dataset for 14 African languages via @shmuhammad2004")
+
+ggsave("export/2023_09.png", height=7, width=8, bg="#fafafa")
+```
