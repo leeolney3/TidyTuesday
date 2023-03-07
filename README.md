@@ -7,7 +7,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 **List of contributions**
 
 <b>2023</b>
-* 2023/08 [African Language Sentiment](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_09)
+* 2023/10 [Numbats in Australia](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_10)
+* 2023/09 [African Language Sentiment](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_09)
 * 2023/08 [Bob Ross Paintings](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_08)
 * 2023/07 [Hollywood Age Gap](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_07)
 * 2023/05 [Pet Cats UK](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_05)
@@ -135,8 +136,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 ***
 ## 2022 
 * [Week 39/2022: Artists in the USA](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_39)  
-[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p2.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
+[![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39_p1.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_39/2022_39.qmd)
 ***
 * [Week 38/2022: Hydro Wastewater plants](https://github.com/leeolney3/TidyTuesday/tree/main/2022/week_38)  
 [![name](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.png)](https://github.com/leeolney3/TidyTuesday/blob/main/2022/week_38/2022_38.qmd)
