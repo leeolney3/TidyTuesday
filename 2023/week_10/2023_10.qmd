@@ -1,0 +1,125 @@
+---
+title: "2022_10"
+date: "2023-03-07"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 7 [Hollywood Age Gaps](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-03-07/readme.md), data from [Atlas of Living Australia](https://www.ala.org.au/), prepared by Di Cook.
+
+```{r load libaries}
+library(tidyverse)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Space Grotesk")
+f1 = "Space Grotesk"
+font_add_google("Chivo")
+f2 = "Chivo"
+```
+
+```{r read in data}
+numbats <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-07/numbats.csv')
+```
+
+### Bar plot
+```{r}
+df1 =numbats |>
+  filter(!is.na(day), scientificName=="Myrmecobius fasciatus") |>
+  mutate(mth = lubridate::month(day),
+         season = case_when(between(mth,3,5)~"Autumn",
+                            between(mth,6,8)~"Winter",
+                            between(mth,9,11)~"Spring",
+                            TRUE~"Summer"),
+         month=fct_reorder(month,mth),
+         month=fct_relevel(month, "Dec"),
+         season=factor(season, levels=c("Autumn","Winter","Spring","Summer")),
+         ) |>
+  count(mth, month, season) |>
+  group_by(season) |>
+  mutate(total=sum(n))
+
+pal1 = monochromeR::generate_palette("#31231d", modification = "go_lighter", 
+                 n_colours = 9, view_palette = TRUE)
+```
+
+```{r p1, fig.height=3, fig.width=4}
+df1 |>
+  ggplot(aes(x=month, y=n)) +
+  geom_rect(aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, fill=season), alpha=.9) +
+  geom_col(width=.8, fill="white") +
+  geom_text(aes(label=n), vjust=-0.5, color="white",family=f2) +
+  geom_text(aes(label=month, y=0), vjust=1.7, color="white",family=f2) +
+  geom_text(data=. %>% filter(mth %in% seq(3,12,3)), aes(label=season, y=240), hjust=0, nudge_x = -.4, color="white", size=4.5, family=f2) +
+  geom_text(data=. %>% filter(mth %in% seq(3,12,3)), aes(label=glue::glue("(n = {total})"), y=228), hjust=0, nudge_x = -.4, color="white", size=3.3,family=f2) +
+  scale_y_continuous(limits=c(-8,240)) +
+  scale_fill_manual(values=pal1) +
+  facet_wrap(~season, nrow=1, scales="free_x") +
+  theme_minimal(base_size = 13) +
+  theme(text=element_text(color="white", family = f2),
+        panel.grid=element_blank(),
+        strip.text=element_blank(),
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        legend.position="none",
+        plot.title = element_text(face="bold", family=f1, size=16.5),
+        plot.subtitle=element_text(size=11, margin=margin(b=12)),
+        plot.caption = element_text(hjust=0, lineheight=1.1, size=10, margin=margin(t=10)),
+        plot.background = element_rect(color=NA, fill="#333333"),
+        plot.margin=margin(1,1.1,1,1,unit="cm")) +
+  labs(title="Numbats in Australia", subtitle = "Numbat (Myrmecobius fasciatus) sightings by month from Dec 31, 1856 to Feb 18, 2023.", caption="#TidyTuesday week 10\nSource: Atlas of Living Australia, data prepared by Di cook")
+
+ggsave("export/2023_10.png", height=6, width=8)
+```
+
+### Tile plot
+
+```{r}
+df2 =numbats |>
+  filter(!is.na(day), scientificName=="Myrmecobius fasciatus") |>
+  mutate(date1=lubridate::ymd(glue::glue("2020-{lubridate::month(day)}-{lubridate::day(day)}"))) |>
+  count(date1, month) |>
+  complete(date1= seq.Date(as.Date("2020-01-01"), as.Date("2020-12-31"), by="day"), fill=list(n=0)) |>
+  mutate(mth = lubridate::month(date1),
+         dy=lubridate::day(date1))
+```
+
+
+```{r p2, fig.height=3, fig.width=4}
+c1 = "#fcfaf1" 
+df2 |>
+  ggplot(aes(x=dy, y=mth)) +
+  geom_tile(fill="black", color=c1,linewidth=1, alpha=.05) +
+  geom_tile(data=. %>% filter(n>0), aes(fill=n), linewidth=1, color=c1) +
+  scale_fill_gradientn(breaks=seq(1,21,5),colors=rev(PNWColors::pnw_palette("Mushroom")[1:5]), guide=guide_colorbar(barheight=unit(.5,"lines"),barwidth = unit(10,"lines"))) +
+  scale_y_reverse(breaks=seq(1,12,1), labels=month.abb) +
+  scale_x_continuous(breaks=seq(1,31,5)) +
+  coord_cartesian(expand=FALSE) +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f2),
+        panel.grid=element_blank(),
+        legend.position = "top",
+        legend.justification = "left",
+        legend.title=element_blank(),
+        legend.box.margin = margin(b=-3, l=-35, t=5),
+        axis.ticks.length=unit(.25, "cm"),
+        axis.ticks.y=element_blank(),
+        axis.ticks.x = element_line(linewidth=.3),
+        axis.title.y=element_blank(),
+        axis.title=element_text(size=12),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f1, size=16),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.75,1,.5,.75,unit="cm"),
+        plot.background = element_rect(fill=c1,color=NA))  +
+  labs(title="Numbats in Australia", subtitle = "Myrmecobius fasciatus sightings by month and day of month, from Dec 31, 1856 to Feb 18, 2023.", caption="#TidyTuesday week 10\nSource: Atlas of Living Australia, data prepared by Di cook", x="Day of month")
+```
+
+
+
+
+
