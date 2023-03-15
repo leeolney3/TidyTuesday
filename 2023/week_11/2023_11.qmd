@@ -1,0 +1,155 @@
+---
+title: "2023_11"
+date: "2023-03-14"
+format: html
+editor: visual
+---
+
+#TidyTuesday week 11 [European Drug Development](https://github.com/rfordatascience/tidytuesday), from the [European Medicines Agency](https://www.ema.europa.eu/en/medicines/download-medicine-data) via [Miquel Anglada Girotto on GitHub](https://github.com/MiqG/EMA-Data-Scratching-with-RSelenium).
+
+```{r load libraries}
+library(tidyverse)
+library(ggridges)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Archivo")
+f1 = "Archivo"
+```
+
+```{r load in data}
+drugs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-14/drugs.csv')
+```
+
+```{r wrangle}
+vet= drugs |> filter(category=="veterinary") |>select(-therapeutic_area) |>
+  mutate(species = str_to_lower(species),
+         medicine_name=str_to_lower(medicine_name),
+         common_name=str_to_lower(common_name),
+         pharmacotherapeutic_group=str_to_lower(pharmacotherapeutic_group))
+
+vet1 = vet |> select(medicine_name, common_name, species, first_published) |>
+  mutate(cat=case_when(str_detect(species,"cats")~1,TRUE~0),
+         dog=case_when(str_detect(species, "dog")~1,TRUE~0),
+         pig=case_when(str_detect(species,"pig")~1,TRUE~0),
+         horse=case_when(str_detect(species,"horse")~1,TRUE~0),
+         chicken=case_when(str_detect(species,"chicken")~1,TRUE~0),
+         cattle=case_when(str_detect(species,"cattle")~1,TRUE~0),
+         sheep=case_when(str_detect(species,"sheep")~1,TRUE~0),
+         ) 
+
+vet2 = vet1 |> summarise(across(cat:sheep, sum)) |>
+  pivot_longer(everything()) |>
+  arrange(value) |>
+  mutate(pct=value/nrow(vet),
+         lab= case_when(name=="dog"~glue::glue("<span style='color:#0A3C79'>**{str_to_title(name)}**</span><br><span style='font-size:10pt; color:#0A3C79'>(n={value})</span>"), TRUE~glue::glue("<span style='color:#122921'>**{str_to_title(name)}**</span><br><span style='font-size:10pt; color:#122921'>(n={value})</span>")),
+         lab= fct_inorder(lab))
+
+d1 = vet |> filter(str_detect(species,"cats")) |> mutate(value="cat")
+d2 = vet |> filter(str_detect(species,"dog")) |> mutate(value="dog")
+d3 = vet |> filter(str_detect(species,"pig")) |> mutate(value="pig")
+d4 = vet |> filter(str_detect(species,"horse")) |> mutate(value="horse")
+d5 = vet |> filter(str_detect(species,"chicken")) |> mutate(value="chicken")
+d6 = vet |> filter(str_detect(species,"cattle")) |> mutate(value="cattle")
+d7 = vet |> filter(str_detect(species,"sheep")) |> mutate(value="sheep")
+```
+
+
+```{r ridgeline, message=FALSE, warning=FALSE, fig.height=3.2, fig.width=4}
+rbind(d1,d2,d3,d4,d5,d6,d7) |>
+  left_join(vet2, by=c("value"="name")) |>
+  ggplot(aes(x=first_published,y=lab, fill=lab, color=lab)) +
+  geom_density_ridges(rel_min_height = 0.01,scale = 0.9,jittered_points = TRUE,
+    position = position_points_jitter(width = 0.05, height = 0),
+    point_shape = '|', point_size = 4, point_alpha = .7, alpha = 0.5,) +
+  scale_fill_manual(values=c(rep("#122921",6),"#0A3C79"), guide="none") +
+  scale_color_manual(values=c(rep("#122921",6),"#0A3C79"), guide="none") +
+  coord_cartesian(clip="off", expand=FALSE) +
+  cowplot::theme_minimal_grid() +
+  theme(text=element_text(family=f1),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, margin=margin(t=12), size=10, color="grey40"),
+        plot.subtitle = element_text(margin=margin(b=12), size=11, lineheight = 1.1),
+        axis.ticks.length.x = unit(1,"lines"),
+        axis.title=element_text(size=12),
+        axis.text.x=element_text(size=11),
+        axis.text.y = element_markdown(lineheight = 1.2),
+        plot.margin=margin(.5,.5,.3,.5,unit="cm"),
+        #plot.background = element_rect(fill="#F5F6F1", color=NA)
+        ) +
+  labs(x="First published date", y="Species",
+       title="European Veterinary Medicines",
+       subtitle="282 veterinary drugs by species and first published date from Dec 1, 2003 to Oct 8, 2021.",
+       caption="TidyTuesday week 11 | Source: European Medicines Agency via Miquel Anglada Girotto on GitHub")
+```
+
+```{r FELV vaccine table}
+library(gt)
+library(gtExtras)
+d1 |> mutate(medicine_name=str_to_lower(medicine_name),
+             common_name=str_to_lower(common_name),
+             pharmacotherapeutic_group=str_to_lower(pharmacotherapeutic_group)) |>
+  filter(str_detect(medicine_name,"felv")) |> #5
+  #filter(str_detect(common_name,"vaccine")) #12
+  #filter(str_detect(pharmacotherapeutic_group,"immunologicals")) |> #12 
+  select(`medicine name`=medicine_name, `common name`=common_name, `date`=marketing_authorisation_date, `holder company name`=marketing_authorisation_holder_company_name, `first published`=first_published,`revision number`=revision_number,`revision date`=revision_date) |>
+  gt() |>
+  gt_theme_espn() |>
+  fmt_date(column=`first published`) |>
+  fmt_date(column=`revision date`) |>
+  tab_spanner(columns=3:4, label="marketing authorisation") |>
+  cols_width(`date`~px(100),`first published`~px(100),`revision date`~px(100)) |>
+  cols_align(columns = everything(), align="left")
+  
+
+```
+
+```{r waffle, warning=FALSE, message=FALSE, fig.height=2.5, fig.width=4}
+# waffle plot inspired by Benjamin Nowak @BjnNowak https://twitter.com/BjnNowak/status/1635505601831747584/photo/1
+
+vet2 = vet1 |> summarise(across(cat:sheep, sum)) |>
+  pivot_longer(everything()) |>
+  arrange(value) |>
+  mutate(pct=value/nrow(vet),
+         lab= glue::glue("**{str_to_title(name)}**<br><span style='font-size:8.5pt'>{value} ({scales::percent(pct)})</span>"),
+         lab= fct_inorder(lab))
+
+grid = expand.grid(x = 1:2, y = 1:10, name=unique(vet2$name)) |> 
+  group_by(name) |> mutate(id=row_number()) |> ungroup()
+vet3 = vet2 |> mutate(value1=round(pct*100/5)) |> relocate(value1) |>
+  uncount(value1) |> group_by(name) |> mutate(id=row_number())
+
+grid |> left_join(vet3) |> mutate(grp=case_when(is.na(value)~"0",TRUE~"1")) |>
+  ggplot(aes(x=x, y=y)) +
+  ggforce::geom_shape(data=tibble(x= c(0.25, 2.75, 2.75, 0.25), y = c(0, 0, 11.5, 11.5)), aes(x=x, y=y), fill="grey", inherit.aes = FALSE,radius = unit(0.5, 'cm'), alpha=.4) +
+  geom_segment(data=tibble(x=1.5, y=0.25, yend=10.5), aes(x=x, xend=x, y=y, yend=yend), inherit.aes = FALSE, linetype="dashed", color="grey") +
+  geom_segment(data=tibble(x=.3, y=seq(1.5,9.5,1), xend=2.8), aes(x=x, xend=xend, y=y, yend=y), inherit.aes = FALSE, linetype="dashed", color="grey") +
+  geom_point(aes(fill=grp),size=5, shape=21, color="white", stroke=1.2) +
+  geom_richtext(data=.%>% filter(id==1), aes(x=1.5, y=10.9, label=lab), size=3.5, lineheight=1.1,fill = NA, label.color = NA,family=f1) +
+  scale_fill_manual(values=c("grey","#ffb703")) +
+  facet_wrap(~fct_rev(fct_reorder(name,value,.fun=max)), nrow=1) +
+  theme_void()+
+  theme(text=element_text(family=f1),
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        legend.position="none",
+        strip.text = element_blank(),
+        plot.margin = margin(.5,.5,.3,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(hjust=.5, face="bold"),
+        plot.subtitle=element_text(hjust=.5, size=10, margin=margin(t=5)),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=.5,color="grey30", size=8.3, margin=margin(t=-2))
+        ) +
+  labs(title="European veterinary medicine development",
+       subtitle="Veterinary drug published between Dec 1, 2003 and Oct 8, 2021, by species.",
+       caption="TidyTuesday week 11  •  Plot inspired by: Benjamin Nowak @BjnNowak  •  Source: European Medicines Agency via Miquel Anglada Girotto on GitHub")
+```
+
+
+
