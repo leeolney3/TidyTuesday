@@ -1,0 +1,116 @@
+---
+title: "2023_12"
+date: "2023-03-20"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [12 Programming Languages](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-03-21/readme.md) , data from [Programming Language DataBase](https://pldb.com/index.html).
+
+```{r load libraries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Archivo")
+f1 = "Archivo"
+```
+
+```{r read in data}
+languages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-21/languages.csv')
+```
+
+```{r wrangle}
+d1 = languages |> 
+  filter(is_open_source==TRUE) |>
+  filter(appeared >=1940, appeared<=2022) |>
+  mutate(x=appeared %% 10,
+         dec=appeared - appeared %% 10,
+         y=glue::glue("{dec}'s")) |>
+  count(x,y,dec) |>
+  arrange(dec) |>
+  mutate(col= case_when(dec>=2000~"#3fb88b",TRUE~"#12ace6"),
+         y=glue::glue("<span style='color:{col}'>{y}</span>"),
+         y=fct_inorder(y)
+         )
+```
+
+```{r p1, fig.height=3, fig.width=4}
+bg="#0f1f2c"
+d1 |>
+  ggplot(aes(x=x, y=fct_rev(y))) +
+  geom_point(data=expand.grid(x = 0:9, y = unique(d1$y)), shape=15, size=10, color=bg) +
+  geom_point(data=expand.grid(x = 0:9, y = unique(d1$y)), shape="|", size=4.5, color="#4d5d6a") +
+  ggtext::geom_richtext(aes(label=n), size=4.7, label.color=bg, family=f1,fill=bg, color="white") +
+  scale_x_continuous(expand=c(0,0), breaks=seq(0,9,1)) +
+  facet_wrap(~fct_rev(y), ncol=1, scales="free_y") +
+  coord_cartesian(clip="off") +
+  cowplot::theme_minimal_grid() +
+  theme(text=element_text(family=f1, color="#e0e4e8"),
+        legend.position="top",
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y=element_line(color="#4d5d6a"),
+        plot.margin=margin(.75,1.5,.75,.75,unit="cm"),
+        plot.title.position="plot",
+        plot.title=element_text(color="white"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, margin=margin(t=15), size=10, lineheight = 1.1),
+        plot.subtitle=element_text(lineheight=1.1, margin=margin(t=3,b=13)),
+        axis.ticks = element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_markdown(size=13.5, family=f1,face="bold",margin=margin(r=25)),
+        axis.title=element_blank(),
+        strip.text=element_blank(),
+        plot.background=element_rect(fill=bg, color=NA)) +
+  labs(x="Month", y="Decade",title="Open-source Programming Languages",
+       subtitle="452 open-source programming languages by publicly released and/or announced year, between\n1968 and 2022",
+       caption="TidyTuesday week 12  •  Source: Programming Language DataBase\nPlot inspired by Peter Gorman @barelymaps")
+
+ggsave("export/2023_12.png", height=6, width=8)
+```
+
+```{r p2, fig.height=3.5, fig.width=3.5, warning=FALSE, message=FALSE}
+caption= "TidyTuesday week 12  •  Source: Programming Language DataBase"
+languages |> 
+  mutate(lit=book_count+semantic_scholar) |>
+  filter(appeared >=1970) |>
+  ggplot(aes(x=appeared, y=lit, color=is_open_source)) +
+  geom_point(alpha=.7, size=2) +
+  geom_point(data=. %>% filter(lit>=125), shape=21, size=3.5, color="black", show.legend = FALSE) +
+  geom_text_repel(data=. %>% filter(lit>125),aes(label=str_wrap(title,15)), size=3.5, lineheight=.9) +
+  cowplot::theme_minimal_grid(12) +
+  theme(legend.position="top",
+        plot.title.position="plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0),
+        legend.margin = margin(l=-37)) +
+  labs(x="Year (publicly released and/or announced)", 
+       y="Literature count", color="Is open source?",
+       title="Programming Languages",
+       subtitle="Year of language publicly released and/or announced and literature count (number of books found at\nisbndb.com and papers from Semantic Scholar). Languages with 125 literature count are labelled.",
+       caption=caption)
+```
+
+```{r p3, fig.height=3, fig.width=4}
+languages |> filter(is_open_source==TRUE, appeared<=2022) |> 
+  mutate(type2= fct_lump(type,1)) |> 
+  group_by(appeared) |>
+  arrange(appeared, type2, bygroup=TRUE)|>
+  mutate(id=row_number()) |>
+  ggplot(aes(x=appeared, y=id, color=type2)) +
+  geom_point() +
+  scale_x_continuous(breaks=seq(1970,2020,10)) +
+  cowplot::theme_minimal_grid(13) +
+  theme(legend.position="top",
+        plot.title.position="plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0),
+        legend.margin = margin(l=-34)) +
+  labs(title="Open-source languages",
+       subtitle="452 open-source programming languages by publicly released and/or announced year, between\n1960 and 2022.",
+       color="PLDB's subjective ontology category:", x="Year", y="Count", caption=caption)
+```
