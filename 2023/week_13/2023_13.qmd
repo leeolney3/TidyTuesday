@@ -1,0 +1,76 @@
+---
+title: "2023_13"
+date: "2023-03-28"
+format: html
+editor: visual
+---
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Fira Sans")
+f1 = "Fira Sans"
+```
+
+```{r read in data}
+transitions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/transitions.csv')
+timezones <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/timezones.csv')
+timezone_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/timezone_countries.csv')
+countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/countries.csv')
+
+caption= "TidyTuesday week 13  •  Source:  IANA tz database via the {clock} and {tzdb} packages"
+```
+
+```{r sf}
+ne = read_sf("ne_10m_time_zones/ne_10m_time_zones.shp") #from: https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_time_zones.zip
+ne = st_transform(ne, crs = 4326)
+w = rnaturalearth::ne_countries(returnclass = "sf")
+w = st_transform(w,crs=4326) 
+```
+
+```{r wrangle}
+transitions1 = transitions |> mutate(begin=lubridate::as_datetime(begin), 
+                      end=lubridate::as_datetime(end),
+                      yrbegin=lubridate::year(begin)) |>
+  filter(yrbegin==2023) 
+
+d1 = timezones |> left_join(transitions1) |> 
+  mutate(dst=as.character(dst)) |> 
+  mutate(dst=replace_na(dst,"No"), dst=case_when(dst=="TRUE"~"Yes", TRUE~dst)) |> 
+  filter(dst!="FALSE")
+
+d2 =d1 |> st_as_sf(coords=c("longitude","latitude"),na.fail = FALSE, crs =4326)
+```
+
+```{r, fig.height=2.75, fig.width=4}
+ggplot() +
+  geom_sf(data=w, linewidth=.1, fill="grey92", color="white") +
+  geom_text(data=tibble(x=seq(-165,165,15),y=-84,label=c(as.character(glue::glue("{seq(-11,0,1)}")), as.character(glue::glue("+{seq(1,11,1)}")))), aes(x=x, y=y, label=label), size=3.3, color="grey10") +
+  geom_sf(data=ne,fill=NA, color="grey50", linewidth=.1) +
+  geom_sf(data=d2, aes(fill=fct_rev(dst)), shape=21, size=2, alpha=.7) +
+  scale_fill_manual(name="Has daylight savings?",values=c("#01996F","#ff930a")) +
+  coord_sf(expand=FALSE, clip="off") +
+  theme_void(base_family = f1) +
+  theme(legend.position = "top",
+        legend.justification = "left",
+        legend.title=element_text(size=11),
+        legend.text=element_text(size=11),
+        legend.margin=margin(t=5),
+        plot.title=element_text(face="bold"),
+        plot.subtitle=element_text(size=10),
+        plot.caption = element_text(hjust=0, margin=margin(t=13)),
+        plot.background=element_rect(fill="#fafafa", color=NA),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
+  labs(title="Daylight Savings Locations",
+       subtitle="Principle locations of time zones where day light savings is active (beginning) in 2023.",
+       caption=caption)
+
+ggsave("export/2023_13.png", width=8, height=5.3)
+```
+
