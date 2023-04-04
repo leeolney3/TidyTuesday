@@ -1,0 +1,134 @@
+---
+title: "2023_14"
+date: "2023-04-04"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [14 Premier League Match Data 2021-2022](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-04-04/readme.md), data from the [Premier League Match Data 2021-2022](https://www.kaggle.com/datasets/evangower/premier-league-match-data) via [Evan Gower](https://github.com/evangower) on Kaggle.
+
+```{r load libraries}
+library(tidyverse)
+library(patchwork)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Barlow")
+f1 = "Barlow"
+```
+
+```{r read in data}
+soccer <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-04/soccer21-22.csv')
+```
+
+### Number of corners taken and fouls by team
+```{r theme}
+theme1 = cowplot::theme_minimal_hgrid(12) + 
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        axis.title.y = element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_markdown(),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0)) 
+```
+
+```{r p1a}
+d1 = soccer |> mutate(date1=lubridate::dmy(Date), id=row_number()) |>
+  mutate(col=case_when(value=="Man City"~"#1d3557", TRUE~"#8d99ae"))
+
+p1a = d1 |> select(1:3,HC:AC, id) |>
+  pivot_longer(HomeTeam:AwayTeam, names_to = "t", values_to = "team") |>
+  select(-t) |>
+  pivot_longer(HC:AC) |>
+  group_by(id) |> mutate(id2= row_number()) |> ungroup() |>
+  filter(id2 %in% c(1,4)) |> select(-id2, -name) |>
+  group_by(team) |> mutate(med=median(value)) |>
+  mutate(col=case_when(team=="Man City"~"#6CABDD", 
+                       team=="Liverpool"~"#E0202B",
+                       team=="Chelsea"~"#034694",
+                       TRUE~"grey75")) |>
+  mutate(teamlong= case_when(team %in% c("Liverpool","Man City","Chelsea")~glue::glue("<span style='color:{col}'>**{team}**</span>"), TRUE~team)) |>
+  ungroup() |>
+  mutate(teamlong=fct_reorder(factor(teamlong),value)) |>
+  ggplot(aes(y=fct_relevel(teamlong,"<span style='color:#6CABDD'>**Man City**</span>",after=19), x=value, fill=col)) +
+  ggdist::stat_halfeye() +
+  scale_x_continuous(position="top") +
+   scale_fill_identity() +
+  theme1 + 
+  labs(x="Number of corners taken")
+```
+
+```{r p1b}
+p1b = d1 |> select(1:3,HF:AF, id) |>
+  pivot_longer(HomeTeam:AwayTeam, names_to = "t", values_to = "team") |>
+  select(-t) |>
+  pivot_longer(HF:AF) |>
+  group_by(id) |> mutate(id2= row_number()) |> ungroup() |>
+  filter(id2 %in% c(1,4)) |> select(-id2, -name) |>
+  group_by(team) |> mutate(med=median(value)) |>
+  mutate(col=case_when(team=="Man City"~"#6CABDD", 
+                       team=="Liverpool"~"#E0202B",
+                       team=="Chelsea"~"#034694",
+                       TRUE~"grey75")) |>
+  mutate(teamlong= case_when(team %in% c("Liverpool","Man City","Chelsea")~glue::glue("<span style='color:{col}'>**{team}**</span>"), TRUE~team)) |>
+  ggplot(aes(y=reorder(teamlong, med), x=value, fill=col)) +
+  ggdist::stat_halfeye() +
+  scale_x_continuous(position="top") +
+  scale_fill_identity() +
+  theme1 + 
+  labs(x="Number of fouls")
+```
+
+```{r p1, fig.height=3, fig.width=4}
+p1b + p1b + 
+  plot_annotation(caption="TidyTuesday week 14  •  Source:  Premier League Match Data 2021-2022 via Evan Gower on Kaggle", title="2021–22 Premier League", subtitle="Number of corners taken and fouls by team from Aug 13, 2021 to May 22, 2022") &
+  theme1
+
+ggsave("export/2023_14.png",height=6, width=8, bg="#fafafa")
+```
+
+### Number of corners home vs away
+```{r, fig.height=4, fig.width=3.5}
+# corners home vs away
+rank = c("Man City","Liverpool","Chelsea","Tottenham","Arsenal",
+           "Man United","West Ham","Leicester","Brighton","Wolves",
+           "Newcastle","Crystal Palace","Brentford","Aston Villa","Southampton",
+           "Everton","Leeds","Burnley","Watford","Norwich")
+
+d1 |> select(1:3,HC:AC, id) |>
+  pivot_longer(HomeTeam:AwayTeam, names_to = "t", values_to = "team") |>
+  pivot_longer(HC:AC) |>
+  group_by(id) |> mutate(id2= row_number()) |> ungroup() |>
+  filter(id2 %in% c(1,4)) |> select(-id2, -name) |>
+  ungroup() |>
+  mutate(team=factor(team, levels = rank)) |>
+  arrange(desc(team)) |> 
+  mutate(team = case_when(team %in% c("Man United","Crystal Palace","Aston Villa","Southampton") ~ glue::glue("<span style='color:#E37001'>**{team}**</span>"),TRUE~glue::glue("{team}")),
+         team=fct_inorder(team)) |>
+  ggplot(aes(x=value, y=team, color=t, fill = after_scale(colorspace::lighten(color, .3)))) +
+  ggdist::stat_halfeye(alpha=.7, .width=c(0,0), show.legend = FALSE) +
+  scale_color_manual(values=c("#E37001","#006EAC")) +
+  scale_x_continuous(expand=c(0.02,0.02)) +
+  cowplot::theme_minimal_grid(12.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        panel.grid.major.y = element_blank(),
+        axis.text.y = element_markdown(),
+        plot.title.position = "plot",
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30"),
+        plot.subtitle=element_markdown(lineheight = 1.3, size=11.5),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm")) +
+  labs(subtitle="<span style='color:#E37001'>**Away**</span> and <span style='color:#006EAC'>**home**</span> number of corners taken. Arranged in ascending order of final standings.<br>Four out of twenty teams have a higher median corners in away than home.",
+       title="2021–22 Premier League",
+       caption="TidyTuesday week 14  •  Source:  Premier League Match Data 2021-2022 via Evan Gower on Kaggle", x="Number of corners taken")
+```
+
