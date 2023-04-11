@@ -58,7 +58,7 @@ cagefreepercentages |>
         plot.margin=margin(.5,.75,.5,.5,unit="cm"),
         plot.background = element_rect(fill="#F9F9F9", color=NA)) +
   labs(subtitle="By month in which report observations are collected, between Aug 2016 to Feb 2021",
-       title="Cage-free Percentages",
+       title="US Cage-free Percentages",
        x="Date (month of report observation)", y="Percent",
        caption=caption)
 
