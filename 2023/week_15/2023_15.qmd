@@ -1,0 +1,66 @@
+---
+title: "2023_15"
+date: "2023-04-11"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [15 US Egg Production Data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-04-11/readme.md), data from [The Humane League's US Egg Production dataset](https://thehumaneleague.org/article/E008R01-us-egg-production-data) by [Samara Mendez](https://samaramendez.github.io/).
+
+```{r load libraries}
+library(tidyverse)
+library(lubridate)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Cabin")
+f1 = "Cabin"
+```
+
+```{r read in data}
+eggproduction  <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-11/egg-production.csv')
+cagefreepercentages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-11/cage-free-percentages.csv')
+caption="#TidyTuesday week 15  •  Source: The Humane League's US Egg Production dataset by Samara Mendez."
+```
+
+```{r line plot, fig.height=3.5, fig.width=3.5}
+cagefreepercentages |>
+  pivot_longer(percent_hens:percent_eggs) |>
+  drop_na(value) |>
+  mutate(id=row_number()) |>
+  filter(id>=11) |>
+  mutate(year=year(observed_month), month=month(observed_month),
+         date=ymd(glue::glue("{year}-{month}-01")),
+         source1 = case_when(str_detect(source, "pdf")~"Observed", TRUE~"Computed"),
+         name1 = case_when(name=="percent_hens"~"% of cage-free hens relative to all table-egg-laying hens", name=="percent_eggs"~"% of cage-free eggs relative to all table eggs")) |>
+  mutate(grp=str_trim(glue::glue("{source1} {name1}"))) |>
+  select(date, value, grp) |>
+  ggplot(aes(date, value,fill=grp,color=after_scale(colorspace::darken(fill,.2)))) +
+  geom_line(aes(group=grp), show.legend = FALSE) +
+  geom_point(size=2.3, shape=21) +
+  scale_y_continuous(labels = scales::percent_format(scale=1)) +
+  scale_color_manual(values=c("#A31414","#52B0AE","#2B6999")) +
+  scale_fill_manual(values=c("#A31414","#52B0AE","#2B6999")) +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        axis.title = element_text(size=12),
+        axis.ticks.y = element_blank(),
+        legend.position = "top",
+        legend.direction = "vertical",
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40",margin=margin(t=8)),
+        legend.title = element_blank(),
+        legend.margin = margin(l=-47,t=-8),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.background = element_rect(fill="#F9F9F9", color=NA)) +
+  labs(subtitle="By month in which report observations are collected, between Aug 2016 to Feb 2021",
+       title="Cage-free Percentages",
+       x="Date (month of report observation)", y="Percent",
+       caption=caption)
+
+ggsave("export/2023_15.png")
+```
