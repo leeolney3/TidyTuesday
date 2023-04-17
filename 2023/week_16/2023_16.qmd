@@ -1,0 +1,214 @@
+---
+title: "2023_16"
+date: "2023-04-17"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [16 Neolithic Founder Crops](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-04-18/readme.md), data from ["Neolithic Founder Crops" in Southwest Asia: Research Compendium](https://github.com/joeroe/SWAsiaNeolithicFounderCrops/).
+
+Citation: Arranz-Otaegui, Amaia, and Roe, Joe (2023). Revisiting the concept of the 'Neolithic Founder Crops' in southwest Asia. Vegetation History & Archaeobotany. https://doi.org/10.1007/s00334-023-00917-1
+
+Citation (compendium): Roe, Joe, & Arranz Otaegui, Amaia. (2023). The "Neolithic Founder Crops" in Southwest Asia: Research Compendium. Zenodo. https://doi.org/10.5281/zenodo.5911218
+
+```{r load libraries}
+library(tidyverse)
+library(ggalluvial)
+library(ggbump)
+library(showtext)
+library(ggtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Archivo Narrow")
+f1 = "Archivo Narrow"
+font_add_google("Atkinson Hyperlegible")
+f2 = "Atkinson Hyperlegible"
+```
+
+```{r read in data}
+founder_crops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-18/founder_crops.csv')
+```
+
+```{r p1 data}
+#code reference: section 3.2.2 By century https://github.com/joeroe/SWAsiaNeolithicFounderCrops/blob/main/analysis/SI1.Rmd
+periods <- tribble(
+  ~period,             ~agriculture,                          ~start_bp, ~end_bp,
+  "Late Epipal.",      "Foraging",                            15000,     11700,
+  "PPNA",              "Pre-domestication cultivation",       11700,     10700,
+  "EPPNB",             "Cultivation of domesticated species", 10700,     10200,
+  "MPPNB",             "Cultivation of domesticated species", 10200,     9500,
+  "LPPNB/C",           "Agriculture",                         9500,      8500,
+  "Pottery Neolithic", "Agriculture",                         8500,      6500,
+  "Chalcolithic",      "Agriculture",                         6500,      5000,
+)
+
+df1 = founder_crops |>
+  mutate(age_mid = age_end + ((age_start - age_end) / 2),
+         period = cut(-age_mid, 
+                      breaks = -c(periods$start_bp, 0), 
+                      labels = periods$period,
+                      ordered_result = TRUE))
+
+centuries <- seq(from = first(periods$start_bp),
+                 to = last(periods$end_bp),
+                 by = -100)
+names(centuries) <- centuries
+
+df2 = df1 %>% 
+  mutate(century = map_dfc(centuries, ~. < age_start & . > age_end)) %>% 
+  unpack(century) %>% 
+  pivot_longer((ncol(df1)+1):ncol(.), names_to = "century",
+               names_transform = list(century = as.integer)) %>% 
+  filter(value) %>% 
+  select(-value) %>% 
+  mutate(period = cut(-century, 
+               breaks = -c(periods$start_bp, last(periods$end_bp)), 
+               labels = periods$period,
+               ordered_result = TRUE))
+
+df3 = df2 %>%
+  mutate(founder_crop = recode(founder_crop,
+                               "einkorn wheat" = "wheat",
+                               "emmer wheat" = "wheat",
+                               "flax" = "flax/pea/\nchickpea",
+                               "pea" = "flax/pea/\nchickpea",
+                               "chickpea" = "flax/pea/\nchickpea",
+                               .default = founder_crop)) %>% 
+  group_by(century, site_name, phase_code, founder_crop) %>% 
+  summarise(prop = sum(prop, na.rm = TRUE), .groups = "drop") %>% 
+  group_by(century) %>% 
+  mutate(n_assemb = length(unique(phase_code))) %>% 
+  group_by(century, founder_crop) %>%
+  summarise(avg_prop = sum(prop) / first(n_assemb)) %>%
+  mutate(founder_crop = fct_reorder(founder_crop, avg_prop, .fun = sum, .desc = FALSE)) %>%
+  drop_na(founder_crop) 
+```
+
+```{r p1, fig.height=3, fig.width=3.5}
+# graphic reference: https://fosstodon.org/@joeroe@archaeo.social/110186477750041419
+df3 |>
+  filter(century<=11700) |>
+  mutate(founder_crop=as.character(founder_crop)) |>
+  ggplot(aes(x=century, y=avg_prop)) +
+  geom_alluvium(aes(fill=founder_crop, alluvium=founder_crop), alpha = .85, decreasing = FALSE, color="white", linewidth=.3) +
+  geom_vline(data = periods %>% filter(!start_bp %in% c("15000")), aes(xintercept = start_bp),linetype = "dashed") +
+  geom_label(data = periods %>% filter(!start_bp %in% c("15000")), aes(x = start_bp, y = Inf, label = period),hjust = 0, vjust = 1, label.size = NA, fill = NA, size = 3.5, family=f1, color="grey10") +
+  geom_text(data=tibble(label=c(unique(df3$founder_crop)), x=c(6300,6300,10170,6300,6300),y=c(.15,.029,.022,.064,.28)), aes(x=x, y=y, label=str_to_title(label), color=label), family=f1, size=3.8, lineheight=.8, hjust=0) +
+  scale_color_manual(values=c("white","black","black","white","white")) +
+  scale_x_reverse(expand=c(0,0), breaks=seq(5000,11000,1000), labels=seq(5,11,1)) +
+  scale_y_continuous(expand = expansion(mult = c(0, .07)), labels=scales::percent) +
+  scale_fill_manual(values=c("#2B6999","#E37001","#88837D","#52B0AE","#A31414")) + #colors from https://blog.datawrapper.de/colors-for-data-vis-style-guides/
+  theme_grey(base_size = 12) +
+  theme(axis.ticks.length = unit(.3,"lines"),
+        legend.position = "none",
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, size=9, color="grey30", margin=margin(t=0)),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold"),
+        plot.subtitle = element_text(size=11, margin=margin(b=10)),
+        text=element_text(family=f2)) +
+  labs(x = "ka cal BP", y = "Mean proportion of assemblages",
+       title="Founder Crops",
+       subtitle="Mean proportion of the assemblage by founder crop broad category and century.",
+       caption="#TidyTuesday week 16\nSource: Roe, Joe, & Arranz Otaegui, Amaia. (2023). The “Neolithic Founder Crops” in Southwest Asia: Research\nCompendium. Zenodo. https://doi.org/10.5281/zenodo.5911218")
+
+ggsave("export/2023_16_p1.png",height=6, width=7, bg="#fafafa")
+```
+
+```{r p2 data}
+# code reference: section 3.3 category-summary-byperiod https://github.com/joeroe/SWAsiaNeolithicFounderCrops/blob/main/analysis/SI1.Rmd
+neolithic <- c("PPNA", "EPPNB", "MPPNB", "LPPNB/C", "Pottery Neolithic")
+n_assemb_neolithic= df1 %>% 
+  distinct(site_name, phase_code, period) %>% 
+  filter(period %in% neolithic) %>% 
+  nrow() 
+
+df1 %>% 
+  filter(period %in% neolithic) %>% 
+  mutate(category = replace_na(category, "Unclassified")) %>% 
+  group_by(site_name, phase_code, category) %>%
+  summarise(
+    n = sum(n, na.rm = TRUE),
+    prop = sum(prop, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  group_by(category) %>% 
+  summarise(
+    prop_avg = mean(prop),
+    n_present = n(),
+    n_gthalf = sum(prop > 0.5),
+    n_gtqrtr = sum(prop > 0.25),
+    pct_present = n_present / n_assemb_neolithic,
+    pct_gthalf = n_gthalf / n_assemb_neolithic,
+    pct_gtqrtr = n_gtqrtr / n_assemb_neolithic,
+    .groups = "drop"
+  ) %>% 
+  arrange(desc(prop_avg))
+
+df4 = df1 %>% 
+  mutate(category = replace_na(category, "Unclassified")) %>% 
+  group_by(period, site_name, phase_code, category) %>%
+  summarise(
+    n = sum(n, na.rm = TRUE),
+    prop = sum(prop, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  group_by(period) %>% 
+  mutate(n_assemb = length(unique(phase_code))) %>% 
+  group_by(period, category) %>% 
+  summarise(
+    prop_avg = mean(prop),
+    n_present = n(),
+    n_gthalf = sum(prop > 0.5),
+    n_gtqrtr = sum(prop > 0.25),
+    pct_present = n_present / first(n_assemb),
+    pct_gthalf = n_gthalf / first(n_assemb),
+    pct_gtqrtr = n_gtqrtr / first(n_assemb),
+    .groups = "drop_last"
+  ) %>% 
+  arrange(desc(prop_avg), .by_group = TRUE) |>
+  select(1:3)
+
+periods2= periods |> mutate(lab=glue::glue("{period}\n({start_bp/1000}-{end_bp/1000})")) 
+```
+
+```{r p2, fig.height=3, fig.width=3.5}
+df4 |> 
+  left_join(periods2, by="period") |>
+  filter(category!="Unclassified") |>
+  mutate(period=factor(period, levels=levels(df4$period))) |>
+  arrange(period) |>
+  mutate(lab=fct_inorder(lab)) |>
+  ggplot(aes(x=lab, y=prop_avg, color=category)) +
+  geom_bump(aes(group=category), linewidth=1.8) +
+  geom_point(shape=21, fill="white", stroke=1.8) +
+  scale_color_manual(values=c("#E37001","#A31414","#2B6999","#52B0AE")) +
+  scale_x_discrete(expand=c(.04,.04)) +
+  scale_y_continuous(labels=scales::percent) +
+  cowplot::theme_minimal_grid(11.5) +
+  theme(text=element_text(family=f2),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.title=element_text(face="plain",size=14, margin=margin(b=8)),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey30"),
+        axis.ticks.length.x = unit(1,"lines"),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.background = element_rect(fill="#fafafa", color=NA)) +
+  labs(title="Average proportion broad plant categories across Neolithic assemblages,\nby period",caption="#TidyTuesday week 16\nSource: Roe, Joe, & Arranz Otaegui, Amaia. (2023). The “Neolithic Founder Crops” in Southwest Asia: Research\nCompendium. Zenodo. https://doi.org/10.5281/zenodo.5911218",
+       x="Period (ka cal BP)", y="Average proportion") +
+  geom_richtext(data= . %>% filter(period=="Pottery Neolithic", category!="Grasses"),
+            aes(x=lab, label=category), vjust=-.7, fontface="bold",label.padding = grid::unit(rep(0, 4), "pt"),label.color = NA,fill="#fafafa") +
+  geom_richtext(data= . %>% filter(period=="Pottery Neolithic", category=="Grasses"),
+            aes(x=lab, label=category), vjust=1.7, fontface="bold",label.padding = grid::unit(rep(0, 4), "pt"),label.color = NA,fill="#fafafa")
+
+ggsave("export/2023_16_p2.png", height=6, width=7)
+```
+
+
+
+
