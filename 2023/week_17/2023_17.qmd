@@ -1,0 +1,133 @@
+---
+title: "2023_17"
+date: "2023-04-25"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [17 London Marathon](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-04-25/readme.md), data from Nicola Rennie's [LondonMarathon](https://github.com/nrennie/LondonMarathon) R package.
+
+```{r}
+library(tidyverse)
+library(showtext)
+library(ggtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Nunito Sans")
+f1 = "Nunito Sans"
+
+font_add_google("Archivo Narrow")
+f2 = "Archivo Narrow"
+
+font_add_google("Archivo")
+f3 = "Archivo"
+```
+
+```{r read in data}
+winners <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-25/winners.csv') |> janitor::clean_names()
+london_marathon <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-25/london_marathon.csv') |> janitor::clean_names()
+caption="#TidyTuesday week 17  •  Source: Nicola Rennie's LondonMarathon R package"
+```
+
+```{r p1, fig.height=3, fig.width=3.5}
+bg="#F4F4F4"
+winners |>
+  filter(between(year,1991,2021)) |>
+  distinct(category, year, time) |>
+  ggplot(aes(x=year, y=time, color=factor(category,levels=c("Women","Men","Wheelchair Women","Wheelchair Men")))) +
+  geom_point(alpha=.9, size=1.5) +
+  geom_line(alpha=.9) +
+  geom_richtext(data=.%>% filter(year==2010), aes(label=category), show.legend = FALSE, hjust=0, vjust=-.4, fontface="bold", size=4.2, family=f1, fill=bg,label.color=NA,label.padding = grid::unit(rep(0, 4), "pt")) +
+  scale_x_continuous(breaks=seq(1991,2021,5), expand=c(.02,.02), limits=c(1991,NA)) +
+  scale_y_time(expand = c(.15,.15)) +
+  scale_color_manual(values=c("#D93B20","#DF9828","#008F8A","#0E3568")) + #"#B6337E","#BF9800","#02A0C6","#14017C"
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        legend.position = "none",
+        plot.title.position ="plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.background = element_rect(fill=bg, color=NA)) +
+  labs(x="Year", y="Winning Time", color="Category",
+       title="London Marathon Winning Time, 1991-2021",
+       subtitle="By year and category",
+       caption=caption)
+
+ggsave("export/2023_17_p1.png",height=6, width=7)
+```
+
+```{r p2, fig.height=3.5, fig.width=3.5}
+london_marathon |>
+  filter(year<=2019) |>
+  mutate(acc_app=accepted/applicants,
+         sta_acc=starters/accepted,
+         fin_sta=finishers/starters) |>
+  pivot_longer(acc_app:fin_sta) |>
+  mutate(name=fct_inorder(name)) |>
+  ggplot(aes(x=year, y=value, color=name)) +
+  geom_line(key_glyph=draw_key_rect) +
+  geom_point(show.legend=FALSE, size=2) +
+  scale_y_continuous(limits=c(0,1), labels=scales::percent) +
+  scale_color_manual(values=c("#9A2C49","#D8AB56","#1556A7"), labels=c("Number of people accepted as a porportion of people who applied","Number of people who started as a proportion of accepted","Number of people who finished as a proportion of people started")) +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.direction = "vertical",
+        legend.title = element_blank(),
+        legend.box.margin = margin(l=-51),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.background = element_rect(fill=bg, color=NA)) +
+  labs(caption=caption,x="Year",y="Percent",
+       title="London Marathon (1981-2019)") 
+
+ggsave("export/2023_17_p2.png",height=7, width=7)
+```
+
+```{r p3, fig.height=3.5, fig.width=3.5}
+winners |> filter(between(year,1991,2021)) |>
+  group_by(athlete) |>
+  mutate(ath1=n()) |>
+  ungroup() |>
+  group_by(category, year) |>
+  mutate(id=row_number()) |>
+  ggplot(aes(x=id, y=year)) +
+  geom_richtext(aes(label=athlete,fill=fct_rev(factor(ath1)),color=fct_rev(factor(ath1))), size=3,label.padding = grid::unit(rep(2, 4), "pt"), label.color = NA, family=f2,key_glyph=draw_key_rect) +
+  #rcartocolor::scale_fill_carto_d(palette="ag_Sunset") +
+  scico::scale_fill_scico_d("Number of wins by athlete:",palette="bilbao", direction=-1, begin=.1) +
+  scale_color_manual(values=c(rep("white",3),rep("black",3)), guide="none") +
+  scale_y_continuous(breaks=seq(1990,2020,5),expand=c(.03,.03), limits=c(1990,NA)) +
+  coord_cartesian(clip="off") +
+  facet_wrap(~category, nrow=1) +
+  cowplot::theme_minimal_hgrid(10) +
+  theme(text=element_text(family=f3),
+        legend.position = "top",
+        panel.grid.major.y = element_line(linetype="dashed"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.line=element_blank(),
+        axis.ticks = element_blank(),
+        strip.text=element_text(face="bold", size=10),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey30", margin=margin(t=5)),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.background = element_rect(fill="#fafafa", color=NA),
+        legend.margin=margin(l=-35),
+        ) +
+  guides(fill=guide_legend(nrow=1,label.position = "bottom", title.position = "top", keyheight=unit(.3,"lines"),keywidth = unit(1.5,"lines"))) +
+  labs(caption=caption, y="Year",
+       title="London Marathon Winners (1991-2021)")
+
+ggsave("export/2022_17_p3.png")
+```
+
+
+
+
