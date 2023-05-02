@@ -1,0 +1,145 @@
+---
+title: "2023_18"
+date: "2023-05-02"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [18 The Portal Project](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-05-02/readme.md), data from [Portal Project](https://portal.weecology.org/).
+
+```{r load libraries}
+library(tidyverse)
+library(ggtext)
+library(ggalluvial)
+library(ggh4x)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Nunito Sans")
+f1 = "Nunito Sans"
+```
+
+```{r read in data}
+plots <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/plots.csv')
+species <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/species.csv')
+surveys <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/surveys.csv')
+caption="#TidyTuesday week 18  •  Source: Portal Project"
+```
+
+
+```{r}
+species1 = species |> select(species:granivore) |> right_join(surveys, by="species")
+species1 |> count(commonname,scientificname,sort=TRUE)
+```
+
+```{r p1, fig.height=3, fig.width=4}
+species1 |> 
+  filter(year<2022)|>
+  count(year,treatment) |>
+  ggplot(aes(x=year, y=n, color=str_to_title(treatment))) +
+  geom_line(key_glyph=draw_key_rect) +
+  geom_point(show.legend=FALSE) +
+  scale_x_continuous(expand=c(.02,.02)) +
+  scale_y_continuous(labels=scales::comma, expand=c(0,0), limits=c(0,900), breaks=seq(0,900,150)) +
+  PrettyCols::scale_color_pretty_d("Fun") +
+  coord_cartesian(clip="off") +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.margin=margin(t=3,l=-40, b=10),
+        legend.key.height = unit(.5,"lines"),
+        plot.title.position="plot",
+        plot.caption.position = "plot",
+        plot.subtitle = element_markdown(lineheight = 1.1),
+        plot.caption=element_text(hjust=0),
+        axis.ticks.length.y = unit(.2,"lines"),
+        axis.ticks.length.x = unit(.7,"lines"),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm"),
+        ) +
+  labs(x="Year", y="Number of records",color="Treatment type:",title="Desert Pocket Mouse in The Portal Project",subtitle="The Portal Project is a long-term study of a Chihuahuan Desert Ecosystem near Portal, Arizona in<br>U.S.A. The graphic shows the number of Desert Pocket Mouse (*Chaetodipus penicillatus*) records<br>by treatment type of 11 plots (plot 3 to 23), from 1978 to 2021.",caption=caption)
+
+ggsave("export/2023_18_p1.png", height=6, width=8, bg="#fafafa")
+```
+
+
+```{r p2, fig.height=3.5, fig.width=3.5}
+selected=species1 |> count(commonname,scientificname,sort=TRUE) |> 
+  filter(between(n,1000,2000)) |>
+  mutate(name=glue::glue("**{commonname}**<br>*{scientificname}* (n={scales::comma(n)})"))
+
+species1 |> 
+  filter(commonname %in% selected$commonname) |>
+  left_join(selected, by="commonname") |>
+  count(name,year, treatment) |>
+  ggplot(aes(x=year, y=n, color=str_to_title(treatment))) +
+  geom_line(key_glyph=draw_key_rect, size=.8) +
+  scale_x_continuous(limits=c(1978,2021)) +
+  PrettyCols::scale_color_pretty_d("Fun") +
+  facet_wrap(~factor(name,levels=selected$name), scales="free_x") +
+  cowplot::theme_minimal_grid(11.5) +
+  theme(text=element_text(family=f1),
+        strip.text = element_markdown(size=10.5,hjust=0,lineheight = 1.1),
+        panel.spacing = unit(1.5,"line"),
+        legend.position = "top",
+        legend.margin=margin(l=-35),
+        legend.key.height = unit(.5,"lines"),
+        plot.title.position="plot",
+        plot.caption.position = "plot",
+        plot.subtitle = element_markdown(lineheight = 1.2),
+        plot.caption=element_text(hjust=0),
+        axis.ticks.y = element_blank(),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm"),
+        ) +
+  labs(x="Year", y="Number of records",color="Treatment type:",title="Desert Rodents in The Portal Project",subtitle="The Portal Project is a long-term study of a Chihuahuan Desert Ecosystem near Portal, Arizona in U.S.A.<br>The graphic shows the record count of 4 rodent species by treatment type of 11 plots (plot 3 to 23), from<br>1978 to 2021.",caption=caption)
+
+ggsave("export/2023_18_p2.png",bg="#fafafa")
+```
+
+```{r p3 data}
+species1 = species |> select(species:granivore) |> right_join(surveys, by="species") |>
+  filter(between(year,2000,2019)) 
+n_distinct(species1$commonname)
+selected = species1 |>
+  count(year,commonname) |>
+  group_by(commonname) |>
+  summarise(n=n_distinct(year)) |>
+  arrange(desc(n)) |>
+  slice(1:5) |> pull(commonname)
+```
+
+```{r p3,fig.height=3, fig.width=3.5}
+species1 |> 
+  filter(commonname %in% selected)|> 
+  count(year,commonname) |>
+  ggplot(aes(x=year, y=n, alluvium = commonname)) +
+  geom_alluvium(aes(fill = factor(commonname,levels=selected), color=after_scale(colorspace::darken(fill,.3))), alpha = .8, decreasing = FALSE,linewidth=.4) +
+  PrettyCols::scale_fill_pretty_d("Fun") +
+  scale_y_continuous(labels=scales::comma, expand=c(0,0), limits=c(0,1600)) +
+  scale_x_continuous(expand=c(.02,.02),guide = "axis_minor",minor_breaks = seq(2000, 2019, by = 1)) +
+  coord_cartesian(clip="off") +
+  cowplot::theme_minimal_grid(11.5) +
+  theme(text=element_text(family=f1),
+        legend.position="top",
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0),
+        axis.title = element_text(size=11),
+        axis.ticks.length.y = unit(.2,"lines"),
+        axis.ticks.length.x = unit(.7,"lines"),
+        ggh4x.axis.ticks.length.minor = rel(0.6),
+        legend.title=element_blank(),
+        legend.box.margin=margin(l=-48,b=5),
+        legend.key.height = unit(.5,"lines"),
+        legend.spacing.y = unit(.35, 'lines'),
+        plot.subtitle = element_text(lineheight=1, margin=margin(b=10)),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm"),
+        ) +
+  guides(fill=guide_legend(nrow=2,byrow = TRUE)) +
+  labs(x="Year",y="Number of records",title="Desert Rodents in The Portal Project", subtitle="The Portal Project is a long-term study of a Chihuahuan Desert Ecosystem near Portal, Arizona in U.S.A.\nThe graphic shows the number of records by species and year, from 2000 to 2019. Includes five species\nwith the highest count, out of twenty species surveyed in the period.",caption=caption)
+
+ggsave("export/2023_18_p3.png",bg="#fafafa")
+```
+
