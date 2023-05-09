@@ -1,0 +1,222 @@
+---
+title: "2023_19"
+date: "2023-05-09"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [19 Childcare Costs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-05-09/readme.md), data from [National Database of Childcare Prices](https://www.dol.gov/agencies/wb/topics/featured-childcare)
+
+```{r load libraries}
+library(tidyverse)
+library(usmap)
+library(biscale)
+library(cowplot)
+library(ggh4x)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Archivo Narrow")
+f1 = "Archivo Narrow"
+font_add_google("IBM Plex Sans")
+f2 = "IBM Plex Sans"
+```
+
+```{r read in data}
+childcare_costs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/childcare_costs.csv')
+counties <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/counties.csv')
+caption="#TidyTuesday week 18  •  Source: National Database of Childcare Prices"
+```
+
+```{r correlation}
+library(corrr)
+childcare_costs |> select(-county_fips_code) |> select(-contains("h_")) |>
+  na.omit() |>
+  correlate() 
+```
+
+```{r wrangle}
+d1 = childcare_costs |> 
+  left_join(counties, by="county_fips_code") |>
+  mutate(region=case_when(state_abbreviation %in% .northeast_region ~"Northeast Region",
+                          state_abbreviation %in% .midwest_region ~"Midwest Region",
+                          state_abbreviation %in% .south_region ~"South Region",
+                          state_abbreviation %in% .west_region ~"West Region",
+                          )) 
+```
+
+```{r description df}
+# copied from github readme using {datapasta}
+des = tibble::tribble(
+           ~name,  ~type, ~description,
+            "mcsa", "double", "Weekly, full-time median price charged for Center-Based Care for those who are school age reported in the market rate survey report",
+          "mfccsa", "double",  "Weekly, full-time median price charged for Family Childcare for those who are school age reported in the market rate survey report",
+       "mc_infant", "double",                                                                                                              "Aggregated weekly, full-time median price charged for Center-based Care for infants (i.e. aged 0 through 23 months).",
+      "mc_toddler", "double",                                                                                                            "Aggregated weekly, full-time median price charged for Center-based Care for toddlers (i.e. aged 24 through 35 months).",
+    "mc_preschool", "double",                                                                                                        "Aggregated weekly, full-time median price charged for Center-based Care for preschoolers (i.e. aged 36 through 54 months).",
+     "mfcc_infant", "double",                                                                                                               "Aggregated weekly, full-time median price charged for Family Childcare for infants (i.e. aged 0 through 23 months).",
+    "mfcc_toddler", "double",                                                                                                             "Aggregated weekly, full-time median price charged for Family Childcare for toddlers (i.e. aged 24 through 35 months).",
+  "mfcc_preschool", "double",                                                                                                         "Aggregated weekly, full-time median price charged for Family Childcare for preschoolers (i.e. aged 36 through 54 months)."
+  ) |> select(-type)
+
+des1=des |> 
+  mutate(description=str_remove(description,"full-time median price charged for"),
+         description=str_to_lower(description),
+         grp1=case_when(str_detect(description,"center-based care")~"Center-Based Care",
+                        TRUE~"Family Childcare"),
+         grp1=str_to_upper(grp1),
+         description=str_remove(description,"center-based care for "),
+         description=str_remove(description,"family childcare for "),
+         lab=str_wrap(str_to_sentence(description),33),
+         #lab=glue::glue("{name}\n{description}")
+         )
+```
+
+```{r p1 data}
+d1a = d1 |> filter(state_abbreviation=="CA") |>
+ select(county_fips_code,study_year,mcsa:mfcc_preschool) |>
+  pivot_longer(mcsa:mfcc_preschool) |>
+  drop_na(value) |>
+  left_join(des1, by="name") |>
+  mutate(grp=case_when(county_fips_code==06075~"San Francisco County",TRUE~"Other counties in California"),
+         name=factor(name,levels=c("mcsa","mc_infant","mc_toddler","mc_preschool","mfccsa","mfcc_infant","mfcc_toddler","mfcc_preschool"))) |>
+  arrange(name) |>
+  mutate(lab=fct_inorder(lab))
+```
+
+```{r p1, fig.height=3.5, fig.width=4, warning=FALSE, message=FALSE}
+ d1a |>
+  ggplot(aes(x=study_year)) +
+  geom_ribbon(data=d1a |> filter(grp=="Other counties in California") |>
+  group_by(grp1,lab,study_year) |>
+  summarise(ymin=min(value), ymax=max(value)) |>
+  ungroup(), aes(x=study_year, ymin=ymin, ymax=ymax), alpha=.1, color="grey") +
+  geom_line(aes(y=value,color=fct_rev(grp), size=fct_rev(grp), alpha=fct_rev(grp), group=county_fips_code), key_glyph=draw_key_rect) +
+  scale_alpha_manual(values=c(1,0.4), guide="none") +
+  scale_size_manual(values=c(.8,.4)) +
+  scale_color_manual(values=c("#A31414","grey60")) +
+  scale_x_continuous(breaks=seq(2008,2018,2),labels=c("'08","'10","'12","'14","'16","'18")) +
+  scale_y_continuous(limits=c(100,500)) +
+  coord_cartesian(expand=FALSE,clip = "off") +
+  facet_nested_wrap(vars(grp1,lab), dir="h", nrow = 2, scales = "free_x",nest_line = element_line()) +
+  #facet_wrap(~lab, nrow=2, scales = "free_x") +
+  cowplot::theme_minimal_grid(11) +
+  theme(plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30",margin=margin(t=10)),
+        strip.text=element_text(hjust=0, family=f1, vjust=0, size=9.5, margin=margin(t=5,b=10)),
+        axis.ticks.length = unit(.4,"lines"),
+        panel.spacing.x = unit(1.2,"lines"),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.margin=margin(l=-40, b=-20),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm")) +
+  labs(x="Study year",y="Full-time median price charged",
+       title="Childcare Prices in San Francisco County, California (2008 - 2018)",
+       caption=caption)
+
+ggsave("export/2023_19_p1.png",height=7, width=8, bg="#fafafa")
+```
+
+```{r p2, warning=FALSE, message=FALSE, fig.height=3, fig.width=4}
+d2 = d1 |> filter(study_year==max(study_year)) |>
+  rename(fips=county_fips_code)|>
+  mutate(fips=as.character(fips),
+         fips=str_pad(fips, 5, pad = "0"))
+
+d2 = bi_class(d2, x=pr_f, y=mcsa, style = "quantile", dim = 3)
+d3 = usmap::us_map(regions = "counties") |> right_join(d2, by="fips")
+legend = bi_legend(pal = "BlueGold",dim = 3,xlab = "Higher poverty rate",ylab = "Higher median price",size = 8) +theme(text=element_text(family=f1))
+
+map= d3 |>
+  filter(region=="South Region") |>
+  ggplot() +
+  geom_polygon(data=usmap::us_map(regions = "counties", include=.south_region),aes(x=x, y=y, group=group), fill="transparent", color="grey", linewidth=.1) +
+  geom_polygon(aes(x=x, y=y, group=group, fill=bi_class)) +
+  bi_scale_fill(pal = "BlueGold", dim = 3, na.value="transparent") +
+  coord_equal(expand=FALSE) +
+  theme_void() +
+  theme(legend.position = "none",
+        text=element_text(family=f1),
+        plot.title=element_text(family=f2, face="bold"),
+        plot.subtitle=element_text(margin=margin(t=7,b=5), color="grey20"),
+        plot.caption=element_text(color="grey30"),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
+  labs(title="Childcare prices and poverty rate, South Region, 2018",
+       subtitle="Poverty rate for families and weekly full-time median price charged for Center-Based Care for those who are school age based\non the results reported in the market rate survey report for the county or the rate zone/cluster to which the county is assigned.\n",
+       caption=caption)
+
+ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0, .64, 0.22, 0.22)
+
+ggsave("export/2023_19_p2.png",height=6.3, width=8, bg="white")
+```
+
+```{r p3, warning=FALSE, message=FALSE, fig.height=3, fig.width=4}
+d2 = bi_class(d2, x=flfpr_20to64_under6, y=mcsa, style = "quantile", dim = 3)
+d3 = usmap::us_map(regions = "counties") |> right_join(d2, by="fips")
+legend = bi_legend(pal = "BlueOr",dim = 3,xlab = "Higher labor force rate",ylab = "Higher median price",size = 8) +theme(text=element_text(family=f1))
+
+map= d3 |> filter(region=="South Region") |>
+  ggplot() +
+  geom_polygon(data=usmap::us_map(regions = "counties", include=.south_region),aes(x=x, y=y, group=group), fill="transparent", color="grey", linewidth=.1) +
+  geom_polygon(aes(x=x, y=y, group=group, fill=bi_class)) +
+  bi_scale_fill(pal = "BlueOr", dim = 3,na.value="transparent") +
+  coord_equal(expand=FALSE) +
+  theme_void() +
+  theme(legend.position = "none",
+        text=element_text(family=f1),
+        plot.title=element_text(family=f2, face="bold"),
+        plot.subtitle=element_text(margin=margin(t=7,b=5), color="grey20"),
+        plot.caption=element_text(color="grey30"),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")) +
+  labs(title="Childcare prices and female labor force participation, South Region, 2018",
+       subtitle="Labor force participation rate of the female population aged 20 to 64 years old who have children under 6 years old. And\nweekly, full-time median price charged for Center-Based Care for those who are school age based on the results reported\nin the market rate survey report for the county or the rate zone/cluster to which the county is assigned.",
+       caption=caption)
+
+ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0, .62, 0.22, 0.22)
+
+ggsave("export/2023_19_p3.png",height=6.3, width=8, bg="white")
+```
+
+```{r p4,fig.height=3, fig.width=4, warning=FALSE,message=FALSE}
+d2 = bi_class(d2, x=mhi_2018, y=mcsa, style = "quantile", dim = 3)
+d3 = usmap::us_map(regions = "counties") |> right_join(d2, by="fips")
+legend = bi_legend(pal = "BlueGold",dim = 3,xlab = "Higher household income",ylab = "Higher median price",size = 8) +theme(text=element_text(family=f1), plot.background = element_rect(fill="transparent"))
+
+map= d3 |>
+  ggplot() +
+  geom_polygon(data=usmap::us_map(regions = "counties"),aes(x=x, y=y, group=group), fill="transparent", color="grey", linewidth=.1)+
+  geom_polygon(aes(x=x, y=y, group=group, fill=bi_class)) +
+  bi_scale_fill(pal = "BlueGold", dim = 3, na.value="transparent") +
+  coord_equal(expand=FALSE) +
+  theme_void() +
+  theme(legend.position = "none",
+        text=element_text(family=f1),
+        plot.title=element_text(family=f2, face="bold"),
+        plot.subtitle=element_text(margin=margin(t=7,b=5), color="grey20"),
+        plot.caption=element_text(hjust=0,color="grey30"),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm")) +
+  labs(title="Childcare prices and household income, 2018",
+       subtitle="Median household income expressed in 2018 dollars. And weekly full-time median price charged for Center-Based\nCare for those who are school age based on the results reported in the market rate survey report for the county or\nthe rate zone/cluster to which the county is assigned.",
+       caption=caption)
+
+ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0.57, 0.05, 0.22, 0.22)
+
+ggsave("export/2023_19_p4.png",height=6.5, width=8, bg="white")
+```
+
+
+
+
+
+
+
