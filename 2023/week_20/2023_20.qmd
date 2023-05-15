@@ -1,0 +1,91 @@
+---
+title: "2023_20"
+date: "2023-05-16"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [20 Tornados](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-05-16/readme.md), data from [NOAA's National Weather Service Storm Prediction Center Severe Weather Maps, Graphics, and Data Page](https://www.spc.noaa.gov/wcm/#data)
+
+```{r}
+library(tidyverse)
+options(dplyr.summarise.inform = FALSE)
+library(geofacet)
+library(ggh4x)
+library(usmap)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r}
+font_add_google("Barlow Semi Condensed")
+f1 = "Barlow Semi Condensed"
+font_add_google("Barlow")
+f2 = "Barlow"
+```
+
+```{r read in data}
+tornados <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-16/tornados.csv')
+caption="#TidyTuesday week 20  •  Source: NOAA's National Weather Service Storm Prediction Center"
+```
+
+
+```{r wrangle}
+df1= tornados |>
+  mutate(name=case_when(st %in% .new_england~"New England",
+                        st %in% .mid_atlantic~"Middle Atlantic",
+                        st %in% .east_north_central~"East North Central",
+                        st %in% .west_north_central~"West North Central",
+                        st %in% .south_atlantic~"South Atlantic",
+                        st %in% .east_south_central~"East South Central",
+                        st %in% .west_south_central~"West South Central",
+                        st %in% .mountain~"Mountain",
+                        st %in% .pacific~"Pacific",
+                        )) |>
+  mutate(grp=case_when(is.na(loss)~"Without property loss",
+                       TRUE~"With property loss")) |>
+  drop_na(name) |>
+  group_by(name, yr,grp) |>
+  summarise(n=n_distinct(om)) |> ungroup() |>
+  left_join(us_census_div_grid1 %>% select(1:2), by="name")
+```
+
+
+```{r p1, warning=FALSE, message=FALSE, fig.height=2.5, fig.width=4}
+df1 |>
+  group_by(name,code, yr) |>
+  mutate(pct=n/sum(n)) |>
+  ggplot(aes(x=yr,y=pct,fill=fct_rev(grp))) +
+  geom_col(width=1,alpha=.9) +
+  facet_geo(~name,grid="us_census_div_grid1") +
+  scale_y_continuous(breaks=seq(0,1,.25),labels=scales::percent) +
+  scale_x_continuous(limits=c(1950,2022),breaks=seq(1950,2020,20),labels=c("'50","'70","'90","'10"), guide = "axis_minor",minor_breaks = seq(1950,2020,10)) +
+  scale_fill_manual(values=c("#0CA3B0","#F7A072")) +
+  coord_cartesian(expand=FALSE, clip="off") +
+  cowplot::theme_minimal_grid(11)+
+  theme(text=element_text(family=f2),
+        legend.position = "top",
+        panel.spacing.y = unit(1.2,"lines"),
+        panel.grid.major.x = element_blank(),
+        axis.ticks.length = unit(.4,"lines"),
+        axis.ticks = element_line(size=.3, color="grey80"),
+        ggh4x.axis.ticks.length.minor = rel(0.6),
+        strip.text = element_text(family=f1, size=11),
+        plot.title.position = "plot",
+        plot.title = element_text(face="plain", margin=margin(b=-75), size=15),
+        legend.box.margin = margin(t=75, b=-75,l=-42),
+        legend.direction = "vertical",
+        legend.title=element_blank(),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0),
+        plot.margin=margin(.5,.5,.4,.5,unit="cm"),
+        plot.background = element_rect(fill="#fafafa",color=NA)) +
+  labs(caption=caption,y="Percent",x="Year",
+       title="Proportion of tornados with property loss by division\n1950 - 2022") +
+  guides(fill=guide_legend(reverse = TRUE))
+
+ggsave("2023_20.png", height=5, width=8)
+```
+
+
