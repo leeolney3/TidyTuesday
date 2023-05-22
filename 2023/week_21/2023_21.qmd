@@ -1,0 +1,184 @@
+---
+title: "2023_21"
+date: "2023-05-23"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [21 Central Park Squirrels](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-05-23/readme.md), data from [2018 Central Park Squirrel Census](https://data.cityofnewyork.us/Environment/2018-Central-Park-Squirrel-Census-Squirrel-Data/vfnx-vebw)
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(basemapR)
+library(osmdata)
+library(ggtext)
+library(patchwork)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Inter")
+f2 = "Inter"
+```
+
+### basemap
+```{r}
+# osm data
+# reference: http://joshuamccrain.com/tutorials/maps/streets_tutorial.html
+big_streets <- bbox %>% opq() %>%
+  add_osm_feature(key = "highway", value = c("motorway", "primary", "motorway_link", "primary_link")) %>%
+  osmdata_sf()
+
+med_streets <- bbox %>% opq() %>%
+  add_osm_feature(key = "highway", value = c("secondary", "tertiary", "secondary_link", "tertiary_link")) %>%
+  osmdata_sf()
+
+footway <- bbox %>% opq() %>%
+  add_osm_feature(key = "highway", value = c("footway")) %>%
+  osmdata_sf()
+
+water = bbox %>% opq() %>%
+  add_osm_feature(key = 'natural', value = 'water') %>%
+  osmdata_sf()
+```
+
+```{r}
+c1 = "#ccdbdc"
+base= ggplot() +
+  geom_sf(data=water$osm_polygons, inherit.aes = FALSE,fill = c1,color = c1) +
+  geom_sf(data=water$osm_multipolygons, inherit.aes = FALSE,fill =c1,color = c1) +
+   geom_sf(data = med_streets$osm_lines,inherit.aes = FALSE,color = "black",linewidth = .2,alpha = .5)+
+  geom_sf(data = footway$osm_lines,inherit.aes = FALSE,color = "black",linewidth = .1,alpha = .5)+
+  geom_sf(data = big_streets$osm_lines,inherit.aes = FALSE,color = "black", linewidth=.3, alpha=.5) 
+```
+
+### Sightings, geom_hdr_points and geom_bin2d
+```{r}
+theme1 = cowplot::theme_map(10) +
+  theme(legend.position = "top",
+        text=element_text(family=f2),
+        legend.title=element_text(),
+        plot.caption = element_text(hjust=0, color="grey30"))
+```
+
+```{r "geom_hdr_points"}
+p1a=base+ 
+  ggdensity::geom_hdr_points(data=s2, aes(x=x, y=y,color = after_stat(probs)), alpha=.7, size=.7) +
+  scico::scale_color_scico_d(name="Probability:",palette = "batlow",direction=-1, guide=guide_legend(title.position="top", override.aes = list(size=3))) +
+  coord_sf(xlim = c(ogbbox['xmin'], ogbbox['xmax']),
+           ylim = c(ogbbox['ymin'],ogbbox['ymax']), crs = 4326) +
+  theme1 
+```
+
+```{r "geombin2d"}
+# geom_bin2d method from https://twitter.com/geokaramanis/status/1556190545143267328
+p1b =base + geom_bin2d(data=squirrel_data, aes(x=x, y=y), bins=50, alpha=.7) +
+  coord_sf(xlim = c(ogbbox['xmin'], ogbbox['xmax']),
+           ylim = c(ogbbox['ymin'],ogbbox['ymax']), crs = 4326) +
+  scico::scale_fill_scico(name="Count of sightings:",palette = "batlow",direction=-1, guide=guide_colorbar(title.position="top",barwidth=unit(8,"lines"),barheight = unit(.4,"lines"))) +
+  theme1
+```
+
+```{r, fig.height=3, fig.width=3.5}
+p1a + p1b +
+  plot_annotation(title="Central Park Squirrel Sightings",
+                  subtitle="Between Oct 06, 2018 and Oct 20,2018",
+                  caption=caption) &
+  theme1
+ggsave("export/2023_21_p1.png", height=6.2, width=7, bg="white")
+```
+
+### Sightings by age, geom_hdr_lines()
+```{r, fig.height=3, fig.width=3.5}
+s2= squirrel_data |> filter(age %in% c("Adult","Juvenile")) |>
+  mutate(age1=
+           case_when(age=="Adult"~glue::glue("<span style='color:#E66100'>**{age}**</span> (n=2,568)"),
+                     age=="Juvenile"~glue::glue("<span style='color:#5D3A9B'>**{age}**</span> (n=330)")))
+
+base +
+  ggdensity::geom_hdr_lines(data=s2, aes(x=x, y=y, color=age1), probs = c(0.9,0.5,0.25),) +
+  scale_alpha_manual(values=c(.25,.6,1)) +
+  geom_point(data=s2, aes(x=x, y=y, color=age1),size=.3, alpha=.9) +
+  scale_color_manual(values=c("#5D3A9B","#E66100"), guide="none") +
+  facet_wrap(~fct_rev(age1)) +
+  coord_sf(xlim = c(ogbbox['xmin'], ogbbox['xmax']),
+           ylim = c(ogbbox['ymin'],ogbbox['ymax']), crs = 4326, expand=FALSE) +
+  cowplot::theme_map(10) +
+  theme(text=element_text(family = f2),
+        strip.text = element_markdown(size=10.5, hjust=0),
+        panel.spacing = unit(1.5,"lines"),
+        legend.position = "top",
+        legend.box="vertical",
+        legend.box.just = "left",
+        plot.margin=margin(.3,.3,.3,.3,unit="cm"),
+        plot.caption=element_text(hjust=0, color="grey30", margin=margin(t=12))
+        ) +
+  labs(title="Central Park Squirrel Sightings",
+       subtitle="Between Oct 06, 2018 and Oct 20,2018",
+       caption=caption, alpha="Probability:")
+ggsave("export/2023_21_p2.png", height=6.2, width=7, bg="white")
+```
+
+### Sightings count, geom_sf()
+
+```{r geom_sf}
+# geom_sf point method adopted from https://twitter.com/issa_madjid/status/1498795224922996741
+cdf= squirrel_data |> filter(age %in% c("Adult","Juvenile")) |>
+  select(x,y,unique_squirrel_id, age) |>
+  mutate(
+    circle_long = plyr::round_any(x, .0007, ceiling),
+    circle_lat = plyr::round_any(y, .0007, ceiling), 
+    .before = 1L
+  ) |> 
+  count(circle_long, circle_lat, age) 
+
+csf = cdf %>% 
+  st_as_sf(coords = c("circle_long", "circle_lat")) %>% 
+  st_set_crs(4326)
+
+p3 =base + geom_sf(data=csf, aes(color=n)) + 
+  coord_sf(xlim = c(ogbbox['xmin'], ogbbox['xmax']),
+           ylim = c(ogbbox['ymin'],ogbbox['ymax']), crs = 4326) +
+  scico::scale_color_scico(name="geom_sf()\nCount of sightings:",palette="batlow",direction=-1, guide=guide_colorbar(title.position="top",barwidth=unit(8,"lines"),barheight = unit(.4,"lines"))) +
+  theme1
+```
+
+### Squirrel sightings by date, geom_hdr()
+
+```{r}
+s3= squirrel_data |>
+  mutate(date1=lubridate::mdy(date),
+         date2 = strftime(date1, '%b %d, %Y')) 
+
+# park intersection
+park1= park$osm_polygons |> filter(name=="Central Park") 
+mst = st_intersection(med_streets$osm_lines,park1)
+wmp = st_intersection(water$osm_multipolygons,park1)
+wp = st_intersection(water$osm_polygons,park1)
+```
+
+```{r, fig.height=2.5, fig.width=4}
+ggplot() + 
+  geom_sf(data = park1,inherit.aes = FALSE,color = "black",fill="transparent",linewidth = .2)+
+  geom_sf(data = mst,inherit.aes = FALSE,color = "black",linewidth = .2,alpha = .7)+
+  geom_sf(data=wmp, ,inherit.aes = FALSE,color = "grey50",fill="transparent",linewidth = .2) +
+  geom_sf(data=wp, ,inherit.aes = FALSE,color = "grey50",fill="transparent",linewidth = .2) +
+  scale_alpha_manual(values=c(.2,.4,.6,.8), guide=guide_legend(reverse=TRUE)) +
+  ggdensity::geom_hdr(data=s3, aes(x,y),fill="#0a1647") +
+  facet_wrap(~date2, nrow=2) +
+  coord_sf(xlim = c(ogbbox['xmin'], ogbbox['xmax']),
+           ylim = c(ogbbox['ymin'],ogbbox['ymax']), crs = 4326) +
+  cowplot::theme_map(10)+
+  theme(legend.position = "top",
+        text=element_text(family=f2),
+        plot.caption=element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.3,.3,.3,.3,unit="cm"),) +
+  labs(alpha="Probability:",title="Central Park squirrel sightings by date",
+       subtitle="Between Oct 06, 2018 and Oct 20,2018",caption=caption)
+
+ggsave("export/2023_21p3.png", height=5.2, width=8, bg="white")
+```
+
