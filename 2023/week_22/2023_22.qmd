@@ -1,0 +1,61 @@
+---
+title: "2023_22"
+date: "2023-05-30"
+format: html
+editor: visual
+---
+
+Quick plot for [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [22 Verified Oldest People](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-05-30/readme.md), data from [Wikipedia List of the verified oldest people](https://en.wikipedia.org/wiki/List_of_the_verified_oldest_people) via [frankiethull on GitHub](https://github.com/frankiethull/centenarians).
+
+```{r load libraries}
+library(tidyverse)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Barlow")
+f1 = "Barlow"
+```
+
+```{r read in data}
+centenarians <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-30/centenarians.csv')
+```
+
+```{r plot, fig.height=3.5, fig.width=4}
+centenarians |>
+  mutate(name1=paste0(rank,":"," ",name)) |>
+  ggplot(aes(x=age, y=str_to_title(gender))) +
+  scale_x_continuous(limits=c(111,123), breaks = seq(111,123,2)) +
+  ggdist::geom_dots(aes(group=NA,color=str_to_title(still_alive), fill=after_scale(colorspace::lighten(color,.3)))) +
+  geom_text(data=. %>% filter(rank<5, gender=="male"), aes(label=name1, vjust=(1+rank)*-2), size=3.8, hjust=0, nudge_x = .05, family=f1, color="#5D3A9B") +
+  geom_text(data=. %>% filter(rank ==1, gender=="female"), aes(label=name1, vjust=(1+rank)*-2), size=3.8, hjust=1,nudge_x = .05, family=f1, color="#5D3A9B") +
+  geom_text(data=. %>% filter(rank ==4, gender=="female"), aes(label=name1, vjust=(1+rank)*-2), size=3.8, hjust=0,nudge_x = .05, family=f1, color="#5D3A9B") +
+  ggrepel::geom_text_repel(data=. %>% filter(rank %in% c(2,3), gender=="female"), aes(label=name1, vjust=(1+rank)*-2), size=3.8, hjust=0, direction="y", box.padding = 0, min.segment.length = 10,nudge_x = 0.1, family=f1, color="#5D3A9B") +
+  geom_segment(data=. %>% filter(rank<5, gender=="male"), aes(x=age, xend=age, y=2.05, yend=2.13+(0.09*rank)),linewidth=.3) +
+  geom_segment(data=. %>% filter(rank==3, gender=="female"), aes(x=age, xend=age, y=1.095, yend=1.13+(0.09*rank)), linewidth=.3) +
+  geom_segment(data=. %>% filter(rank==4, gender=="female"), aes(x=age, xend=age, y=1.05, yend=1.13+(0.09*rank)),linewidth=.3) +
+  geom_segment(data=. %>% filter(rank==1, gender=="female"), aes(x=age, xend=age, y=1.05, yend=1.08+(0.1*rank)),linewidth=.3) +
+  scale_color_manual(values=c("#E66100","#5D3A9B")) +
+  scale_y_discrete(expand=c(0.1,0.1)) +
+  cowplot::theme_minimal_grid(13.5) +
+  theme(text=element_text(family=f1),
+        axis.ticks = element_blank(),
+        legend.position = "top",
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=12),
+        legend.box.margin = margin(l=-58.5),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30"),
+        plot.subtitle=element_text(lineheight=1, color="grey10", size=12),
+        plot.background = element_rect(color=NA, fill="#fafafa")) +
+  labs(x="Age", y="Gender", color="At the time when the article as referenced:",
+       title="Verified Oldest People", subtitle="Age of 100 known verified oldest people, either on the day of their death or on the day when the dataset\nwas extracted on May 25, 2023. Labelled are the rank and names of 4 oldest people by age and gender.",
+       caption="#TidyTuesday week 22  •  Source: Wikipedia List of the verified oldest people via frankiethull on GitHub")
+
+ggsave("export/2023_22.png", height=7, width=8)
+```
+
