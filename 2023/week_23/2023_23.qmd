@@ -1,0 +1,286 @@
+---
+title: "2023_23"
+date: "2023-06-06"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [23 Energy Data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-06-06/readme.md), data from Our World in Data's [Energy Data Explorer](https://ourworldindata.org/explorers/energy), complete dataset available via <https://github.com/owid/energy-data>
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(ggtext)
+library(geofacet)
+library(countrycode)
+library(geomtextpath)
+library(eurostat)
+library(cartogram)
+library(patchwork)
+```
+
+```{r load fonts}
+font_add_google("Archivo Narrow")
+f1="Archivo Narrow"
+font_add_google("Fira Sans")
+f2="Fira Sans"
+```
+
+```{r read in data}
+owid_energy <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-06/owid-energy.csv')
+caption="#TidyTuesday week 23  •  Source: Our World in Data's Energy Data Explorer"
+```
+
+### Ribbon plot, share of electricity generation
+
+```{r wrangle}
+df1 = owid_energy |> 
+  mutate(code = countrycode(iso_code, origin="iso3c",destination="iso2c")) |>
+  relocate(code, .after="year") 
+
+grid1 = eu_grid1 |> filter(!code %in% c("UK","MT")) |>
+  mutate(name=case_when(name=="Czech Republic"~"Czechia",TRUE~name))
+```
+
+```{r theme}
+theme1= cowplot::theme_minimal_grid(11) +
+  theme(text=element_text(family=f1),
+        axis.text=element_text(color="grey30"),
+        axis.title=element_text(size=10),
+        legend.title=element_blank(),
+        legend.box.margin=margin(l=-42),
+        legend.spacing.x = unit(0.3,"lines"),
+        legend.position = "top",
+        plot.margin=margin(.5,.5,.5,.5,unit="cm"),
+        panel.grid.major = element_line(size=.3),
+        axis.ticks = element_line(size=.3),
+        plot.title.position = "plot",
+        plot.title=element_markdown(),
+        plot.subtitle=element_text(color="grey25", size=10),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40")
+        )
+```
+
+```{r "p1", fig.height=3.5, fig.width=3.5, warning=FALSE, message=FALSE}
+# method from Georgios Karamanis, https://r-graph-gallery.com/web-time-series-and-facetting.html
+df1 |>
+  drop_na(low_carbon_share_elec,fossil_share_elec) |> 
+  ggplot(aes(x=year)) +
+  geom_line(aes(y=low_carbon_share_elec,color="low_carbon_share_elec"), size=.6) +
+  geom_line(aes(y=fossil_share_elec,color="fossil_share_elec"), size=.6) +
+  ggh4x::stat_difference(aes(ymax = fossil_share_elec, ymin = low_carbon_share_elec), alpha = 0.5) +
+  scale_x_continuous(breaks=seq(1990,2020,10), labels=c("'90","'00","'10","'20")) +
+  scale_y_continuous(labels=scales::percent_format(scale=1), breaks=seq(0,100,50)) +
+  scale_color_manual(values = c("#EC6044","#007C84"),labels = c("Fossil fuels share","Low carbon sources share")) +
+  scale_fill_manual(values = c("#EC6044","#007C84"),labels = c("Fossil fuels > Low carbon source","Low carbon sources > Fossil fuels")) +
+  geofacet::facet_geo(~country,grid=grid1)  +
+  theme1 +
+  labs(x="Year",y="Share of electricity generation",caption=caption,
+       title="Share of electricity generation from fossil fuels and low-carbon sources",
+       subtitle = "EU countries excluding Malta, from 1985 to 2022. Fossil fuels is the sum of primary energy from coal, oil and gas and\nlow carbon sources refers is the sum of primary energy from renewables and nuclear.") +
+  guides(color=guide_legend(order=1),fill=guide_legend(order=2))
+```
+
+#### Ribbon plot, share of consumption
+
+```{r "p2", fig.height=3.5, fig.width=3.5, warning=FALSE, message=FALSE}
+# method from Georgios Karamanis, https://r-graph-gallery.com/web-time-series-and-facetting.html
+df1 |> 
+  drop_na(fossil_share_energy,low_carbon_share_energy) |> 
+  ggplot(aes(x=year)) +
+  geom_line(aes(y=low_carbon_share_energy,color="low_carbon_share_energy"), size=.6) +
+  geom_line(aes(y=fossil_share_energy,color="fossil_share_energy"), size=.6) +
+  ggh4x::stat_difference(aes(ymax = fossil_share_energy, ymin = low_carbon_share_energy), alpha = 0.6) +
+  scale_x_continuous(breaks=seq(1970,2020,25), labels=c("'70","'95","'20")) +
+  scale_y_continuous(labels=scales::percent_format(scale=1), breaks=seq(0,100,50)) +
+  scale_color_manual(values=c("#F3AA21","#064DFF"),labels = c("Fossil fuels share","Low carbon sources share")) +
+  scale_fill_manual(values=c("#F3AA21","#064DFF"),labels = c("Fossil fuels > Low carbon source","Low carbon sources > Fossil fuels")) +
+  geofacet::facet_geo(~country,grid=grid1)  +
+  theme1 +
+  labs(x="Year",y="Share of primary energy consumption",caption=caption,
+       title="Share of primary energy consumption from fossil fuels and low-carbon sources",
+       subtitle = "EU countries excluding Malta, from 1965 to 2021. Fossil fuels is the sum of primary energy from coal, oil and gas and\nlow carbon sources refers is the sum of primary energy from renewables and nuclear.") +
+  guides(color=guide_legend(order=1),fill=guide_legend(order=2))
+```
+
+#### Line plot, per capita consumption
+
+```{r "p3", warning=FALSE, message=FALSE, fig.height=3.5, fig.width=3.5}
+df1b = df1 |> pivot_longer(!1:6) |>
+  mutate(code = case_when(country=="Greece"~"EL", TRUE~code)) |>
+  filter(code %in% grid1$code,year>=1990)
+
+df1b |>
+  filter(name %in% c("fossil_energy_per_capita","low_carbon_energy_per_capita")) |>
+  ggplot(aes(x=year, y=value, color=name)) +
+  geom_line(size=.7, alpha=.9) +
+  scale_y_continuous(labels=scales::label_number(suffix="k", scale = 1e-3)) +
+  scale_x_continuous(breaks=seq(1990,2020,10), labels=c("'90","'00","'10","'20")) +
+  scale_color_manual(values=c("#5D3A9B","#E66100"), labels=c("Fossil fuel","Low carbon energy"), name="Per capita primary energy consumption from:") +
+  geofacet::facet_geo(~country,grid=grid1) +
+  cowplot::theme_minimal_grid(11) +
+  theme(text=element_text(family=f1),
+        axis.text=element_text(color="grey30"),
+        axis.title=element_text(size=10),
+        legend.position = "none",
+        plot.margin=margin(.5,.5,.5,.5,unit="cm"),
+        panel.grid.major = element_line(size=.3),
+        axis.ticks = element_line(size=.3),
+        plot.title.position = "plot",
+        plot.title=element_markdown(),
+        plot.subtitle=element_text(color="grey25"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40")
+        ) +
+  labs(x="Year",y="Consumption", caption=caption,
+       title="Per capita primary energy consumption from <span style = 'color:#5D3A9B;'>fossil fuels</span> and <span style = 'color:#E66100;'>low carbon energy sources</span>",
+       subtitle="Measured in kilowatt-hours. EU27 countries excluding Malta, from 1990 to 2021.\nFossil fuel consumption per capita is measured as the average consumption of energy from coal, oil and gas per person. Low carbon\nenergy is the sum of nuclear and renewable energy sources, based on primary energy equivalents, rather than final electricity use.")
+```
+
+#### Line plot, electricity generation and energy consumption from renewables
+
+```{r p4 data}
+target=c("renewables_energy_per_capita","renewables_elec_per_capita","renewables_share_elec","renewables_share_energy")
+df2 = df1b |> 
+  filter(name %in% target, year>=1980) |>
+  drop_na(value) |>
+  mutate(long=case_when(name==target[1]~"Per capita primary energy consumption from renewables, measured in kilowatt-hours",
+                        name==target[2]~"Per capita electricity generation from renewables, measured in kilowatt-hours",
+                        name==target[3]~"Share of electricity generation that comes from renewables",
+                        name==target[4]~"Share of primary energy consumption that comes from renewables",
+                        )) |>
+  mutate(grp=case_when(country=="Sweden"~"Sweden",
+                       country=="Austria"~"Austria",
+                       country=="Finland"~"Finland",
+                       TRUE~"Other EU countries"),
+         grp=factor(grp, levels=c("Austria","Finland","Sweden","Other EU countries")))
+```
+
+```{r "p4", fig.height=3.5, fig.width=4}
+df2 |>
+  ggplot(aes(x=year, y=value,group=country)) +
+  geom_line(aes(color=grp, size=grp, alpha=grp), key_glyph=draw_key_rect) +
+  facet_wrap(~str_wrap(long,45), scales = "free") +
+  scale_y_continuous(labels = scales::label_number_si()) +
+  scale_color_manual(values=c("#52B0AE","#A31414","#2B6999","#88837D")) +
+  scale_size_manual(values=c(rep(.7,3),.4)) +
+  scale_alpha_manual(values=c(rep(1,3),.5)) +
+  scale_x_continuous(expand=c(.02,.02)) +
+  cowplot::theme_minimal_grid(12) +
+  theme(legend.position="top",
+        legend.text=element_text(size=11),
+        legend.title = element_blank(),
+        legend.key.height = unit(.3,"lines"),
+        legend.box.margin = margin(l=-23),
+        text=element_text(family=f2),
+        axis.title=element_blank(),
+        strip.text=element_text(hjust=0, size=11.2, lineheight = 1),
+        panel.spacing.x = unit(1.3,"lines"),
+        panel.spacing.y = unit(1,"lines"),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(size=11, color="grey20"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey30", margin=margin(t=10))) +
+  labs(x="Year",y="Value",caption=caption,
+       title="Electricity generation and energy consumption from renewables",
+       subtitle="EU27 countries, by year from 1980 to 2021")
+```
+
+#### Line plot, share of electricity consumption from biofuels
+
+```{r "p5", warning=FALSE, message=FALSE, fig.height=3, fig.width=4}
+owid_energy |>
+  drop_na(iso_code) |>
+  filter(year>=2000) |> drop_na(biofuel_share_energy) |>
+  ggplot(aes(x=year, y=biofuel_share_energy,group=country)) +
+  geom_point(alpha=.4, size=.5, color="#88837D") +
+  geom_point(data=. %>% filter(country %in% c("Brazil","Indonesia","Sweden")), aes(color=country), alpha=.9, size=1.5) +
+  geom_line(color="#88837D", alpha=.5, size=.6) +
+  geom_line(data=. %>% filter(country %in% c("Brazil","Indonesia","Sweden")), aes(color=country), size=.9) +
+  geom_textpath(data=. %>% filter(country =="Indonesia"), aes(color=country, label=country),vjust=-1,hjust=.98, family=f2, size=4.5) +
+  geom_textpath(data=. %>% filter(country =="Brazil"), aes(color=country, label=country),vjust=-1,hjust=.25, family=f2, size=4.5) +
+  geom_textpath(data=. %>% filter(country =="Sweden"), aes(color=country, label=country),vjust=-1,hjust=.75, family=f2, size=4.5) +
+  coord_flip() +
+  scale_x_reverse() +
+  scale_y_continuous(labels=scales::percent_format(scale=1), limits=c(0,8), breaks=seq(0,8,2)) + 
+  scale_color_manual(values=c("#52B0AE","#A31414","#2B6999")) +
+  cowplot::theme_minimal_grid() +
+  theme(text=element_text(family=f2),
+        legend.position = "none",
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.caption.position="plot",
+        plot.caption=element_text(hjust=0, color="grey30")) +
+  labs(x="Year",y="Percent", caption=caption,
+       title="Share of electricity generation that comes from biofuels",
+       subtitle="24 countries. From 2000 to 2021.")
+```
+
+### Choropleth map, share of electricity generation by source
+
+```{r shp}
+# get map of eu countries
+eu <- eurostat::get_eurostat_geospatial(nuts_level = 0, year = 2021, resolution = 03) %>% filter(CNTR_CODE %in% eu_countries$code)
+eu1= st_crop(eu, xmin=-22.5, ymin=31, xmax=45, ymax=71)
+```
+
+```{r p5 data}
+target= c("biofuel_share_elec","coal_share_elec","gas_share_elec","hydro_share_elec","nuclear_share_elec","oil_share_elec","solar_share_elec","wind_share_elec")
+md1 = df1b |> 
+  filter(name %in% target, year==2021) |>
+  rename(NUTS_ID=code) |>
+  mutate(name1=str_to_title(str_remove(name,"_share_elec"))) 
+md2=eu1 |> right_join(md1, by="NUTS_ID") 
+```
+
+```{r "p5", fig.height=3, fig.width=4}
+md2 |> ggplot() +
+  geom_sf(data=eu1, fill="grey90",linewidth=.1) +
+  geom_sf(aes(fill=value),linewidth=.1) +
+  coord_sf(crs = "+proj=aea +lat_1=30 +lat_2=60 +lat_0=0 +lon_0=25 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", default_crs = sf::st_crs(4326), xlim = c(-22.5, 45), ylim = c(31, 71), expand=FALSE) +
+  scico::scale_fill_scico(palette="bamako", direction=-1, limits=c(0,100),labels=scales::label_percent(scale=1), guide=guide_colorbar(barwidth=unit(10,"lines"),barheight = unit(.4,"lines"))) +
+  facet_wrap(~name1, nrow=2) +
+  cowplot::theme_map(12) +
+  theme(text=element_text(family=f2),
+        strip.text=element_text(size=12),
+        legend.position = "top",
+        legend.title=element_blank(),
+        plot.caption=element_text(hjust=0)) +
+  labs(caption=caption, title="Share of electricity generation by source, EU Countries, 2021") 
+```
+
+### Cartogram, share of electricity generation by source
+
+```{r p6 data}
+md3 = st_transform(md2, crs="+proj=aea +lat_1=30 +lat_2=60 +lat_0=0 +lon_0=25 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs")
+md3 = md3 |> drop_na(value)
+```
+
+```{r function}
+pfx = function(var){
+  cartogram_dorling(md3 %>% filter(name==var), weight = "value") |>
+  ggplot() +
+  geom_sf(aes(fill=value)) +
+  geom_sf_text(aes(label=iso_code, size=value,fill=value, color=after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), family=f1, show.legend = FALSE) +
+  scale_size(range=c(1,4)) +
+  scico::scale_fill_scico(palette="bamako", direction=-1,limits=c(0,100), labels=scales::percent_format(scale=1), guide=guide_colorbar(barwidth=unit(10,"lines"),barheight = unit(.4,"lines"))) +
+  coord_sf() +
+  facet_wrap(~name1) +
+  cowplot::theme_map() +
+  theme(legend.position = "top")
+}
+```
+
+```{r "p6", warning=FALSE, message=FALSE, fig.height=3, fig.width=4}
+(pfx(target[1]) | pfx(target[2]) | pfx(target[3]) | pfx(target[4]))/
+  (pfx(target[5]) | pfx(target[6]) | pfx(target[7]) | pfx(target[8])) +
+  plot_layout(guides = 'collect') +
+  plot_annotation(title="Share of electricity generation by source, EU countries, 2021", caption=caption) &
+  theme(legend.position = "top",
+        legend.title=element_blank(),
+        plot.title=element_text(hjust=.5, face="bold"),
+        strip.background = element_rect(fill="grey95",color=NA),
+        panel.background = element_rect(fill="grey95",color=NA)) 
+```
