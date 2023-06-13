@@ -1,0 +1,135 @@
+---
+title: "2023_24"
+date: "2023-06-13"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [24 SAFI survey data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-06-13/readme.md), [SAFI (Studying African Farmer-Led Irrigation) survey](https://datacarpentry.org/socialsci-workshop/data/), a subset of the data used in the [Data Carpentry Social Sciences workshop](https://datacarpentry.org/socialsci-workshop/).
+
+CITATION: Woodhouse, Philip; Veldwisch, Gert Jan; Brockington, Daniel; Komakech, Hans C.; Manjichi, Angela; Venot, Jean-Philippe (2018): SAFI Survey Results. doi:10.6084/m9.figshare.6262019.v1
+
+```{r load libraries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Roboto")
+f1="Roboto"
+font_add_google("Jost")
+f2="Jost"
+```
+
+```{r read in data}
+safi_data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-13/safi_data.csv')
+caption="#TidyTuesday week 24\nSource: Woodhouse, Philip; Veldwisch, Gert Jan; Brockington, Daniel; Komakech, Hans C.; Manjichi, Angela; Venot, Jean-Philippe\n(2018): SAFI Survey Results. doi:10.6084/m9.figshare.6262019.v1"
+```
+
+```{r p1 data, warning=FALSE}
+levels= c("none","Jan","Feb","Mar","Apr","May","June","July","Aug","Sept","Oct","Nov","Dec")
+df1= safi_data |> select(key_ID, village, months_lack_food) |>
+  separate(months_lack_food, c("m01", "m02", "m03","m04","m05","m06","m07","m08","m09","m10","m11","m12")) |>
+  pivot_longer(m01:m12) |>
+  drop_na(value) |> select(-name) |>
+  distinct() |>
+  group_by(village) |>
+  count(value) |> ungroup() |>
+  left_join(safi_data |> distinct(key_ID, village, months_lack_food) |> count(village, name="idc"), by="village") |>
+  mutate(pct=n/idc,
+         value=factor(value, levels=levels),
+         villagelong=glue::glue("**{village}** village (n={idc})")) 
+```
+
+```{r "p1", fig.height=3.2, fig.width=4}
+c1= "#0F24A3"
+
+df1 |> complete(value,villagelong, fill=list(pct=0)) |> 
+  ggplot(aes(x=pct, y=fct_rev(value))) +
+  geom_segment(aes(x=0, xend=pct, yend=fct_rev(value)), color=c1) +
+  geom_point(color=c1) +
+ geom_text(data=. %>% filter(value=="none",village=="Chirodzo"), aes(label=glue::glue("{scales::percent(pct,accuracy=.1)} of village's\nhouseholds")), hjust=0, nudge_x = .04, lineheight=.8, family=f1,size=3.7, color=c1) +
+  geom_text(data=. %>% filter(!(value=="none"&village=="Chirodzo")), aes(label=scales::percent(pct,accuracy=.1,drop0trailing = TRUE)), hjust=0,  nudge_x = .04, family=f1, size=3.7, color=c1) +
+  scale_x_continuous(limits=c(0,1), expand=c(0,0), label=scales::percent) +
+  coord_cartesian(clip="off") +
+  facet_wrap(~villagelong, ncol=3) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        panel.grid.major.y=element_blank(),
+        panel.background = element_rect(fill="grey95"),
+        panel.spacing = unit(2,"lines"),
+        strip.background = element_rect(fill="grey95"),
+        strip.text=element_markdown(hjust=0, size=12, family=f2),
+        plot.margin=margin(.4,.75,.4,.4,unit="cm"),
+        axis.title.x = element_text(margin=margin(t=5)),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2, size=15),
+        plot.subtitle = element_text(lineheight = 1.1, margin=margin(b=10), color="grey20"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(lineheight=1, hjust=0, color="grey40", margin=margin(t=7))
+        ) +
+  labs(y="Month", x="Percentage of households",
+       title="Percentage of households with insufficient food in the past 12 months",
+       subtitle="By village and months that the housedhold has insufficient food to feed the household. Data from the SAFI (Studying\nAfrican Farmer-Led Irrigation) survey data collected through interviews conducted between November 2016 and\nJune 2017 about households and agriculture in Tanzania and Mozambique.",
+       caption=caption)
+
+ggsave("export/2023_24_p1.png", height=6.4, width=8, bg="#fafafa")
+```
+
+```{r p2 data, warning=FALSE}
+df2 = safi_data |> 
+  filter(instanceID!="uuid:ec241f2c-0609-46ed-b5e8-fe575f6cefef") |>
+  select(key_ID, affect_conflicts, village, months_lack_food) |> 
+  separate(months_lack_food, c("m01", "m02", "m03","m04","m05","m06","m07","m08","m09","m10","m11","m12")) |>
+  pivot_longer(m01:m12) |>
+  drop_na(value) |> select(-name) |>
+  filter(value!="none") |>
+  group_by(key_ID, affect_conflicts, village) |>
+  summarise(n=n_distinct(value)) |> ungroup() 
+
+df3 = safi_data |>filter(months_lack_food=="none") |>
+  select(key_ID, affect_conflicts, village) |>
+  mutate(n=0)
+```
+
+```{r "p2", fig.height=3.2, fig.width=4, warning=FALSE}
+pal1= c("#B4AA9E","#1f7a8c","#f29479","#ef3c2d","#65010c")
+rbind(df2, df3) |> add_count(village, name="idc") |>
+  mutate(villagelong=glue::glue("**{village}** village (n={idc})")) |>
+  mutate(affect_conflicts=factor(affect_conflicts, levels=c("NULL","never","once","more_once","frequently"))) |>
+  group_by(village, n) |>
+  arrange(desc(affect_conflicts), by_group=TRUE) |>
+  mutate(y=row_number()) |>
+  ggplot(aes(x=n, y=y, color=affect_conflicts)) +
+  geom_point(size=4) +
+  scale_color_manual(values=pal1, labels=c("NULL","Never","Once","More than once","Frequently"), guide=guide_legend(title.position="top",reverse=TRUE)) +
+  scale_y_continuous(limits=c(1,17),breaks=seq(1,17,4)) +
+  facet_wrap(~villagelong, ncol=3, scales="free_y") +
+  cowplot::theme_minimal_grid(12) +
+  theme(legend.position="top",
+        legend.box.margin = margin(l=-30),
+        text=element_text(family=f1),
+        panel.background = element_rect(fill="grey95"),
+        panel.spacing = unit(2,"lines"),
+        strip.background = element_rect(fill="grey95"),
+        strip.text=element_markdown(hjust=0, size=12, family=f2),
+        plot.margin=margin(.4,.75,.4,.4,unit="cm"),
+        axis.title.x = element_text(margin=margin(t=5)),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2, size=14.7),
+        plot.subtitle = element_text(lineheight = 1.1, margin=margin(b=7), color="grey20"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(lineheight=1, hjust=0, color="grey40", margin=margin(t=5))
+        ) +
+  labs(x="Number of months with insufficient food to feed the household",y="Numebr of households", caption=caption,
+       color="Was the household affected by conflicts with other irrigators in the area?", 
+       title="Number of households and months with insufficient food to feed the household", 
+       subtitle="In the past 12 months, by village and conflict category. Data from the SAFI survey data collected through interviews\nconducted between November 2016 and June 2017 about households and agriculture in Tanzania and Mozambique.")
+
+ggsave("export/2023_24_p2.png", height=6.4, width=8, bg="#fafafa")
+```
+
+
