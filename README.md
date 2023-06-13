@@ -10,7 +10,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2023</b> (click to expand)</summary>
 
 <!-- toc -->
-* 2023/22 [Energy Data](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_23)
+* 2023/24 [SAFI survey data](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_24)
+* 2023/23 [Energy Data](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_23)
 * 2023/22 [Verified Oldest People](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_22)
 * 2023/21 [Central Park Squirrels](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_21)
 * 2023/20 [Tornados](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_20)
