@@ -1,0 +1,163 @@
+---
+title: "2023_25"
+date: "2023-06-20"
+format: html
+editor: visual
+---
+
+[#TidyTuesday](https://github.com/rfordatascience/tidytuesday) week [25 UFO Sightings Redux](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-06-20/readme.md), data from [National UFO Reporting Center](https://nuforc.org/webreports/ndxshape.html), [cleaned](https://github.com/jonthegeek/apis/blob/main/01_ufo-data.qmd) and [enriched](https://github.com/jonthegeek/apis/blob/main/01_ufo-enrich.qmd) with data from [sunrise-sunset.org](https://sunrise-sunset.org/) by [Jon Harmon](https://github.com/jonthegeek/apis/).
+
+```{r load libraries}
+library(tidyverse)
+library(lubridate)
+library(usmap)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Bitter")
+f1="Bitter"
+font_add_google("Jost")
+f2="Jost"
+```
+
+```{r read in data}
+ufo_sightings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/ufo_sightings.csv')
+places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/places.csv')
+day_parts_map <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/day_parts_map.csv')
+
+caption="#TidyTuesday week 25 | Source: National UFO Reporting Center"
+```
+
+### Density point map
+
+-   Highest density regions, location of sightings, US, 2000 to 2023
+
+```{r}
+d1= ufo_sightings |> filter(country_code=="US") |>
+  left_join(places, by=c("city","state","country_code")) |>
+  mutate(year=year(reported_date_time_utc)) |>
+  filter(year>=1950) 
+```
+
+```{r theme}
+theme1= cowplot::theme_map(12) +
+  theme(legend.position = "top",
+        text=element_text(family=f2),
+        legend.box.margin=margin(t=-13,b=-15),
+        legend.title=element_text(size=10.5),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm"),
+        plot.title = element_text(hjust=.5, family = f1, margin=margin(b=5)),
+        plot.subtitle = element_text(hjust=.5),
+        legend.justification = "center",
+        plot.caption=element_text(hjust=.5, color="grey35",size=8.5,margin=margin(t=7))
+        )
+```
+
+```{r "p1a", fig.height=3, fig.width=3.5}
+d1a = usmap::usmap_transform(d1, input_names = c("longitude","latitude"))
+ggplot() +
+  geom_polygon(data=usmap::us_map(regions = "states"), aes(x=x, y=y, group=group), fill="transparent", color="black", linewidth=.08) +
+  ggdensity::geom_hdr_points(data=d1a |> filter(year>2000), aes(x=x, y=y), probs = c(0.9,0.5,0.25,0.1), size=.5) +
+  scico::scale_color_scico_d(palette="batlow", direction=-1, name="Probs:", guide=guide_legend(override.aes = list(size=3))) +
+  coord_fixed(expand=FALSE, clip="off") +
+  theme1 +
+  labs(caption=caption, title="UFO Sightings in the U.S.",
+       subtitle="Highest density regions, sightings reported between Jan 1, 2000 and May 19, 2023\n")
+
+#ggsave("export/2023_25_p1a.png", bg="white", height=6, width=7)
+```
+
+### Circle map
+
+-   Count of sightings in the U.S. within a 20 miles radius, 1950 onwards, log-scale fill
+-   circle map method from [Abdoul Madjid \@issa_madjid](https://twitter.com/issa_madjid/status/1498795224922996741)
+
+```{r}
+d1b = d1 |>
+  mutate(circle_long = plyr::round_any(longitude, .35, ceiling),
+         circle_lat = plyr::round_any(latitude, .35, ceiling), 
+         .before = 1L) |> #code from @issa_madjid
+  count(circle_long, circle_lat) |>
+  mutate(bin = cut(n,breaks=c(0,1,10,20,Inf),include.lowest = F)) 
+ 
+d1c =usmap::usmap_transform(d1b, input_names = c("circle_long","circle_lat"))
+```
+
+```{r "p1b", fig.height=3, fig.width=3.5}
+ggplot() +
+  geom_point(data=d1c %>% filter(x>=-2100000), aes(x=x, y=y, color=n), size=.7) +
+  geom_polygon(data=usmap::us_map(regions = "states"), aes(x=x, y=y, group=group), fill="transparent", color="black", linewidth=.08) +
+  scico::scale_color_scico(trans="log10",palette="batlow", direction=-1, labels=scales::comma, guide=guide_colorbar(title.position = "top",barwidth = unit(10,"lines") ,barheight = unit(.4,"lines"))) +
+  coord_equal(expand=FALSE, clip="off") +
+  theme1 +
+  labs(title="UFO Sightings in the U.S.", color="",
+       subtitle="Count of sightings reported between Jan 2, 1950 and May 19, 2023",
+       caption=glue::glue("{caption} | Method from @issa_madjid"))
+
+#ggsave("export/2023_25_p1b.png", height=6, width=7, bg="white")
+```
+
+### Facetted column chart
+
+-   Count of sightings in the U.S., by day_part and week of year, 1950 onwards
+
+```{r "p2 data"}
+d2 = d1 |> 
+  drop_na(day_part) |>
+  add_count(day_part) |>
+  mutate(lab=glue::glue("{str_to_title(day_part)}<br><span style = 'font-size:8.5pt'>(n = {scales::comma(n)})</span>"),
+         lab=fct_infreq(lab,w=n),
+         week=week(reported_date_time_utc)) |>
+  count(lab, week) |>
+  group_by(lab) |>
+  mutate(pct=n/max(n)) |>
+  ungroup() 
+```
+
+```{r "p2", fig.height=3.5, fig.width=3.5}
+d2 |>
+  ggplot(aes(x=week, y=n)) +
+  geom_col(width=1) +
+  scale_x_continuous(breaks=seq(1,53,10)) +
+  scale_y_continuous(labels=scales::comma) +
+  facet_wrap(~lab, scales="free") +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f2),
+        axis.text = element_text(size=9),
+        axis.title.y.left = element_text(margin=margin(r=-3)),
+        panel.grid = element_line(linewidth=.3),
+        strip.text=element_markdown(hjust=0, lineheight=1.1, family=f1),
+        plot.margin=margin(.4,.75,.4,.4,unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f1, hjust=.5),
+        plot.subtitle = element_text(lineheight=1, hjust=.5, color="grey25"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(color="grey35", size=9.5)
+        ) +
+  labs(y="Count", x="Week of year",caption=caption,
+       title="UFO Sightings",
+       subtitle="Count of UFO Sightings reported in the U.S. between Jan 2, 1950 and May 19, 2023,\nby week of year and approximate part of the day in which the sighting took place.")
+
+#ggsave("export/2023_25_p2.png", bg="white")
+```
+
+```{r}
+# d1 |> select(reported_date_time_utc) |>
+#   mutate(quarter=quarter(reported_date_time_utc),
+#          month=month(reported_date_time_utc),
+#          week_of_year=week(reported_date_time_utc),
+#          day_of_month=mday(reported_date_time_utc),
+#          day_of_week=wday(reported_date_time_utc),
+#          hour=hour(reported_date_time_utc),
+#          ) |>
+#   pivot_longer(!reported_date_time_utc) |>
+#   ggplot(aes(x=value)) +
+#   geom_bar() +
+#   scale_y_continuous(labels=scales::comma) +
+#   facet_wrap(~name, scales="free") +
+#   cowplot::theme_minimal_grid(10)
+```
