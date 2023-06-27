@@ -10,6 +10,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2023</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2023/26 [US populated places](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_26)  
 * 2023/25 [UFO Sightings Redux](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_25)  
 * 2023/24 [SAFI survey data](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_24)
 * 2023/23 [Energy Data](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_23)
