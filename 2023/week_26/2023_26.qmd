@@ -1,0 +1,123 @@
+---
+title: "2023_26"
+date: "2023-06-27"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) [week 26 US Populated Places](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-06-27/readme.md) from [National Map Staged Products Directory](https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/GeographicNames/) from the [US Board of Geographic Names](https://www.usgs.gov/us-board-on-geographic-names/download-gnis-data).
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+library(scico)
+library(ggsci)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost", bold.wt = 500)
+f1="Jost"
+
+font_add_google("Barlow", bold.wt = 500)
+f2="Barlow"
+```
+
+```{r read in data}
+us_place_names <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-27/us_place_names.csv')
+us_place_history <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-27/us_place_history.csv')
+caption="TidyTuesday week 26\nSource: National Map Staged Products Directory and US Board of Geographic Names"
+```
+
+### us_place_names.csv
+```{r}
+counties = tigris::counties(cb=TRUE) #from us census
+cty_sf <- counties_sf("laea") #from {albersusa} package
+stfp= counties |> st_drop_geometry() |>
+  select(STATE_NAME,STUSPS,1:2,NAME) |>
+  distinct(STATEFP,STATE_NAME)
+
+name1= us_place_names |>
+  mutate(COUNTYFP=str_pad(county_numeric,3,pad="0")) |>
+  left_join(stfp, by=c("state_name"="STATE_NAME")) |>
+  drop_na(STATEFP) |>
+  mutate(fips=paste0(STATEFP,COUNTYFP)) |>
+  count(fips) 
+```
+
+```{r theme}
+theme1= cowplot::theme_map(12.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        strip.text = element_text(size=12),
+        plot.subtitle = element_text(color="grey25"),
+        plot.caption = element_text(color="grey40",hjust=0, size=9,margin=margin(t=10)),
+        plot.margin=margin(.4,.4,.3,.4,unit="cm")
+        ) 
+```
+
+```{r "p1", fig.height=3, fig.width=3.5}
+cty_sf |> left_join(name1 |> mutate(bin=cut(n, right=FALSE, breaks=c(0,25,50,100,Inf))), by="fips") |>
+  ggplot() +
+  geom_sf(aes(fill=bin),linewidth=.08, color="black") +
+  scale_fill_scico_d(palette="tokyo", direction=-1, label=c("25<","50<","100<","≥100", "No data"), guide=guide_legend(nrow=1)) +
+  coord_sf(expand=FALSE) +
+  theme1 +
+  labs(title="Populated Places by County, United States",
+       fill="Count: ",
+       caption=caption)
+
+ggsave("export/2023_26_p1.png", height=6, width=7, bg="white")
+```
+
+### us_place_history.csv
+
+```{r}
+history1 = us_place_history |> 
+  left_join(us_place_names, by="feature_id") |>
+  mutate(COUNTYFP=str_pad(county_numeric,3,pad="0")) |>
+  left_join(stfp, by=c("state_name"="STATE_NAME")) |>
+  drop_na(STATEFP) |>
+  mutate(fips=paste0(STATEFP,COUNTYFP)) |>
+  count(fips) 
+```
+
+```{r}
+city2= cty_sf |> 
+  left_join(name1 |>
+  mutate(bin = cut(n, quantile(n, 0:4/4),include.lowest = T,labels=c("≤25%", ">25, ≤50%", ">50, ≤75%", ">75%"))), by="fips") |> 
+  mutate(grp="Populated places")
+
+history2 = cty_sf |> left_join(history1 |>
+  mutate(bin = cut(n, quantile(n, 0:4/4),include.lowest = T,labels=c("≤25%", ">25, ≤50%", ">50, ≤75%", ">75%"))), by="fips") |> mutate(grp="Populated places, History")
+```
+
+```{r, fig.height=2, fig.width=4}
+rbind(city2, history2) |>
+  ggplot(aes(fill=bin)) +
+  geom_sf(linewidth=.05, color="black") +
+  coord_sf(expand=FALSE) +
+  facet_wrap(~grp) +
+  scale_fill_scico_d(direction=-1, palette="hawaii", na.translate = F) +
+  theme1 +
+  labs(fill="Quantile: ", 
+       title="Populated places count, United States",
+       #subtitle="Albers equal-area conic convenience projection",
+       caption=caption)
+
+ggsave("export/2023_26_p2.png", height=4.2, width=8, bg="white")
+```
+
+
+
+
+
+
+
+
+
+
+
