@@ -1,0 +1,82 @@
+---
+title: "2023_27"
+date: "2023-07-04"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) [week 27 Historical Markers](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-07-04/readme.md) from [Historical Marker Database USA Index](https://www.hmdb.org/geolists.asp?c=United%20States%20of%20America).
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Fira Sans", bold.wt = 500)
+f1="Fira Sans"
+```
+
+```{r read in data}
+historical_markers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-04/historical_markers.csv')
+no_markers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-04/no_markers.csv')
+```
+
+```{r map data}
+# Hex map method from Benjamin Nowak https://github.com/BjnNowak/TidyTuesday/blob/main/SC_UFO_density.R
+us<-ne_countries(type = "countries", scale = "small")%>%
+  st_as_sf()%>%
+  st_transform(crs='EPSG:4087')%>%
+  filter(admin=="United States of America")%>%
+  st_cast("POLYGON")%>%
+  mutate(id=row_number())%>%
+  filter(id==1)
+
+grd<-st_make_grid(us,n=c(100,100),square=FALSE,flat_topped=TRUE)%>%
+  st_as_sf()%>%
+  mutate(id=row_number())
+
+hm1= historical_markers |>
+  drop_na(latitude_minus_s, longitude_minus_w) |>
+  st_as_sf(coords=c("longitude_minus_w","latitude_minus_s"),crs='EPSG:4326') |>
+  st_transform(crs='EPSG:4087') |>
+  mutate(n=1)
+
+hm2= st_intersection(hm1, grd) |>
+  group_by(id) |>
+  summarize(sig=sum(n)) |>
+  ungroup() |>
+  st_drop_geometry()
+
+hm3<-grd |>
+  left_join(hm2) |>
+  st_intersection(us)
+
+summary(hm2$sig)
+```
+
+```{r plot, fig.height=2.7, fig.width=3.5}
+ggplot() +
+  geom_sf(data=hm3, aes(fill=sig), linewidth=.1) +
+  scico::scale_fill_scico(palette="bamako", direction = -1, trans="log", guide=guide_colorbar(barheight = unit(.5,"lines")), na.value="transparent", breaks=c(1,1471), labels=c("Less←","→More")) +
+  coord_sf(crs="EPSG:5070", expand=FALSE,clip="off") +
+  cowplot::theme_map(12.5) +
+  theme(text=element_text(family=f1),
+        legend.justification = "center",
+        legend.position = "top",
+        legend.title=element_blank(),
+        legend.box.margin = margin(t=4, b=-12),
+        plot.title = element_text(hjust=.5),
+        plot.caption = element_text(hjust=.5, color="grey40", size=8.5,margin=margin(t=12)),
+        plot.margin=margin(.4,.4,.3,.4,unit="cm")
+        ) +
+  labs(title="Historical Markers Count, Conterminous United States", caption="TidyTuesday week 27 | Data: Historical Marker Database USA Index | Method from Benjamin Nowak @BjnNowak")
+
+ggsave("export/2023_27.png", height=5.4, width=7, bg="#fafafa")
+```
+
+
