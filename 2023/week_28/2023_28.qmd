@@ -1,0 +1,102 @@
+---
+title: "2023_28"
+date: "2023-07-11"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) [week 28 Global surface temperatures](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-07-11/readme.md) from the [NASA GISS Surface Temperature Analysis (GISTEMP v4)](https://data.giss.nasa.gov/gistemp/).
+
+```{r load libraries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost", bold.wt = 500)
+f1="Jost"
+```
+
+```{r read in data,message=FALSE}
+global_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/global_temps.csv')
+nh_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/nh_temps.csv')
+sh_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/sh_temps.csv')
+zonann_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/zonann_temps.csv')
+```
+
+```{r wrangle}
+gl= global_temps |> select(Year,DJF:SON) |>
+  pivot_longer(!Year) |>
+  mutate(name=fct_inorder(name),
+         grp="Global")
+
+nh= nh_temps |> select(Year,DJF:SON) |>
+  pivot_longer(!Year) |>
+  mutate(name=fct_inorder(name),
+         grp="Northern Hemisphere")
+
+sh=sh_temps |> select(Year,DJF:SON) |>
+  pivot_longer(!Year) |>
+  mutate(name=fct_inorder(name),
+         grp="Southern Hemisphere")
+
+df = rbind(gl,nh,sh) |>
+  mutate(name=case_match(name,
+                         "DJF"~"Dec-Jan-Feb",
+                         "MAM"~"Mar-Apr-May",
+                         "JJA"~"Jun-Jul-Aug",
+                         "SON"~"Sep-Oct-Nov",
+                         ),
+         name=str_replace_all(name,"-","<br>"),
+         name=fct_inorder(name)) |>
+  drop_na()|>
+  mutate(yrgrp=case_when(Year<2000~"1880-1999",
+                       Year==2023~"2023",
+                       TRUE~"2000-2022"))
+```
+
+```{r plot, warning=FALSE, fig.height=3.5, fig.width=4}
+df|>
+  ggplot(aes(x=name, y=value, group=Year)) +
+  geom_hline(yintercept=0, color="grey40", linewidth=.5) +
+  geom_line(aes(color=yrgrp, alpha=yrgrp,linewidth=yrgrp),key_glyph='rect') +
+  facet_wrap(~grp) +
+  scale_linewidth_manual(values=c(.5,.5,1)) +
+  scale_color_manual(values=c("#9BAAAF","#989B6C","#9B4D3F")) +
+  scale_alpha_manual(values=c(.6,.6,1)) +
+  scale_x_discrete(expand=c(.05,.05)) +
+  scale_y_continuous(breaks=seq(-1,1.5,.5)) +
+  coord_cartesian(clip="off") +
+  cowplot::theme_minimal_grid(14) +
+  theme(text=element_text(family=f1),
+        axis.ticks = element_blank(),
+        axis.text.x = element_markdown(size=12),
+        axis.title=element_blank(),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(lineheight=1, color="grey20"),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40",margin=margin(t=12)),
+        panel.spacing = unit(1.2,"lines"),
+        strip.text=element_text(hjust=0, size=13.5, face="bold"),
+        legend.position = "top",
+        legend.title=element_blank(),
+        legend.box.margin = margin(l=-33),
+        panel.grid=element_line(size=.4)
+        ) +
+  labs(title="Surface temperatures",
+       subtitle="Global and hemispheric means by quarter from 1880 to May 2023. They combine land-surface, air and\nsea-surface water temperature anomalies (Land-Ocean Temperature Index, L-OTI). The values on the y-axis\nare deviations from the corresponding 1951-1980 means.",
+       caption="TidyTuesday week 28 | Source: NASA GISS Surface Temperature Analysis (GISTEMP v4)") +
+  geom_text(data=df |> filter(Year==2023,name =="Mar<br>Apr<br>May"), aes(label=Year, color=yrgrp),family=f1, fontface="bold",nudge_y = 0.1, show.legend = FALSE)
+
+ggsave("export/2023_28.png", height=7, width=8, bg="white")
+```
+
+
+
+
+
+
+
