@@ -1,0 +1,139 @@
+---
+title: "2023_29"
+date: "2023-07-18"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 29 [GPT detectors](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-07-18/readme.md), data from Simon Couch's [detectors R package](https://github.com/simonpcouch/detectors/).
+
+Citation: Liang, W., Yuksekgonul, M., Mao, Y., Wu, E., & Zou, J. (2023). GPT detectors are biased against non-native English writers. arXiv preprint arXiv:2304.02819.
+
+```{r load libraries}
+library(tidyverse)
+library(patchwork)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost", bold.wt = 500)
+f1="Jost"
+```
+
+```{r read in data}
+detectors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-18/detectors.csv')
+```
+
+```{r theme}
+theme1= cowplot::theme_minimal_grid(9.5) +
+  theme(text=element_text(family=f1),
+        axis.text.x=element_text(color="grey30", size=7.5),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.direction = "vertical",
+        legend.margin=margin(l=-47)
+        )
+```
+
+```{r plots 1 and 2}
+# non-native English writing samples
+# reference: page 6, https://arxiv.org/pdf/2304.02819.pdf
+
+levels =c("OriginalityAI","Quil","Sapling","HFOpenAI","Crossplag","GPTZero","ZeroGPT")
+g1a = "Human-Written Misclassified as AI-Generated"
+
+p1 = detectors |>
+  filter(name %in% c("Real TOEFL","US 8th grade essay")) |>
+  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
+  group_by(name, detector) |>
+  count(re) |> ungroup() |>
+  group_by(detector, name) |>
+  mutate(prop=n/sum(n)) |> ungroup() |>
+  filter(re==0) |>
+  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
+  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
+  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
+  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
+  scale_fill_manual(values=c("#9A1E5B","#F15B47"),labels=c("Real TOEFL Essays","Real US 8th-Grade Essays")) +
+  coord_cartesian(clip="off") +
+  theme1 +
+  labs(y="Detector", x=g1a)
+
+p2 = detectors |>
+  filter(name %in% c("Fake TOEFL - GPT4 - PE","US 8th grade essay - GPT simplify")) |>
+  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
+  group_by(name, detector) |>
+  count(re) |> ungroup() |>
+  group_by(detector, name) |>
+  mutate(prop=n/sum(n)) |> ungroup() |>
+  filter(re==1) |> 
+  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
+  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
+  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
+  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
+  scale_fill_manual(values=c("#3d0066","#c670ff"),labels=c("Real TOEFL Essays + Enhanced Word Choices","Real US 8th-Grade Essays + Simplified Word Choice")) +
+  coord_cartesian(clip="off") +
+  theme1 +
+  labs(y="Detector", x=g1a)
+```
+
+```{r plots 3 and 4}
+# simple prompts
+# reference: page 7, https://arxiv.org/pdf/2304.02819.pdf
+g1b = "Correctly Classified as AI-Generated"
+p3 = detectors |>
+  filter(name %in% c("Fake College Essays - GPT3","Fake College Essays - GPT3 Prompt Engineered")) |>
+  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
+  group_by(name, detector) |>
+  count(re) |> ungroup() |>
+  group_by(detector, name) |>
+  mutate(prop=n/sum(n)) |> ungroup() |>
+  filter(re==1) |> 
+  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
+  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
+  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
+  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
+  scale_fill_manual(values=c("#293087","#4293CF"),labels=c("US College Admission Essays: ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design")) +
+  coord_cartesian(clip="off") +
+  theme1 +
+  labs(y="Detector", x=g1b)
+
+p4 = detectors |>
+  filter(name %in% c("Fake CS224N - GPT3","Fake CS224N - GPT3, PE")) |>
+  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
+  group_by(name, detector) |>
+  count(re) |> ungroup() |>
+  group_by(detector, name) |>
+  mutate(prop=n/sum(n)) |> ungroup() |>
+  filter(re==1) |>
+  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
+  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
+  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
+  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
+  scale_fill_manual(values=c("#003E2B","#6BC84E"),labels=c("Scientific Abstracts:ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design")) +
+  coord_cartesian(clip="off") +
+  theme1 +
+  labs(y="Detector", x=g1b)
+```
+
+```{r combine plots, fig.height=3.5, fig.width=3.5}
+(p1 + p2)/(p3 + p4) +
+    plot_annotation(title = 'GPT detectors: Non-native English writers and simple prompts',
+                    subtitle="Data from the pre-print: GPT Detectors Are Biased Against Non-Native English Writers. Weixin Liang, Mert Yuksekgonul, Yining\nMao, Eric Wu, James Zou. arXiv: 2304.02819",
+                    caption="TidyTuesday week 29 | Simon Couch's {detectors} R package") & 
+  theme(text = element_text(f1),
+        plot.title=element_text(face="bold"),
+        plot.subtitle = element_text(color="grey30", size=8.5, margin=margin(b=-5), lineheight = 1),
+        plot.caption = element_text(hjust=0, color="grey40", size=8, margin=margin(t=-2)),
+        plot.margin=margin(.3,.5,.3,.3,unit="cm"))
+
+ggsave("export/2023_29.png", bg="white")
+```
+
+
