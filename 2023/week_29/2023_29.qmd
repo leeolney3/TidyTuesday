@@ -24,6 +24,9 @@ f1="Jost"
 
 ```{r read in data}
 detectors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-18/detectors.csv')
+
+levels =c("OriginalityAI","Quil","Sapling","HFOpenAI","Crossplag","GPTZero","ZeroGPT")
+g1a = "Human-Written Misclassified as AI-Generated"
 ```
 
 ```{r theme}
@@ -37,93 +40,53 @@ theme1= cowplot::theme_minimal_grid(9.5) +
         )
 ```
 
-```{r plots 1 and 2}
-# non-native English writing samples
-# reference: page 6, https://arxiv.org/pdf/2304.02819.pdf
-
-levels =c("OriginalityAI","Quil","Sapling","HFOpenAI","Crossplag","GPTZero","ZeroGPT")
-g1a = "Human-Written Misclassified as AI-Generated"
-
-p1 = detectors |>
-  filter(name %in% c("Real TOEFL","US 8th grade essay")) |>
-  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
+```{r function}
+myplot <- 
+  function(se,xvar,col1,col2,leg1,leg2,titlex){
+  detectors %>% 
+    filter(name %in% se) %>%
+    mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
   group_by(name, detector) |>
   count(re) |> ungroup() |>
   group_by(detector, name) |>
   mutate(prop=n/sum(n)) |> ungroup() |>
-  filter(re==0) |>
-  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
-  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
-  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
-  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
-  scale_fill_manual(values=c("#9A1E5B","#F15B47"),labels=c("Real TOEFL Essays","Real US 8th-Grade Essays")) +
-  coord_cartesian(clip="off") +
-  theme1 +
-  labs(y="Detector", x=g1a)
-
-p2 = detectors |>
-  filter(name %in% c("Fake TOEFL - GPT4 - PE","US 8th grade essay - GPT simplify")) |>
-  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
-  group_by(name, detector) |>
-  count(re) |> ungroup() |>
-  group_by(detector, name) |>
-  mutate(prop=n/sum(n)) |> ungroup() |>
-  filter(re==1) |> 
-  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
-  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
-  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
-  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
-  scale_fill_manual(values=c("#3d0066","#c670ff"),labels=c("Real TOEFL Essays + Enhanced Word Choices","Real US 8th-Grade Essays + Simplified Word Choice")) +
-  coord_cartesian(clip="off") +
-  theme1 +
-  labs(y="Detector", x=g1a)
+  filter(re==xvar) |>
+    ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
+    geom_line(aes(group=detector), size=1, color="#B3B3B3") +
+    geom_point(size=3, shape=21,key_glyph="rect", color="white") +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7)  +
+    scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
+    scale_fill_manual(values=c(col1,col2), labels=c(leg1,leg2)) +
+    labs(y="Detector", x=titlex) +
+    theme1
+}
 ```
 
-```{r plots 3 and 4}
-# simple prompts
-# reference: page 7, https://arxiv.org/pdf/2304.02819.pdf
-g1b = "Correctly Classified as AI-Generated"
-p3 = detectors |>
-  filter(name %in% c("Fake College Essays - GPT3","Fake College Essays - GPT3 Prompt Engineered")) |>
-  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
-  group_by(name, detector) |>
-  count(re) |> ungroup() |>
-  group_by(detector, name) |>
-  mutate(prop=n/sum(n)) |> ungroup() |>
-  filter(re==1) |> 
-  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
-  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
-  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
-  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
-  scale_fill_manual(values=c("#293087","#4293CF"),labels=c("US College Admission Essays: ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design")) +
-  coord_cartesian(clip="off") +
-  theme1 +
-  labs(y="Detector", x=g1b)
+```{r individual plots}
+# plots reference: page 6 and 7, https://arxiv.org/pdf/2304.02819.pdf
+d1 = myplot(c("Real TOEFL","US 8th grade essay"),0,
+       "#9A1E5B","#F15B47",
+       "Real TOEFL Essays","Real US 8th-Grade Essays",
+       "Human-Written Misclassified as AI-Generated")
 
-p4 = detectors |>
-  filter(name %in% c("Fake CS224N - GPT3","Fake CS224N - GPT3, PE")) |>
-  mutate(re = case_when(kind==.pred_class~1,TRUE~0)) |>
-  group_by(name, detector) |>
-  count(re) |> ungroup() |>
-  group_by(detector, name) |>
-  mutate(prop=n/sum(n)) |> ungroup() |>
-  filter(re==1) |>
-  ggplot(aes(x=prop, y=factor(detector, levels=rev(levels)),fill=name)) +
-  geom_line(aes(group=detector), size=1, color="#B3B3B3") +
-  geom_point(size=3, shape=21,key_glyph="rect", color="white") +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), vjust=-1, family=f1, show.legend = FALSE, size=2.7) +
-  scale_x_continuous(limits=c(0,1), labels=scales::percent, expand=c(0.02,0.02)) +
-  scale_fill_manual(values=c("#003E2B","#6BC84E"),labels=c("Scientific Abstracts:ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design")) +
-  coord_cartesian(clip="off") +
-  theme1 +
-  labs(y="Detector", x=g1b)
+d2 =myplot(c("Fake TOEFL - GPT4 - PE","US 8th grade essay - GPT simplify"),1,
+       "#3d0066","#c670ff",
+       "Real TOEFL Essays + Enhanced Word Choices","Real US 8th-Grade Essays + Simplified Word Choice",
+       "Human-Written Misclassified as AI-Generated")
+
+d3 = myplot(c("Fake College Essays - GPT3","Fake College Essays - GPT3 Prompt Engineered"),1,
+       "#293087","#4293CF",
+       "US College Admission Essays: ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design",
+       "Correctly Classified as AI-Generated")
+
+d4 =myplot(c("Fake CS224N - GPT3","Fake CS224N - GPT3, PE"),1,
+       "#003E2B","#6BC84E",
+       "Scientific Abstracts:ChatGPT-3.5 generated","ChatGPT-3.5 generated w/ prompt design",
+       "Correctly Classified as AI-Generated")
 ```
 
 ```{r combine plots, fig.height=3.5, fig.width=3.5}
-(p1 + p2)/(p3 + p4) +
+(d1 + d2)/(d3 + d4) +
     plot_annotation(title = 'GPT detectors: Non-native English writers and simple prompts',
                     subtitle="Data from the pre-print: GPT Detectors Are Biased Against Non-Native English Writers. Weixin Liang, Mert Yuksekgonul, Yining\nMao, Eric Wu, James Zou. arXiv: 2304.02819",
                     caption="TidyTuesday week 29 | Simon Couch's {detectors} R package") & 
@@ -135,5 +98,6 @@ p4 = detectors |>
 
 ggsave("export/2023_29.png", bg="white")
 ```
+
 
 
