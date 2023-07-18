@@ -10,6 +10,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2023</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2023/29 [GPT Detectors](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_29)  
 * 2023/28 [Global Surface Temperatures](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_28)  
 * 2023/27 [Historical Markers](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_27)  
 * 2023/26 [US populated places](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_26)  
