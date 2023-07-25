@@ -1,0 +1,160 @@
+---
+title: "2023_30"
+date: "2023-07-24"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 30 [Scurvy](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-07-25/readme.md), data from the [medicaldata R package](https://higgi13425.github.io/medicaldata/).
+
+```{r load libraries}
+library(tidyverse)
+library(ggh4x)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Barlow", bold.wt = 500)
+f1="Barlow"
+font_add_google("Staatliches", bold.wt = 500)
+f2="Staatliches"
+font_add_google("Jost", bold.wt = 500)
+f3="Jost"
+```
+
+```{r read in data}
+scurvy <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-25/scurvy.csv')
+```
+
+```{r wrangle}
+s1= scurvy |> select(study_id,treatment,gum_rot_d6:lassitude_d6) |>
+  pivot_longer(gum_rot_d6:lassitude_d6) |>
+  group_by(name) |>
+  arrange(study_id,name,value, treatment,by_group=T) |>
+  mutate(name1 = str_replace_all(name,"_"," "),
+         name1= str_to_title(str_trim(str_remove(name1,"d6"))),
+         treatment=str_wrap(str_to_title(str_replace_all(treatment,"_"," ")),14),
+         treatment=str_replace_all(treatment,"\n","<br>"),
+         value=str_to_title(str_replace_all(value,"_"," ")),
+         study_id1=str_pad(as.character(study_id), 2, pad = "0"),
+         header = "**Therapy**"
+         )
+```
+
+```{r text}
+subtitle=str_wrap("Data from James Lind's study published in 1757 in A Treatise on the Scurvy in Three Parts, containing 12 participants with scurvy. In 1757, it was not known that scurvy is a manifestation of vitamin C deficiency. Lind was the first to test different regimens of acidic substances (including citrus fruits) against each other in a randomized, controlled trial. 6 distinct therapies were tested in 12 seamen with symptomatic scurvy, who were selected for similar severity. Six days of therapy were provided, and endpoints were reported in the text at the end of 6 days. These include rotting of the gums, skin sores, weakness of the knees, and lassitude, which are described in terms of severity, translated into Likert scales from 0 (none) to 3 (severe).",115)
+```
+
+```{r, fig.height=3, fig.width=4}
+s1 |>
+  ggplot(aes(x=study_id1, y=fct_rev(str_wrap(name1,12)),shape=value, size=value, fill=value)) +
+  geom_point(fill="darkgrey", color="darkgrey",position=position_nudge(x=0.1, y=-0.04), show.legend = FALSE) +
+  geom_point() +
+  scale_shape_manual(values=c(21,22,23,24)) +
+  scale_size_manual(values=c(4.5,4.5,4,3.5)) +
+  scale_fill_manual(values=c("#00B67E","#007BA5","#FFAF37","#F24000")) +
+  facet_nested_wrap(~header+reorder(treatment,study_id),scales="free_x", nrow=1, nest_line = element_line(linewidth=.3, color="darkgrey"))+
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        axis.title=element_text(size=12),
+        axis.text.y=element_text(size=12, face="bold"),
+        strip.text = element_markdown(size=12, lineheight=.9, margin=margin(t=5,b=0)),
+        panel.grid.major.y = element_blank(),
+        legend.position = "top",
+        legend.box.margin = margin(l=-88,t=8, b=-10),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2, size=20),
+        plot.subtitle = element_text(color="grey20",lineheight = 1),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm")) +
+  labs(x="Participant ID",y="Symptoms",
+       shape="Endpoint: ", size="Endpoint: ",fill="Endpoint: ",
+       caption="#TidyTuesday week 30  |  Data: {medicaldata} R package ",
+       title="1757 Scurvy Study",
+       subtitle=subtitle)
+
+ggsave("export/2023_30_p1.png", height=6, width=8, bg="white")
+```
+
+
+
+```{r}
+s2 = scurvy |>
+  select(study_id, treatment,gum_rot_d6:fit_for_duty_d6) |>
+  pivot_longer(gum_rot_d6:fit_for_duty_d6) |>
+  group_by(study_id) |>
+  mutate(x=row_number()) |>
+  ungroup() |>
+  mutate(name = str_replace_all(name,"_"," "),
+         name = str_wrap(str_to_title(str_trim(str_remove(name,"d6"))),14),
+         name=fct_inorder(name),
+         value=str_to_title(str_replace_all(value,"_"," ")),
+         value=str_trim(gsub('[[:digit:]]+', '', value)),
+         treatment=fct_inorder(str_wrap(str_to_title(str_replace_all(treatment,"_"," ")),10)),) 
+```
+
+
+```{r}
+theme1=cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family=f1),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(linetype="dotted", color="darkgrey"),
+        strip.placement = "outside",
+        strip.text.y.left = element_text(angle=0),
+        axis.text.x.top = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2, size=20),
+        plot.subtitle = element_text(color="grey20",lineheight = 1),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm")
+        ) 
+```
+
+```{r, fig.height=4, fig.width=4}
+s2 |>
+  ggplot(aes(x=x, y=fct_rev(factor(study_id)))) +
+  geom_richtext(aes(label=value, fill=value), family=f3) +
+ scale_fill_manual(values=c("#DED48A","#F6B4CC","#DBDFEA",
+                             "#EBE9E0","#FF8575","#899FDB"), guide="none") +
+  facet_grid(rows=vars(treatment),cols=vars(name), scales = "free", switch = "y") +
+  scale_x_continuous(position="top")+
+  theme1 +
+  labs(x="Symptom", y="Therapy and Participant ID",
+       subtitle=subtitle,
+       caption="#TidyTuesday week 30  |  Data: {medicaldata} R package ",
+       title="1757 Scurvy Study",
+       ) 
+
+ggsave("export/2023_30_p2a.png", height=8, width=8, bg="white")
+```
+
+```{r, fig.height=4, fig.width=4}
+s2 |>
+  ggplot(aes(x=x, y=fct_rev(factor(study_id)))) +
+  geom_richtext(aes(label=value, fill=value,color=value), family=f3, size=4) +
+  scale_fill_manual(values=c("white","white","#DBDFEA","white","white","#52B0AE"), guide="none")+
+  scale_color_manual(values=c("#4293CF","#F15B47","black","#293087","#9A1E5B","black"), guide="none") +
+  facet_grid(rows=vars(treatment),cols=vars(name), scales = "free", switch = "y") +
+  scale_x_continuous(position="top")+
+  cowplot::theme_minimal_grid(13) +
+  theme1 +
+  labs(x="Symptom", y="Therapy and Participant ID",
+       subtitle=subtitle,
+       caption="#TidyTuesday week 30  |  Data: {medicaldata} R package ",
+       title="1757 Scurvy Study",
+       ) 
+
+ggsave("export/2023_30_p2b.png", height=8, width=8, bg="white")
+```
+
+
+
+
+
+
