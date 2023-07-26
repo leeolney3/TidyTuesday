@@ -2,7 +2,7 @@
 
 My submissions to [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) challenge, a weekly social data project by [Thomas Mock](https://thomasmock.netlify.com/) and [R4DS Online Learning Community](https://twitter.com/r4dscommunity) that focuses on data wrangling and visualisation. More information about #TidyTuesday is available at: [https://github.com/rfordatascience/tidytuesday#readme](https://github.com/rfordatascience/tidytuesday#readme).
 
-My #TidyTuesday visualisations and code are shown below. Feedback is very welcome via [Twitter](https://twitter.com/leeolney3) or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
+My #TidyTuesday visualisations and code are shown below. Feedback is very welcome via @leeolney@fosstodon.org or [leeolney3@gmail.com](mailto:leeolney3@gmail.com).
 
 **List of contributions**
 
