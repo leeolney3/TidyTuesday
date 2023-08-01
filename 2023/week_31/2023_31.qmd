@@ -1,0 +1,110 @@
+---
+title: "2023_31"
+date: "2023-08-01"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 31 [US State Names](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-08-01/readme.md), data from three Wikipedia articles: [List of states and territories of the United States](https://en.wikipedia.org/wiki/List_of_states_and_territories_of_the_United_States), [List of demonyms for US states and territories](https://en.wikipedia.org/wiki/List_of_demonyms_for_US_states_and_territories), and [List of state and territory name etymologies of the United States](https://en.wikipedia.org/wiki/List_of_state_and_territory_name_etymologies_of_the_United_States).
+
+```{r load libraries}
+library(tidyverse)
+library(usmap)
+library(ggtext)
+library(geofacet)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Jost", bold.wt = 500)
+f1="Jost"
+font_add_google("Bitter", bold.wt = 600)
+f2="Bitter"
+font_add_google("Barlow", bold.wt = 600)
+f3="Barlow"
+```
+
+```{r read in data}
+states <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-01/states.csv')
+state_name_etymology <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-01/state_name_etymology.csv')
+```
+
+```{r wrangle}
+s1= states |>
+  mutate(yr=lubridate::year(admission),
+         decade = yr - yr %% 10)|>
+  select(admission,yr,decade,abb=postal_abbreviation) |>
+  group_by(decade) |>
+  arrange(yr,abb,by_group=TRUE) |>
+  mutate(x=row_number()) |>
+  ungroup() |>
+  mutate(reg = case_when(abb %in% .northeast_region~"Northeast",
+                         abb %in% .midwest_region~"Midwest",
+                         abb %in% .south_region ~"South",
+                         abb %in% .west_region~"West",
+                         ),
+         decades = glue::glue("{decade}s"))
+```
+
+```{r text}
+caption ="TidyTuesday week 31 | Data: Wikipedia | Plot inspired by @barelymaps"
+subt= "<span style = 'font-size:10.5pt'>The decade when the state was admitted to the union, or when it ratified the US Constitution.<br>Arranged in ascending order of admission year and alphabetical order of state abbreviation.</span><br>**Regions:** <span style = 'color:#fafafa;'>.</span> <span style='color:#293087'>**Midwest**</span> <span style = 'color:#fafafa;'>.</span> <span style='color:#F15B47'>**Northeast**</span> <span style = 'color:#fafafa;'>.</span> <span style='color:#4090CA'>**South**</span> <span style = 'color:#fafafa;'>.</span> <span style='color:#9A1E5B'>**West**</span>"
+```
+
+```{r p1, fig.height=3.5, fig.width=3.5}
+# plot style inspired by @barelymaps https://twitter.com/barelymaps/status/1637481344354914305
+s1 |>
+  ggplot(aes(x=x, y=decade)) +
+  geom_text(aes(label=abb, color=reg), family=f2, fontface="bold", size=4.2) +
+  scale_x_continuous(expand = expansion(mult = c(.1, .05)))+
+  scale_y_reverse(breaks=seq(1780,1950,10), labels=(c(unique(s1$decades)[-15],"**.**","**.**","**.**","1950"))) +
+  scale_color_manual(values=c("#293087","#F15B47","#4090CA","#9A1E5B")) +
+  theme_void(base_family = f1) +
+  theme(axis.text.y = element_markdown(size=11.7, vjust=0.6),
+        plot.margin=margin(1.5,1.5,.5,1.5,unit="cm"),
+        legend.position="none",
+        plot.title.position = "plot",
+        plot.title=element_text(size=14.5, face="bold", margin=margin(b=10)),
+        plot.subtitle=element_markdown(size=11, color="grey30", margin=margin(t=0,b=10), lineheight = 1.3),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0.5, color="grey45"),
+        plot.background = element_rect(fill="#fafafa", color=NA)
+        ) +
+  labs(caption=caption,subtitle=subt,
+       title="State Admission Decade")
+
+ggsave("export/2023_31_p1.png")
+```
+
+```{r p2, fig.height=3.5, fig.width=3.5}
+states |>
+  select(state, capital_city, largest_city) |>
+  mutate(id=row_number(),
+         grp=case_when(capital_city==largest_city~"yes",
+                       TRUE~"no")
+         ) |>
+  pivot_longer(state:largest_city) |>
+  mutate(x = case_when(name=="state"~1,name=="capital_city"~2,name=="largest_city"~3)) |>
+  ggplot(aes(x=x, y=id)) +
+  geom_line(data=. %>% filter(grp=="yes"), aes(group=id), linewidth=.3, alpha=.5, color="#9A1E5B") +
+  geom_richtext(data=. %>% filter(grp=="no"),aes(label=value, alpha=grp, color=grp), hjust=0, label.color=NA, label.padding = grid::unit(rep(0, 4), "pt"), size=3.2, family=f3,) +
+  geom_richtext(data=. %>% filter(grp=="yes"),aes(label=value, alpha=grp, color=grp), hjust=0, label.color=NA, label.padding = grid::unit(rep(0, 4), "pt"), size=3.2, family=f3,fontface="bold") +
+  scale_alpha_manual(values=c(.5,1)) +
+  scale_color_manual(values=c("black","#9A1E5B")) +
+  scale_x_continuous(position="top", expand = expansion(mult = c(0, .25)),
+                     breaks=seq(1,3,1),labels=c("State","Capital City","Largest City")) +
+  scale_y_continuous(expand=c(.02,.02)) +
+  theme_void(base_family = f2, base_size = 10) +
+  theme(legend.position = "none",
+        axis.text.x.top = element_text(size=9, hjust=0, face="bold", color="grey25"),
+        plot.margin=margin(1,2.5,.5,2.5,unit="cm"),
+        plot.background = element_rect(fill="#fafafa", color=NA),
+        plot.caption=element_text(hjust=.4, color="grey40", margin=margin(t=10), size=7),
+        plot.title = element_text(face="bold", hjust=.4, margin=margin(b=10))) +
+  labs(title="States with the same capital city and largest city",
+       caption="TidyTuesday week 31 | Data: Wikipedia")
+
+ggsave("export/2023_31_p2.png")
+```
