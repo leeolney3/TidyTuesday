@@ -1,0 +1,108 @@
+---
+title: "2023_32"
+date: "2023-08-08"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 32 [Hot Ones Episodes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-08-08/readme.md), data from Wikipedia articles: [*Hot Ones*](https://en.wikipedia.org/wiki/Hot_Ones) and [List of Hot Ones episodes](https://en.wikipedia.org/wiki/List_of_Hot_Ones_episodes)
+
+```{r load libraries}
+library(tidyverse)
+library(scales)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Archivo Narrow")
+f1="Archivo Narrow"
+font_add_google("Bitter")
+f2="Bitter"
+```
+
+```{r read in data}
+episodes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/episodes.csv')
+sauces <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/sauces.csv')
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/seasons.csv')
+
+caption="TidyTuesday week 32 | Data: Wikipedia - Hot Ones and List of Hot Ones episodes"
+```
+
+```{r p1, fig.height=3.6, fig.width=4, warning=FALSE}
+sauces |>
+  mutate(sauce_name=case_when(sauce_name=="Da' Bomb Beyond Insanity"~"Da' Bomb – Beyond Insanity",TRUE~sauce_name),
+         sauce_name1=abbreviate(sauce_name)) |>
+  ggplot(aes(sauce_number, season)) +
+  geom_richtext(aes(label=sauce_name1, fill=scoville, color = after_scale(prismatic::best_contrast(fill, y = c("#F2F2F2", "black")))), 
+                family=f1, size=3, label.color = NA) +
+  scale_y_reverse(name="Season",breaks=seq(1,21,5)) +
+  scale_x_continuous(name="Sauce number",breaks=seq(1,10,1)) +
+  scico::scale_fill_scico(palette="lajolla",trans="log", breaks=c(450,22000,2000000), labels=scales::label_number_si(), guide=guide_colorbar(title.position="top",barwidth=unit(10,"lines"),barheight=unit(.4,"lines"))) +
+  #colorspace::scale_fill_continuous_sequential(palette="red-purple",trans="log", breaks=c(450,22000,2000000), labels=scales::label_number_si(), guide=guide_colorbar(title.position="top",barwidth=unit(10,"lines"),barheight=unit(.4,"lines"))) +
+  cowplot::theme_minimal_hgrid(12) +
+  theme(text=element_text(family=f2),
+        legend.position = "top",
+        legend.text = element_text(size=10),
+        legend.title = element_text(size=12),
+        axis.ticks.x = element_line(),
+        axis.ticks.length.x = unit(.3,"lines"),
+        axis.title = element_text(size=11),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(lineheight=1.1,margin=margin(b=7)),
+        plot.caption.position = "plot",
+        plot.caption=element_text(color="grey30",hjust=0, margin=margin(t=10)),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm")) +
+  labs(caption=caption,
+       title="Hot Ones Sauces",
+       subtitle="Da' Bomb – Beyond Insanity [DB-BI] (135,600 scoville) was the most used sauce in Hot Ones, it was the 8th sauce\nfrom Season 2 to 21.",
+       fill="Scoville: ")
+
+ggsave("export/2023_32.png", height=7.2, width=8, bg="white")
+```
+
+```{r}
+# reference: https://stackoverflow.com/questions/65109960/is-there-a-way-i-can-add-log-gridlines-to-my-graph-with-rstudio
+# reference: https://r-graphics.org/recipe-axes-axis-log-ticks
+minor_breaks_log <- function(base) {
+  # Prevents lazy evaluation
+  force(base) 
+  # Wrap calculation in a function that the outer function returns
+  function(limits) {
+    ggplot2:::calc_logticks(
+      base = base, 
+      minpow = floor(log(limits[1], base = base)), 
+      maxpow = ceiling(log(limits[2], base = base))
+    )$value
+  }
+}
+```
+
+```{r "p2", fig.height=3.5, fig.width=4}
+sauces |>
+  ggplot(aes(x=season, y=scoville, color=sauce_number)) +
+  geom_line(aes(group=sauce_number), linewidth=.7) +
+  geom_point(size=2) +
+  geom_text(data=sauces|> filter(season==21), aes(x=22, y=scoville, label=sauce_number), family=f2, hjust=1, fontface="bold", size=4.3) +
+  geom_text(data=sauces|> filter(season==21, scoville==max(scoville)), aes(x=22, y=1.5*scoville, label="Sauce number:"), family=f2, lineheight=.9, hjust=1, color="grey30", fontface="bold", size=4.2) +
+  scale_y_log10(name="Scoville (log)",labels=scales::label_number_si(), minor_breaks = minor_breaks_log(10), breaks=c(450,1000,10000,100000,1000000,2000000)) +
+  scale_x_continuous(name="Season",limits=c(1,22), breaks=seq(1,21,4), expand=c(.02,.02), position="top") +
+  MetBrewer::scale_color_met_c("Demuth", directio=-1) +
+  cowplot::theme_minimal_grid() +
+  theme(text=element_text(family=f2),
+        axis.title = element_text(size=12.5),
+        panel.grid.minor.y = element_line(linewidth=.2),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40", margin=margin(t=18)),
+        plot.margin=margin(.5,.8,.5,.5,unit="cm")
+        ) +
+  labs(caption=caption,
+       title="Spiciness of sauces in Hot Ones",
+       subtitle="Season 1 to 21"
+       )
+```
+
