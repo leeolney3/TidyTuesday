@@ -10,6 +10,8 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
   <summary><b>2023</b> (click to expand)</summary>
 
 <!-- toc -->
+* 2023/35 [Fair Use](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_35)
+* 2023/34 [Refugees](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_34) 
 * 2023/32 [Hot Ones Episodes](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_32) 
 * 2023/31 [US State Names](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_31)  
 * 2023/30 [Scurvy](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_30)  
