@@ -1,0 +1,67 @@
+---
+title: "2023_34"
+date: "2023-08-22"
+format: html
+editor: visual
+---
+
+TidyTuesday week 34 [Refugees](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-08-22/readme.md), data from PopulationStatistics {refugees} R package.
+
+```{r load libraries}
+library(tidyverse)
+library(geomtextpath)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost", bold.wt = 600)
+f1="Jost"
+```
+
+```{r read in data}
+population <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-22/population.csv')
+
+caption="TidyTuesday week 34 | Data from PopulationStatistics {refugees} R package" 
+```
+
+```{r wrangle}
+d1 = population |> filter(coo_iso=="USA") |>
+  group_by(year) |>
+  summarise_at(vars(refugees:hst), sum, na.rm=T) |>
+  select(1:3) |>
+  pivot_longer(!year) |>
+  mutate(grp="Country of origin: USA")
+
+d2 = population |> filter(coa_iso=="USA") |>
+  group_by(year) |>
+  summarise_at(vars(refugees:hst), sum, na.rm=T) |>
+  select(1:3) |>
+  pivot_longer(!year) |>
+  mutate(grp="Country of asylum: USA")
+```
+
+```{r "p1", warning=FALSE, fig.height=2.5, fig.width=4}
+rbind(d1,d2) |>
+  mutate(name=str_to_title(str_replace_all(name,"_"," "))) |>
+  ggplot(aes(x=year, y=value, color=name, label=name)) +
+  geom_point(size=1.5) +
+  geom_textpath(vjust = -0.7, hjust=.85, text_smoothing = 30, size=4.5, linewidth=1, family=f1) +
+  facet_wrap(~fct_rev(grp), ncol=2, scales="free_y") +
+  scale_x_continuous(breaks=seq(2010,2022,4)) +
+  scale_y_continuous(labels=scales::label_number_si(), limits=c(0,NA))+
+  scale_color_manual(values=c("#825DE7","#EF6221")) +
+  theme_minimal(13, base_family = f1) +
+  theme(legend.position="none",
+        strip.text = element_text(hjust=0, size=13),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(color="grey40",hjust=0),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm")) +
+  labs(x="Year", y="Number of persons",
+       title="Refugees and asylum-seekers by year",
+       caption=caption)
+```
+
+

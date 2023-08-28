@@ -1,0 +1,99 @@
+---
+title: "2023_35"
+date: "2023-08-29"
+format: html
+editor: visual
+---
+
+TidyTuesday week 35 [Fair Use](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-08-29/readme.md) data from the [U.S. Copyright Office Fair Use Index](https://www.copyright.gov/fair-use/fair-index.html). 
+
+```{r load libaries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost", bold.wt = 600)
+f1="Jost"
+```
+
+```{r read in data}
+fair_use_cases <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-29/fair_use_cases.csv')
+fair_use_findings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-29/fair_use_findings.csv')
+```
+
+```{r join}
+cases =fair_use_cases |> arrange(case) |> mutate(id=row_number()) |>
+  rename(year_case=year, court_ruling =court, outcome_case=outcome)
+findings= fair_use_findings |> arrange(title) |> mutate(id=row_number()) |>
+  rename(year_finding=year, court_involved =court, outcome_finding=outcome)
+
+df = cases |> left_join(findings, by="id")
+```
+
+```{r wrangle}
+df1 = df |> 
+  mutate(categories = str_replace_all(categories,",",";"),
+         categories=str_to_lower(categories)) |>
+  separate_rows(categories, sep = "\\;") |>
+  mutate(categories=str_trim(categories)) |>
+  mutate(categories = case_when(categories=="educational/scholarship/research"~"education/scholarship/research", categories=="education/research/scholarship"~"education/scholarship/research",
+                                categories=="films/audiovisual"~"film/audiovisual",
+                                categories=="internet"~"internet/digitization",
+                                categories=="news reporting photograph"~"news reporting",
+                                categories=="parody"~"parody/satire",
+                                categories=="photography"~"photograph",
+                                TRUE~categories)) |>
+  filter(categories!="") 
+
+df1a = df1 |>
+  count(categories, sort=TRUE) |>
+  filter(!str_detect(categories,"circuit"), n>1) |>
+  mutate(prop1=n/nrow(df))
+
+df1b= df1 |> 
+  count(categories,fair_use_found) |>
+  group_by(categories) |>
+  mutate(prop2 = n/sum(n)) |>
+  rename(outcome_n=n) |>
+  left_join(df1a, by="categories") |>
+  drop_na(n)
+```
+
+```{r "p1", fig.height=3, fig.width=3.5}
+df1b |>
+  mutate(categories=factor(categories,levels=df1a$categories),
+         nlab = case_when(n==94~glue::glue("{n} cases"), TRUE~glue::glue("{n}")),
+         nlab2 = case_when(outcome_n==53~glue::glue("{outcome_n} cases"), TRUE~glue::glue("{outcome_n}"))
+         ) |>
+  ggplot(aes(x=prop2, y=str_to_title(categories), fill=fair_use_found, width=prop1*10)) +
+  geom_col() +
+  geom_text(data=. %>% filter(n>30),aes(label=nlab2, color=fair_use_found), position=position_fill(vjust=0.07), hjust=0, family=f1,size=3.5) +
+  geom_text(data=. %>% filter(n>30, fair_use_found==TRUE),aes(label=nlab2), hjust=2, family=f1, size=3.5, color="white") +
+  scale_color_manual(values=c("white","transparent"), guide="none") +
+  geom_text(data=. %>% filter(fair_use_found==FALSE),aes(x=1.02, label=nlab), hjust=0, family=f1,size=3.3, color="grey20") +
+  ggforce::facet_col(vars(categories),scales = "free_y", space = "free") +
+  scale_x_continuous(limits=c(0,1.15), expand=c(0,0), breaks=seq(0,1,.25), labels=scales::percent) +
+  scale_fill_manual(values=c("#CCA21B","#235590"), guide=guide_legend(reverse=T)) +
+  cowplot::theme_minimal_vgrid(12) +
+  theme(text=element_text(family=f1),
+        axis.title = element_text(size=11),
+        axis.text.y=element_markdown(),
+        strip.text = element_blank(),
+        legend.position = "top",
+        legend.box.margin = margin(l=-163),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(color="grey20"),
+        plot.caption.position = "plot",
+        plot.caption=element_text(lineheight=1,hjust=0, color="grey40"),
+        plot.margin = margin(.4,.4,.4,.4,unit="cm"),
+        plot.background = element_rect(fill="#fafafa", color=NA)) +
+  labs(x="Percentage",y="Categories",fill="Fair use found?",
+       title="Proportion of fair use found by court",
+       subtitle="By categories. From 251 fair use cases ruled between 1841 and 2022.",
+       caption="Note: Cases may belong to more than one category. FALSE might sometimes indicate a more complicated finding.\nTidyTuesday week 35 | Data: U.S. Copyright Office Fair Use Index")
+```
+
