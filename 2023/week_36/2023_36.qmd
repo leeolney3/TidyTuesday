@@ -1,0 +1,156 @@
+---
+title: "2023_36"
+date: "2023-09-05"
+format: html
+editor: visual
+---
+
+TidyTuesday week 36 [Union Membership in the United States](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-09-05/readme.md), data from [Union Membership, Coverage, and Earnings from the CPS](https://www.unionstats.com/) by Barry Hirsch (Georgia State University), David Macpherson (Trinity University), and William Even (Miami University). 
+
+```{r load libaries}
+library(tidyverse)
+library(geomtextpath)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load in font}
+font_add_google("Barlow", bold.wt = 600)
+f1="Barlow"
+font_add_google("Cabin Condensed")
+f2="Cabin Condensed"
+```
+
+```{r read in data}
+demographics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-05/demographics.csv')
+wages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-05/wages.csv')
+states <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-05/states.csv')
+wk="TidyTuesday week 35"
+source="Source:  Macpherson, David A. and Hirsch, Barry T.. 2023. “ Five decades of CPS wages, methods, and union-nonunion wage gaps\nat Unionstats.com.” Industrial Relations: A Journal of Economy and Society 00: 1–9. https://doi.org/10.1111/irel.12330"
+```
+
+
+
+### demographics.csv
+```{r wrangle}
+d1 = demographics |> 
+  select(year, p_members,p_covered,facet) |>
+  mutate(facet1=str_trim(str_remove(facet,"demographics: "))) |>
+  pivot_longer(2:3) |>
+  mutate(name1=case_when(name=="p_members"~"Percent of employed workers who are union members",
+                         name=="p_covered"~"Percent of employed workers who are covered by a collective bargaining agreement.")) |>
+  mutate(grp = case_when(str_detect(facet,"demographics")~"demographics",
+                         str_detect(facet,"private sector")~"private sector",
+                         str_detect(facet,"public sector")~"public sector",
+                         TRUE~"sector"
+                         ))
+```
+
+```{r p1, fig.height=2.5, fig.width=4}
+d1 |> filter(grp=="public sector", year>=1983) |>
+  mutate(facet1=case_when(facet!="public sector: all"~str_remove_all(facet, "public sector: "),
+                          TRUE~facet)) |>
+  ggplot(aes(x=year, y=value, color=facet1, label=facet1)) +
+  #geom_line() +
+  geom_textpath(data=. %>% filter (!facet1 %in% c("postal service","state government")),vjust = -.8, hjust=.85, text_smoothing = 80, linewidth=1, family=f1) +
+  geom_textpath(data=. %>% filter (facet1 %in% c("postal service")),vjust = -1.6, hjust=.85, text_smoothing = 80, linewidth=1, family=f1) +
+  geom_textpath(data=. %>% filter (facet1 %in% c("state government")),vjust = 1.6, hjust=.75, text_smoothing = 80, linewidth=1, family=f1) +
+  facet_wrap(~str_wrap(name1,50)) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_x_continuous(breaks=c(1983,1990,2000,2010,2020)) +
+  scale_color_manual(values=c("#A74247","#366892","#377063","#95633A","#79566A","#68583C")) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        strip.text=element_text(hjust=0),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0)) +
+  labs(x="Percent",y="Year",
+       title="Union Membership in the United States Public Sector",
+       subtitle="Between 1983 and 2022",
+       caption=glue::glue("{wk}\n{str_wrap(source,140)}"))
+```
+
+### wages.csv
+```{r wrangle}
+wages1 = wages|>
+  mutate(grp = case_when(str_detect(facet,"demographics")~"demographics",
+                         str_detect(facet,"private sector")~"private sector",
+                         str_detect(facet,"public sector")~"public sector",
+                         TRUE~""
+                         ),
+         grp=str_to_title(grp)) |>
+  mutate(ylab=gsub(".*:", "", facet),
+         ylab=str_to_title(str_trim(ylab)))
+
+summary(wages1$union_wage_premium_raw)
+```
+
+```{r p2, fig.height=3.5, fig.width=3.5}
+wages1 |> 
+  filter(year>=1983) |>
+  select(year,union_wage_premium_raw,grp, ylab) |>
+  ggplot(aes(x=year, y=fct_rev(ylab), fill=union_wage_premium_raw)) +
+  geom_tile(height=.9) +
+  scale_x_continuous(expand=c(0,0), breaks=seq(1985,2020,5))+
+  ggforce::facet_col(vars(grp), scales = 'free', space = 'free') +
+  scico::scale_fill_scico(palette="brocO", direction=-1, midpoint=0, labels=scales::percent_format(drop0trailing = T),breaks=c(-0.18,0,0.25,.5,.77), guide=guide_colorbar(barwidth = unit(12,"lines"),barheight = unit(.5,"lines"))) + 
+  #colorspace::scale_fill_continuous_divergingx("Zissou 1", rev=T, mid=0)
+  cowplot::theme_minimal_grid(11.5) +
+  theme(text=element_text(family=f1),
+        axis.title.y = element_blank(),
+        strip.text=element_text(hjust=0, size=11),
+        legend.position = "top",
+        plot.title.position = "plot",
+        plot.subtitle = element_text(color="grey15", lineheight=1),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey30"),
+        plot.margin=margin(.4,.7,.4,.4,unit="cm"),
+        legend.box.margin = margin(b=-18,l=-123),
+        legend.title = element_blank()) +
+  labs(x="Year", caption=glue::glue("{wk}\n{str_wrap(source,120)}"),
+       title="Difference between the union and nonunion wage, United States",
+       subtitle="Between 1983 and 2022")
+```
+
+### states.csv
+```{r wrangle}
+#library(usmap)
+states1 = states |>
+  mutate(stabbr= state.abb[match(state,state.name)], stabbr=replace_na(stabbr,"DC")) #|>
+  # mutate(region=case_when(stabbr %in% .northeast_region ~"Northeast region",
+  #                         stabbr %in% .midwest_region  ~"Midwest region",
+  #                         stabbr %in% .south_region ~"South region",
+  #                         stabbr %in% .west_region ~"West region",
+  #                         ))
+
+states2 = states1 |>
+  group_by(sector,year) |>
+  mutate(ymin=min(p_covered), ymax=max(p_covered))
+```
+
+```{r p3, fig.height=3, fig.width=4}
+states1 |>
+  ggplot(aes(x=year, y=p_covered, group=stabbr)) +
+  geom_ribbon(data=states2, aes(x=year, ymin=ymin, ymax=ymax), fill="#F2F2F2") +
+  geom_line(alpha=.5, color="darkgrey", linewidth=.4) +
+  geom_textpath(data=. %>% filter(state=="New York"), aes(label=stabbr), vjust = -.6, hjust=.6, text_smoothing = 80, size=4,family=f2, linewidth=.8, color="#BB2A77") +
+  scale_y_continuous(labels=scales::percent) +
+  scale_x_continuous(breaks=c(1983,1990,2000,2010,2020)) +
+  facet_wrap(~fct_rev(factor(sector, levels=c("Total","Public","Private","Priv. Construction","Priv. Manufacturing"))), scales = "free_x") +
+  cowplot::theme_minimal_grid(11.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "none",
+        strip.text = element_text(hjust=0, size=11.5),
+        plot.title.position = "plot",
+        plot.subtitle=element_text(color="grey20", size=11, margin=margin(b=8)),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey30")) +
+  labs(x="Year",y="Percent",
+       title="Percent of employed workers who are covered by a collective bargaining agreement in New York",
+       subtitle="Compared to 50 other states, between 1983 and 2022.",
+       caption=glue::glue("{wk}\n{str_wrap(source,140)}"))
+```
+
