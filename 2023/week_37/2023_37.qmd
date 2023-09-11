@@ -1,0 +1,114 @@
+---
+title: "2023_37"
+date: "2023-09-12"
+format: html
+editor: visual
+---
+
+TidyTuesday week 37 [The Global Human Day](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-09-12/readme.md), data from the [The Human Chronome Project](https://www.humanchronome.org/) an initiative based at McGill University in Montreal, from their paper [The global human day in PNAS](https://www.pnas.org/doi/10.1073/pnas.2219564120#sec-2) and the [associated dataset on Zenodo](https://zenodo.org/record/8040631).
+
+```{r load libaries}
+library(tidyverse)
+library(sf)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Barlow Semi Condensed")
+f1="Barlow Semi Condensed"
+font_add_google("Barlow", bold.wt = 600)
+f2="Barlow"
+```
+
+```{r read in data}
+all_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/all_countries.csv')
+country_regions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/country_regions.csv')
+global_human_day <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/global_human_day.csv')
+global_economic_day <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/global_economic_day.csv')
+
+caption="TidyTuesday week 37  |  Data: The Human Chronome Project"
+
+class = read_xlsx("data/CLASS.xlsx")
+```
+
+### Distribution, hours per day combined for the country
+
+```{r theme}
+theme1 = theme_grey(base_size = 12, base_family = f2) +
+  theme(panel.background = element_rect(fill="#F2F2F2", color=NA),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor= element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.background = element_rect(fill="grey91", color=NA),
+        strip.text=element_markdown(size=10.5,lineheight=1,hjust=0, family=f1, margin=margin(rep(2,4))),
+        axis.text.x = element_text(family=f1),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.title.x=element_text(size=10),
+        plot.title.position = "plot",
+        plot.title=element_text(face="bold"),
+        plot.subtitle = element_text(size=11),
+        plot.margin=margin(.4,.5,.2,.4,unit="cm"),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey35")) 
+```
+
+```{r color palette}
+pal1 = c("#F1525C","#1B86DE","#4F4B71","#37BBB3","#AB5E17","#F37E41","#3491A3","#DFA943")
+```
+
+```{r p1, fig.height=3.5, fig.width=3.5}
+all_countries |>
+  mutate(lab=glue::glue("<span style='font-size:9pt'>{Category}</span><br>{Subcategory}")) |>
+  ggplot(aes(x=hoursPerDayCombined, y=0)) +
+  ggdist::geom_dots(aes(color=Category), show.legend = FALSE, fill="black") +
+  scale_x_continuous(expand = expansion(mult = c(.1, .1))) +
+  scale_color_manual(values=pal1) +
+  facet_wrap(~lab, scales="free", ncol=4) +
+  coord_cartesian(clip = "off") +
+  theme1 +
+  labs(x="Hours per day",
+       title="“The global human day.”",
+       subtitle="Distribution of national estimates for 24 subcategories.",
+       caption=caption)
+```
+
+### Food provision
+```{r}
+wld = rnaturalearth::ne_countries(scale=110, returnclass = "sf")
+wld = st_transform(wld, crs="+proj=eqearth")
+
+ac1 = all_countries |> 
+  filter(Category=="Food provision") |>
+  group_by(Subcategory) |>
+  mutate(value=percent_rank(hoursPerDayCombined))
+```
+
+```{r p2, warning=FALSE, fig.height=3, fig.width=4}
+wld |> right_join(ac1, by=c("iso_a3"="country_iso3")) |>
+  ggplot() +
+  geom_sf(data=wld,linewidth=.05) +
+  geom_sf(aes(fill=value), linewidth=.05) +
+  scico::scale_fill_scico(palette="lipari", direction=-1, limits=c(0,1), breaks=c(0,1), labels=c("Less","More"), guide=guide_colorbar(title.position = "top",barwidth=unit(8,"lines"), barheight = unit(.5,"lines"))) +
+  coord_sf(expand=FALSE) +
+  facet_wrap(~Subcategory, ncol=2) +
+  theme_void(base_size = 13, base_family = f2) +
+  theme(legend.position = "top",
+        legend.title=element_blank(),
+        strip.text = element_text(size=12, margin=margin(t=7,b=7)),
+        panel.spacing.y=unit(1.5,"lines"),
+        plot.caption = element_text(hjust=.5, margin=margin(t=13), size=10, color="grey35"),
+        plot.title=element_text(hjust=.5, face="bold"),
+        plot.subtitle=element_text(size=12,hjust=.5)) +
+  labs(caption=caption,
+       title="“The global human day”, food provision",
+       subtitle="Hours per day combined for the country")
+```
+
+
+
+
+
