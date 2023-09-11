@@ -27,7 +27,7 @@ f2="Barlow"
 all_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/all_countries.csv')
 country_regions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/country_regions.csv')
 global_human_day <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/global_human_day.csv')
-global_economic_day <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/global_economic_day.csv')
+global_economic_day <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-12/global_economic_activity.csv')
 
 caption="TidyTuesday week 37  |  Data: The Human Chronome Project"
 
@@ -77,6 +77,7 @@ all_countries |>
 ```
 
 ### Food provision
+
 ```{r}
 wld = rnaturalearth::ne_countries(scale=110, returnclass = "sf")
 wld = st_transform(wld, crs="+proj=eqearth")
@@ -107,8 +108,3 @@ wld |> right_join(ac1, by=c("iso_a3"="country_iso3")) |>
        title="“The global human day”, food provision",
        subtitle="Hours per day combined for the country")
 ```
-
-
-
-
-
