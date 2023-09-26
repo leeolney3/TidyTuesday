@@ -1,0 +1,84 @@
+---
+title: "2023_39"
+date: "2023-09-26"
+format: html
+editor: visual
+---
+
+TidyTuesday week 39 [Roy Kent F**k count](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-09-26/readme.md), data from [richmondway R package](https://github.com/deepshamenghani/richmondway).
+
+```{r load library}
+library(tidyverse)
+library(glue)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Bitter")
+f1 = "Bitter"
+font_add_google("Jost")
+f2 = "Jost"
+```
+
+```{r read in data}
+richmondway <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-26/richmondway.csv')
+```
+
+```{r wrangle}
+r1 = richmondway |>
+  mutate(lab1 = glue("Dating: {Dating_flag}"),
+         lab2 = glue("Coaching: {Coaching_flag}"),
+         grp = glue("{lab1}<br>{lab2}")) |>
+  mutate(Season_Episode=str_remove_all(Season_Episode,"_"),
+         Season_Episode=fct_inorder(Season_Episode)) |>
+  select(Season,Episode,Season_Episode,F_count_RK,F_count_total,F_perc,grp) |>
+  pivot_longer(F_count_RK:F_count_total) |>
+  mutate(name1=case_when(name=="F_count_RK"~"Roy Kent F-ck count",
+                        TRUE~"Total F-ck count by all characters including Roy Kent"),
+         F_perc1=glue::glue("{F_perc}%"))
+```
+
+```{r plot, fig.height=3.5, fig.width=4}
+bg="#fafafa"
+r1 |>
+  ggplot(aes(y=fct_rev(Season_Episode), x=value)) +
+  geom_line(aes(group=Season_Episode), show.legend=FALSE,color="grey50") +
+  geom_point(data=r1 %>% filter(name=="F_count_RK"), aes(shape=name1, color=grp), size=3) +
+  MetBrewer::scale_color_met_d("Egypt") +
+  geom_point(data=r1 %>% filter(name!="F_count_RK"), aes(shape=name1), size=3, color="grey50") +
+  scale_shape_manual(values=c(16,15)) +
+  geom_point(data=r1 %>% filter(name=="F_count_RK"), shape=21, size=3, color="black") +
+  geom_richtext(data= r1 %>% group_by(Season_Episode) %>% mutate(xlab =mean(value)) %>% filter(name=="F_count_RK"), aes(label=F_perc1, x=xlab), vjust=-.5, size=3.4, color="black",label.padding = grid::unit(rep(0, 4), "pt"),label.color=NA,fill=bg) +
+  facet_wrap(~Season,ncol=3, scales="free_y", labeller = label_both) +
+  coord_cartesian(clip = "off") +
+  cowplot::theme_minimal_grid(13) +
+  theme(legend.position = "top",
+        legend.text = element_markdown(),
+        legend.box="vertical",
+        legend.box.just  = "left",
+        legend.box.margin = margin(l=-58),
+        axis.line.x = element_line(),
+        axis.ticks = element_line(),
+        axis.text = element_text(color="grey20", size=10.5),
+        panel.grid.major.y = element_blank(),
+        text=element_text(family=f2),
+        strip.text = element_text(size=11.5, face="bold",family=f1, vjust=2),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40"),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f1),
+        plot.subtitle = element_text(color="grey25", lineheight = 1, margin=margin(b=12)),
+        plot.background = element_rect(color=NA, fill=bg)
+        ) +
+  labs(color="",shape="",
+       x="F**k count", y="Season, Episode",
+       title="Ted Lasso: Roy Kent F**k count",
+       subtitle="By season and episode, the label on each episode shows Roy Kent's F-count divided by the total F-count in the\nepisode expressed as a percentage.",
+       caption="TidyTuesday week 39 | Data: {richmondway} R package")
+
+ggsave("export/2023_39.png", height=7, width=8)
+```
+
