@@ -30,10 +30,11 @@ haunted_places <- readr::read_csv('https://raw.githubusercontent.com/rfordatasci
 
 ### Point map, Albers Equal Area projection
 ```{r}
+#
 aea = usmap |> 
-  st_as_sf(coords = c("x", "y"), crs = 4326,agr="constant") %>% 
-  group_by(group) %>%
-  summarise(geometry = st_combine(geometry)) %>%
+  st_as_sf(coords = c("x", "y"), crs = 4326,agr="constant") |> 
+  group_by(group) |>
+  summarise(geometry = st_combine(geometry)) |>
   st_cast("POLYGON")
           
 m1= haunted_places |>
@@ -66,13 +67,16 @@ theme1 =
 ggplot() +
   geom_sf(data=aea, fill=NA, color="grey") +
   geom_point(data=separated_coord, aes(x=x, y=y), alpha=.2, size=.7) +
+  coord_sf(expand=FALSE) +
   theme1 +
   labs(title="Haunted Places in the United States",
        caption="TidyTuesday week 41 | Data: data.world")
+
+ggsave("export/2023_41_p1.png", height=5.6, width=7)
 ```
 
 ### Circle bin map, Conterminous US
-Method from [Abdoul Madjid @issa_madjid](https://twitter.com/issa_madjid/status/1498795224922996741)
+Method and code adapted from: [Abdoul Madjid @issa_madjid](https://twitter.com/issa_madjid/status/1498795224922996741)
 
 ```{r}
 re_states <- c("AK","VI","AS","GU","MP","PR","HI")
@@ -114,6 +118,8 @@ ggplot() +
   labs(color="Count:",
        title="Haunted Places in Conterminous United States",
        caption="TidyTuesday week 41 | Data: Tim Renner, data.world | Method from: Abdoul Madjid")
+
+ggsave("export/2023_41_p2.png", height=6, width=7)
 ```
 
 ### Density point map, Midwest region
@@ -145,6 +151,8 @@ ggplot() +
   labs(fill="Probs:",
        title="Haunted Places in the Midwest, US",
        caption="TidyTuesday week 41 | Data: data.world")
+
+ggsave("export/2023_41_p3.png", height=6.2, width=7)
 ```
 
 

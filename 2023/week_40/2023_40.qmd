@@ -1,0 +1,82 @@
+---
+title: "2023_40"
+date: "2023-10-03"
+format: html
+editor: visual
+---
+
+TidyTuesday week 40 [US Government Grant Opportunities](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-10-03/readme.md), data from [Grants 101 from Grants.gov](https://www.grants.gov/web/grants/learn-grants/grants-101.html).
+
+```{r load libaries}
+library(tidyverse)
+library(lubridate)
+library(ggalluvial)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Barlow", bold.wt = 600)
+f1="Barlow"
+```
+
+```{r read in data}
+grants <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-03/grants.csv')
+grant_opportunity_details <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-03/grant_opportunity_details.csv')
+```
+
+```{r wrangle}
+selected = grants |> count(agency_name, sort=T) |>
+  slice(1:8) |>
+  pull(agency_name)
+
+g1= grants |> 
+  mutate(yr=year(posted_date)) |>
+  filter(yr>=2010) |>
+  count(agency_name,yr) |>
+  group_by(yr) |>
+  mutate(prop=n/sum(n)) |>
+  ungroup() |>
+  filter(agency_name %in% selected) |>
+  mutate(lab = case_when(agency_name=="Bureau of Land Management"~"BLM",
+                         agency_name=="National Park Service"~"NPS",
+                         agency_name=="Fish and Wildlife Service"~"FWS",
+                         agency_name=="National Institutes of Health"~"NIH",
+                         agency_name=="Geological Survey"~"USGS",
+                         agency_name=="Centers for Disease Control and Prevention"~"CDC",
+                         agency_name=="Health Resources and Services Administration"~"HRSA",
+                         agency_name=="Department of Education"~"ED",
+                         ))
+
+g2 = g1 |> filter(yr==2010) |> arrange(desc(prop)) |>
+  select(lab) |>
+  mutate(x=c(2015,2015,2011.5,2011.5,2014,2010,2010,2016.5),
+         y=c(.45,.32,.13,.08,.22,.06,.032,.09))
+```
+
+```{r plot, fig.height=3, fig.width=3.5, warning=FALSE}
+g1 |> 
+  ggplot(aes(x=yr, y=prop, alluvium=lab)) +
+  geom_alluvium(aes(fill = lab),alpha = .85, decreasing = FALSE, color="white") +
+  geom_text(data=g2, aes(x=x, y=y, label=lab,fill=lab,color= after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), size=3.5,hjust=0,family=f1,fontface="bold") +
+  NatParksPalettes::scale_fill_natparks_d("Torres") +
+  scale_y_continuous(labels=scales::percent, breaks=seq(.1,.6,.1)) +
+  scale_x_continuous(breaks=seq(2010,2023,4)) +
+  cowplot::theme_minimal_grid(12.5) +
+  theme(text=element_text(family=f1),
+        legend.position = "none",
+        plot.title.position = "plot",
+        plot.subtitle=element_text(color="grey20", margin=margin(b=10)),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.4,.7,.4,.4, unit="cm")) +
+  labs(x="Year", y="Percentage",title="US Government Grant Opportunities (2010 - 2023)",
+       subtitle="Percentage of total grants by year and agency. 8 agencies with the most grants between 2010 and 2023.",
+       caption="TidyTuesday week 40 | Data: Grants 101 from Grants.gov")
+
+ggsave("export/2023_40.png", height=6, width = 7, bg="white")
+```
+
+
