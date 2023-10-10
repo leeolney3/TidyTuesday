@@ -11,6 +11,7 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 
 <!-- toc -->
 * 2023/41 [Haunted Places in the United States](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_41)
+* 2023/40 [US Government Grant Opportunities](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_40)
 * 2023/39 [Roy Kent F**k count](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_39)
 * 2023/37 [The Global Human Day](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_37)
 * 2023/36 [Union Membership in the United States](https://github.com/leeolney3/TidyTuesday/tree/main/2023/week_36)
