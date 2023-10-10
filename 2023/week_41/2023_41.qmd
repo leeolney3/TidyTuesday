@@ -1,0 +1,153 @@
+---
+title: "2023_41"
+date: "2023-10-10"
+format: html
+editor: visual
+---
+
+TidyTuesday week 41 [Haunted Places in the United States](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-10-10/readme.md), data from [data.world](https://data.world/timothyrenner/haunted-places).
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+sf_use_s2(FALSE)
+library(usmap)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Roboto")
+f1 = "Roboto"
+font_add_google("Staatliches")
+f2 = "Staatliches"
+```
+
+```{r read in data}
+haunted_places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-10/haunted_places.csv')
+```
+
+### Point map, Albers Equal Area projection
+```{r}
+aea = usmap |> 
+  st_as_sf(coords = c("x", "y"), crs = 4326,agr="constant") %>% 
+  group_by(group) %>%
+  summarise(geometry = st_combine(geometry)) %>%
+  st_cast("POLYGON")
+          
+m1= haunted_places |>
+  select(lon=longitude,lat=latitude) |>
+  drop_na() 
+m2 = usmap_transform(m1)
+m3 = m2 |> st_as_sf(coords = c("x", "y"), crs = 4326,agr="constant")
+m4 = st_intersection(m3, test)
+
+separated_coord <- m4 |>
+    mutate(x = unlist(map(geometry,1)),
+           y = unlist(map(geometry,2))) |>
+  st_drop_geometry()
+```
+
+```{r theme}
+theme1 = 
+  cowplot::theme_map(12) +
+  theme(text=element_text(family=f1),
+        plot.title =element_text(family=f2, hjust=.5, face="bold", size=18),
+        plot.caption = element_text(hjust=.5, size=8, color="grey45", margin=margin(t=10)),
+        legend.position = "top",
+        legend.justification = "center",
+        plot.margin=margin(.5,.5,.5,.5,unit="cm"),
+        plot.background = element_rect(color=NA, fill="#fafafa"),
+        ) 
+```
+
+```{r, fig.height=3, fig.width=4}
+ggplot() +
+  geom_sf(data=aea, fill=NA, color="grey") +
+  geom_point(data=separated_coord, aes(x=x, y=y), alpha=.2, size=.7) +
+  theme1 +
+  labs(title="Haunted Places in the United States",
+       caption="TidyTuesday week 41 | Data: data.world")
+```
+
+### Circle bin map, Conterminous US
+Method from [Abdoul Madjid @issa_madjid](https://twitter.com/issa_madjid/status/1498795224922996741)
+
+```{r}
+re_states <- c("AK","VI","AS","GU","MP","PR","HI")
+states <- tigris::states(year=2022, cb=TRUE) |>
+  st_transform("ESRI:102003") |>
+  filter(!STUSPS %in% re_states)
+
+loc1= haunted_places |>
+  filter(!state_abbrev %in% re_states) |>
+  drop_na(city_longitude,city_latitude) |>
+  mutate(
+    lon = plyr::round_any(city_longitude, .35, ceiling),
+    lat = plyr::round_any(city_latitude, .35, ceiling), 
+    .before = 1L
+  ) |>
+  count(lon, lat)
+
+loc2 = loc1 |> 
+  st_as_sf(coords = c("lon", "lat")) |> 
+  st_set_crs(4326) |>
+  st_transform("ESRI:102003") |>
+  mutate(grp=cut(n,breaks=c(0,1,5,10,Inf),labels=c("1","2 to 5","6 to 10",">10"),include.lowest = T,ordered_result = T))
+
+# loc2 |> st_drop_geometry() |>
+#   mutate(grp=cut(n,breaks=c(0,1,5,10,Inf),labels=c("1","2 to 5","6 to 10",">10"),include.lowest = T,ordered_result = T)) |>
+#   group_by(grp) |>
+#   summarise(total=n(),min=min(n),max=max(n))
+```
+  
+  
+```{r, fig.height=3, fig.width=4}
+ggplot() +
+  geom_sf(data=states, fill=NA, color="grey") +
+  geom_sf(data=loc2,aes(color=grp), size=.8) +
+  scico::scale_color_scico_d(direction=-1,guide=guide_legend(override.aes = list(size=4))) +
+  #scale_color_manual(values=c("#B8A8C1","#796781","#3A2640","#D7632B"), guide=guide_legend(override.aes = list(size=4))) +
+  coord_sf(expand=FALSE) +
+  theme1 +
+  labs(color="Count:",
+       title="Haunted Places in Conterminous United States",
+       caption="TidyTuesday week 41 | Data: Tim Renner, data.world | Method from: Abdoul Madjid")
+```
+
+### Density point map, Midwest region
+```{r}
+ne= tigris::states(year=2022, cb=TRUE) |>
+  filter(STUSPS %in% .midwest_region) |>
+  st_transform(4326)
+
+ne_places = haunted_places |>
+  filter(state_abbrev %in% .midwest_region) |>
+  drop_na(longitude,latitude)
+
+ne_places2 = ne_places |>
+  st_as_sf(coords = c("longitude", "latitude"), crs=4326) |>
+  st_intersection(ne) |>
+  mutate(long = unlist(map(geometry,1)),
+        lat = unlist(map(geometry,2))) |>
+  st_drop_geometry()
+```
+
+```{r, fig.height=3.1, fig.width=3.5}
+ggplot() +
+  geom_sf(data=ne, fill=NA, color="grey50") +
+  ggdensity::geom_hdr_points(data=ne_places2, aes(x=long,y=lat,fill = after_stat(probs)), probs=c(.75,.5,.25), shape=21, color="white", size=2, stroke=.2) +
+  #scico::scale_fill_scico_d(direction=-1,begin=.1,guide=guide_legend(override.aes = list(size=4.5))) +
+  scale_fill_manual(values=c("#8C86A0","#684D52","#CF932B","#882314"), guide=guide_legend(override.aes = list(size=4))) +
+  coord_sf(expand=FALSE) +
+  theme1 +
+  labs(fill="Probs:",
+       title="Haunted Places in the Midwest, US",
+       caption="TidyTuesday week 41 | Data: data.world")
+```
+
+
+
+
+
