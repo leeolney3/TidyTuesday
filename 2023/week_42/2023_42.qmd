@@ -1,0 +1,72 @@
+---
+title: "2023_42"
+date: "2023-10-17"
+format: html
+editor: visual
+---
+
+TidyTuesday week 42 [Taylor Swift data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-10-17/readme.md), data from [taylor R package](https://taylor.wjakethompson.com/)
+
+```{r load libaries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("Jost","jost")
+font_add_google("Josefin Sans","josefin",bold.wt = 600)
+font_add_google("Source Sans Pro", "source")
+```
+
+```{r read in data}
+taylor_album_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_album_songs.csv')
+taylor_all_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_all_songs.csv')
+taylor_albums <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_albums.csv')
+```
+
+```{r wrangle}
+df1 = taylor_album_songs |> 
+  mutate(key_mode1=case_when(track_name=="Hits Different"~"F major",
+                            track_name=="You're On Your Own, Kid (Strings Remix)"~"D major",
+                            track_name=="Sweet Nothing (Piano Remix)"~"C major",
+                            TRUE~key_mode
+                            )) |>
+  mutate(y=glue::glue("{album_name}<br><span style='color:grey40;font-size:8pt'>{album_release}</span>")) |>
+  arrange(album_release) |>
+  mutate(y=fct_inorder(y)) |>
+  count(key_mode1, y) |>
+  mutate(key_mode1=str_replace(key_mode1,"major","M"),
+         key_mode1=str_replace(key_mode1,"minor","m"),
+         key_mode1=str_replace_all(key_mode1," ",""),
+         )
+```
+
+```{r plot, warning=FALSE, fig.height=2.4, fig.width=4}
+df1 |>
+  ggplot(aes(x=key_mode1, y=fct_rev(y))) +
+  geom_tile(data=df1 |> complete(key_mode1, y),fill="grey90", height=.6, width=.6 )+
+  geom_tile(aes(fill=n), height=.8, width=.8) +
+  geom_text(aes(label=n, fill=n, color=after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), family="source", size=4.2) +
+  scico::scale_fill_scico(direction=-1, palette="glasgow", guide="none") +
+  scale_x_discrete(position="top") +
+  coord_fixed(1) +
+  theme_minimal(base_size = 13.5, base_family = "jost") +
+  theme(axis.text.y = element_markdown( color="black"),
+        axis.text.x=element_text(color="black"),
+        axis.title=element_blank(),
+        panel.grid.major = element_line(size=.4),
+        plot.title.position = "plot",
+        plot.title=element_text(family="josefin", size=18, face="bold"),
+        plot.subtitle = element_text(color="grey30", size=10),
+        plot.caption.position = "plot",
+        plot.caption=element_text(color="grey50",size=9, hjust=0, margin=margin(t=13))) +
+  labs(x="Key Mode", y="Album",
+       title="Keys of Taylor Swift's tracks",
+       subtitle="Count of key modes by albums, arranged by release date. 194 tracks from 12 albums",
+       caption="TidyTuesday week 42 | Data: taylor R package")
+
+ggsave("export/2023_42.png",height=4.6, width=8, bg="white")
+```
