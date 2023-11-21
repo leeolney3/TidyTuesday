@@ -1,10 +1,11 @@
 ---
-title: "2023_44"
+title: "2023_45"
+date: "2023-11-07"
 format: html
 editor: visual
 ---
 
-TidyTuesday week 44 [US House Election Results](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-11-07/readme.md), data from [MIT Election Data and Science Lab](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IG0UN2).
+TidyTuesday week 45 [US House Election Results](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-11-07/readme.md), data from [MIT Election Data and Science Lab](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IG0UN2).
 
 ```{r load libraries}
 library(tidyverse)
@@ -27,6 +28,7 @@ m= tigris::congressional_districts(cb=TRUE,year=2021)
 ```
 
 #### Mountain states (2012-2022)
+
 ```{r, message=FALSE}
 house1 = house |> filter(year>=2011, year!=2022) |>
   select(year,state:state_ic,district,party,candidatevotes,totalvotes) |>
@@ -53,7 +55,6 @@ m1 = m |> filter(STATEFP %in% house1$STATEFP) |>
   mutate(fac = case_when(year>=2014~"1",TRUE~"2"),
          party=str_to_title(party))
 ```
-
 
 ```{r plot, fig.height=3.5, fig.width=3.5}
 # reference: https://www.nytimes.com/interactive/2016/11/01/upshot/many-ways-to-map-election-results.html
@@ -82,4 +83,3 @@ ggplot() +
 
 ggsave("export/2023_44.png", bg="white")
 ```
-

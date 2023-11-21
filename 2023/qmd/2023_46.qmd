@@ -1,0 +1,62 @@
+---
+title: "2023_46"
+date: "2023-11-14"
+format: html
+editor: visual
+---
+
+TidyTuesday week 46 [Diwali Sales Data](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-11-14/readme.md), data from [Kaggle](https://www.kaggle.com/datasets/saadharoon27/diwali-sales-dataset).
+
+```{r load libraries}
+library(tidyverse)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Jost")
+```
+
+```{r read in data}
+house <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-11-14/diwali_sales_data.csv') |> janitor::clean_names()
+```
+
+```{r wrangle}
+h1 = house |> count(product_category) |>
+  mutate(pct=n/sum(n), age_group="All ages") 
+
+h2 = house |> count(age_group,product_category) |>
+  group_by(age_group) |>
+  mutate(pct=n/sum(n)) |>
+  ungroup() |>
+  rbind(h1) |>
+  mutate(age_group=fct_inorder(age_group,ordered = T),
+         age_group=fct_relevel(age_group,"All ages",after=0))
+
+lvl= h2 |> filter(age_group=="All ages") |>
+  arrange(pct) |>
+  pull(product_category)
+```
+
+```{r plot, warning=FALSE, fig.height=3, fig.width=4}
+h2 |>
+  ggplot(aes(x=age_group, y=factor(product_category, levels=lvl))) +
+  geom_tile(aes(fill=pct), width=.95, height=.95) +
+  geom_text(aes(fill=pct,label=scales::percent(pct, accuracy=.1), color= after_scale(prismatic::best_contrast(fill, y = c("white", "black")))), size=3.6, family="Jost") +
+  scale_x_discrete(position="top") +
+  scico::scale_fill_scico(palette="grayC", direction=-1, guide="none") +
+  cowplot::theme_minimal_grid(13) +
+  theme(text=element_text(family="Jost"),
+        panel.grid = element_blank(),
+        axis.ticks = element_blank(),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm"),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40", size=9, margin=margin(t=10))) +
+  labs(x="Age Group", y="Product Category",
+       title="Diwali store purchases by product category and age group",
+       caption="TidyTuesday week 45 | Source: Kaggle")
+
+ggsave("export/2023_45.png",height=6, width=8, bg="white")
+```

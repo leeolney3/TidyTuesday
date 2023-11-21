@@ -1,0 +1,76 @@
+---
+title: "2023_47"
+date: "2023-11-21"
+format: html
+editor: visual
+---
+
+TidyTuesday week 47 [R-Ladies Chapter Events](https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-11-21/readme.md), data from [Federica Gazzelloni](https://github.com/Fgazzelloni)'s [presentation](https://youtu.be/EstytFNjrWc) on [R-Ladies Chapters: Making talks work for diverse audiences](https://github.com/Fgazzelloni/RLadies-Chapters-Making-Talks-Work-for-Diverse-Audiences/tree/main) with data from the [rladies meetup-archive](https://github.com/rladies/meetup_archive).
+
+\* Trying out geom_weave() from {ggdist}
+
+```{r load libraries}
+library(tidyverse)
+library(lubridate)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Bitter")
+```
+
+```{r read in data}
+rladies_chapters <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-11-21/rladies_chapters.csv')
+```
+
+```{r wrangle}
+df1 = rladies_chapters |>
+  filter(between(year,2017,2023)) |>
+  mutate(chapter=str_to_title(str_replace_all(chapter,"-"," ")),
+         chapter=case_when(chapter=="Rladies Dc"~"Rladies DC",
+                           chapter=="Rladies Newyork"~"Rladies New York",
+                           TRUE~chapter))
+
+selected = df1 |>
+  count(chapter,sort=T) |>
+  slice(1:8) |>
+  pull(chapter)
+```
+
+```{r plot, fig.height=3.2, fig.width=4}
+df1 |>
+  filter(chapter %in% selected) |>
+  add_count(chapter) |>
+  arrange(n) |>
+  mutate(wk=week(date),
+         y=glue::glue("**{chapter}**<Br><span style = 'font-size:9.5pt;color:grey20'>({n} events)</span>"),
+         y=fct_inorder(y)) |>
+  ggplot(aes(x=date, y=y, color=str_to_title(location),fill=after_scale(colorspace::lighten(color,.1)), group=NA)) +
+  ggdist::geom_weave() +
+  scale_x_date(breaks = "1 year", date_labels = "%Y") +
+  scale_color_manual(values=c("#E69F01","#009E73")) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family="Bitter"),
+        axis.text.y=element_markdown(lineheight = 1.2),
+        axis.title = element_text(size=10.5),
+        legend.position = "top",
+        legend.title=element_text(size=10.5),
+        legend.text=element_text(size=10.5),
+        legend.box.margin = margin(l=-110),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(size=10),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40", size=9),
+        plot.margin = margin(.5,.5,.5,.5,unit="cm"),
+        plot.background = element_rect(fill="#fafafa", color=NA),
+        ) +
+  labs(x="Event date", y="Chapter", color="Event location:",
+       title="R-Ladies Chapter Events",
+       subtitle="Chapters with the more than 70 events between Jan 01, 2017 and Nov 30, 2023",
+       caption="#TidyTuesday week 46 | Data:rladies meetup-archive")
+
+ggsave("export/2023_46.png", height=6.4, width=8)
+```
