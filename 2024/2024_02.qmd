@@ -1,0 +1,84 @@
+---
+title: "20240109"
+date: "2022-01-09"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 2 [Canadian NHL Player Birth Dates](https://github.com/rfordatascience/tidytuesday/blob/master/data/2024/2024-01-09/readme.md) data from [Statistics Canada](https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1310041501&pickMembers%5B0%5D=3.1&cubeTimeFrame.startYear=1991&cubeTimeFrame.endYear=2022&referencePeriods=19910101%2C20220101), the [NHL team list endpoint](https://api.nhle.com/stats/rest/en/team), and the [NHL API](https://api-web.nhle.com/v1/).
+
+```{r load libraries}
+library(tidyverse)
+library(ggtext)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load fonts}
+font_add_google("IBM Plex Sans", bold.wt = 600)
+f1="IBM Plex Sans"
+```
+
+```{r read in data}
+canada_births_1991_2022 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-09/canada_births_1991_2022.csv')
+nhl_player_births <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-09/nhl_player_births.csv')
+nhl_rosters <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-09/nhl_rosters.csv')
+nhl_teams <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-09/nhl_teams.csv')
+```
+
+```{r wrangle}
+df1 = nhl_rosters |>
+  select(season,height_in_centimeters, weight_in_kilograms) |>
+  pivot_longer(!season) |>
+  mutate(name=str_to_sentence(str_replace_all(name,"_"," "))) |>
+  group_by(season) |>
+  arrange(season, by_group=TRUE) |>
+  mutate(seasonid=cur_group_id(),
+         s=parse_number(str_extract(season,"^.{4}")))
+```
+
+```{r theme}
+theme1 =
+  theme_minimal(base_family = f1, base_size = 13) +
+  theme(legend.position = "top",
+        legend.justification = "left",
+        legend.margin = margin(b=-3),
+        legend.title=element_text(size=11),
+        legend.text=element_text(size=10.5),
+        legend.key.height = unit(.2,"lines"),
+        strip.text.x.top = element_text(face="bold", hjust=0, size=12.3, margin=margin(l=-23, b=7)),
+        strip.clip = "off",
+        panel.spacing.x = unit(1,"lines"),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size=12.3, face="bold", margin=margin(t=5)),
+        panel.grid.minor.x = element_blank(),
+        plot.margin=margin(.5,.75,.5,.5,unit="cm"),
+        plot.title=element_text(face="bold", size=15),
+        plot.subtitle=element_text(size=10.7, color="grey30"),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        plot.caption = element_text(color="grey40", hjust=0, size=9.5, margin=margin(t=10)))
+```
+
+```{r plot, fig.height=2.75, fig.width=4, warning=F}
+df1 |>
+  ggplot(aes(x=s, y=value)) +
+  ggdist::stat_interval(.width = c(.25,.5,.75, 1), size=1) +
+  scico::scale_color_scico_d(palette = "batlow", direction=-1,labels = function(x) paste0(as.numeric(x)*100, "%")) +
+  scale_x_continuous(expand = c(.03,.03)) +
+  facet_wrap(~name, scales = "free_y") +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme1+
+  labs(x="Season",color="Level:",
+       title="Canadian NHL players' height and weight by season",
+       subtitle="Distribution, from 1917 to 2023",
+       caption="TidyTuesday week 2 | Data: Statistics Canada, the NHL team list endpoint, and the NHL API")
+```
+
+```{r}
+ggsave("export/2024_02.png", height=5, width=8, bg="#fafafa")
+```
+
+
+
