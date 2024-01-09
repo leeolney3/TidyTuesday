@@ -7,6 +7,14 @@ My #TidyTuesday visualisations and code are shown below. Feedback is very welcom
 **List of contributions**
 
 <details>
+  <summary><b>2024</b> (click to expand)</summary>
+
+<!-- toc -->
+* 2024/02 [Canadian NHL Player Birth Dates](https://github.com/leeolney3/TidyTuesday/blob/main/2024/2024_02.qmd)
+<!-- tocstop -->
+</details>
+
+<details>
   <summary><b>2023</b> (click to expand)</summary>
 
 <!-- toc -->
