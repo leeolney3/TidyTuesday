@@ -1,0 +1,114 @@
+---
+title: "2024_03"
+date: "2024-01-16"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 2 [US Polling Places 2012-2020](https://github.com/rfordatascience/tidytuesday/blob/master/data/2024/2024-01-16/readme.md), data from [The Center for Public Integrity](https://publicintegrity.org/).
+
+```{r load libraries}
+library(tidyverse)
+library(sf)
+library(tigris)
+library(ggsflabel)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r}
+font_add_google("Jost", bold.wt = 600)
+f1="Jost"
+font_add_google("Staatliches")
+f2="Staatliches"
+```
+
+```{r read in data}
+polling_places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-16/polling_places.csv')
+caption="TidyTuesday week 3 | Data: The Center for Public Integrity"
+```
+
+
+```{r}
+d1 = polling_places |> 
+  drop_na(county_name) |>
+  count(state,county_name) |>
+  mutate(county_name=str_to_lower(county_name)) |>
+  rename(STUSPS=state)
+
+sel = unique(d1$STUSPS)
+c1= counties(state=sel, cb=TRUE, year=2020) |>
+  mutate(county_name=str_to_lower(NAME))
+```
+
+```{r}
+d1a = d1 |> filter(STUSPS!="VA")
+d1b = d1 |> filter(STUSPS=="VA") |>
+  mutate(county_name=str_remove(county_name,"county"),
+         county_name=str_remove(county_name,"city"),
+         county_name=str_trim(county_name)
+         ) 
+d2 =rbind(d1a,d1b) |>
+  mutate(grp=case_when(n<50~"<50 polling places", TRUE~"≥50 polling places"))
+c2 = c1 |> 
+  left_join(d2, by=c("STUSPS","county_name")) |>
+  mutate(grp=replace_na(grp,"No data"))
+
+s1 = states(cb=TRUE, year=2020) |> 
+  filter(!STUSPS %in% c("AK","HI","PR","GU","AS","MP","VI","DC","RI","NJ","VT","NH","CT")) |>
+  filter(!STUSPS %in% sel)
+```
+
+```{r theme}
+theme1=
+  cowplot::theme_map(15) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.title=element_blank(),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2, size=21, margin=margin(b=10)),
+        plot.caption = element_markdown(hjust=0,color="grey40", size=11),
+        plot.background = element_rect(fill="#fafafa",color=NA),
+        plot.margin=margin(.5,.5,.5,.5,unit="cm")
+        ) 
+```
+
+
+```{r, fig.height=3, fig.width=4, warning=FALSE}
+ggplot() +
+  geom_sf(data=s1, fill="#D7D7D7", color="white") +
+  geom_sf_text(data=s1, aes(label=STUSPS), family=f1) +
+  geom_sf(data=c1) +
+  geom_sf(data=c2, aes(fill=grp),color="white", linewidth=0.1) +
+  scale_fill_manual(values=c("#502685","#E0611F","#D7D7D7")) +
+  coord_sf(expand=FALSE) +
+  theme1 +
+  labs(title="US Polling Places, 2020",
+       subtitle="Number of polling places by county. November 3, 2020 election.",
+       caption=caption)
+
+ggsave("export/2024_03a.png", height=6, width=8)
+```
+
+
+```{r}
+c3= counties(state="IA", cb=TRUE, year=2020)
+d3 = polling_places |> filter(state=="IA", election_date==max(election_date)) |>
+  count(NAME=county_name)
+```
+
+```{r, fig.height=3, fig.width=4, warning=FALSE}
+c3 |> right_join(d3,by="NAME") |>
+  ggplot() +
+  geom_sf(aes(fill=n), color="white") +
+  geom_sf_text(aes(label=n, color=I(ifelse(n>=40,"white","black")))) +
+  scale_color_identity() +
+  scico::scale_fill_scico(palette = "nuuk", direction=-1, trans="log", guide="none") +
+  theme1 +
+  labs(title="US Polling Places in Iowa, 2020",
+       subtitle="Number of polling places by county. November 3, 2020 election",
+       caption=caption)
+
+ggsave("export/2024_03b.png", height=6, width=8)
+```
