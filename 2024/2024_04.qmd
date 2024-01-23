@@ -1,0 +1,157 @@
+---
+title: "2024_04"
+date: "2024-01-23"
+format: html
+editor: visual
+---
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) week 4 [Educational attainment of young people in English towns](https://github.com/rfordatascience/tidytuesday/blob/master/data/2024/2024-01-23/readme.md), data from [The UK Office for National Statistics](https://www.ons.gov.uk/). 
+
+```{r load libraries}
+library(tidyverse)
+options(dplyr.summarise.inform = FALSE)
+library(ggtext)
+library(ggdist)
+library(showtext)
+showtext_opts(dpi = 300)
+showtext_auto(enable = TRUE)
+```
+
+```{r load font}
+font_add_google("Barlow", bold.wt = 600)
+f1="Barlow"
+font_add_google("Bitter", bold.wt = 600)
+f2="Bitter"
+```
+
+```{r read in data}
+english_education <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-23/english_education.csv')
+caption="TidyTuesday week 4 | Data: The UK Office for National Statistics"
+```
+
+```{r description df}
+# copied from readme
+des= data.frame(
+  stringsAsFactors = FALSE,
+          name = c("key_stage_2_attainment_school_year_2007_to_2008",
+                       "key_stage_4_attainment_school_year_2012_to_2013",
+                       "level_2_at_age_18","level_3_at_age_18","activity_at_age_19_full_time_higher_education","activity_at_age_19_sustained_further_education"),
+       name_long = c("Proportion of pupils that achieved level 4 or above (expected level) in key stage 2 in English and Maths in the 2007 to 2008 school year",
+                     "Proportion of pupils that achieved 5 GCSE or more, including English and Maths, with grades A*-C in the 2012 to 2013 school year",
+                     "Proportion of the town/city's 2012/13 key stage 4 cohort that achieved level 2 qualifications at the age 18.",
+                     "Proportion of the town/city's 2012/13 key stage 4 cohort that achieved level 3 qualifications at the age 18.",
+                     "Proportion of the town/city's 2012/13 key stage 4 cohort in full time higher education at the age 19.",
+                     "Proportion of the town/city's 2012/13 key stage 4 cohort in sustained further education at the age 19."
+                     )
+)
+```
+
+```{r wrangle}
+d1 = english_education |> 
+  select(size_flag,key_stage_2_attainment_school_year_2007_to_2008:activity_at_age_19_sustained_further_education) |>
+  filter(!size_flag %in% c("Not BUA","Other Small BUAs")) |>
+  mutate(size_flag = str_trim(str_remove_all(size_flag,"BUA")),
+         size_flag=case_when(size_flag=="City"~"Cities",TRUE~size_flag),
+         size_flag=factor(size_flag, levels=c("Inner London","Outer london","Cities","Large Towns","Medium Towns","Small Towns"),ordered=T)) |>
+  pivot_longer(!size_flag) |>
+  left_join(des, by="name")
+```
+
+```{r "p1", warning=FALSE,fig.height=2.75, fig.width=4}
+d1 |>
+  filter(!name %in% c("key_stage_2_attainment_school_year_2007_to_2008","key_stage_4_attainment_school_year_2012_to_2013")) |>
+  mutate(name_long=str_to_sentence(str_remove(name_long,"Proportion of the town/city's 2012/13 key stage 4 cohort ")),
+         name_long=str_wrap(name_long,23),
+         name_long=fct_inorder(name_long)) |>
+  ggplot(aes(x=value, y=size_flag)) +
+  stat_pointinterval() +
+  geom_richtext(data=. %>% group_by(size_flag, name_long) %>% summarise(value=median(value, na.rm=T)) 
+,aes(label=scales::number(value, accuracy=1)),vjust=-.5, label.color=NA,fill="#fafafa",label.padding = grid::unit(rep(0, 4), "pt")) +
+  scale_x_continuous(limits=c(0,100), expand=c(0,0)) +
+  facet_wrap(~name_long, ncol=4) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        strip.text=element_text(hjust=0,size=11.5, margin=margin(t=8,b=8)),
+        panel.spacing = unit(1.1,"lines"),
+        panel.background = element_rect(fill="#fafafa"),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face="bold", size=11.5),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2),
+        plot.subtitle = element_text(size=11.8),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm")
+        ) +
+  labs(x="Value",
+       caption=caption,
+       title="Educational attainment of young people in the UK",
+       subtitle="Proportion of the town/city's 2012/13 key stage 4 cohort:")
+
+ggsave("export/2024_04p1.png", height=5, width=8, bg="white")
+```
+
+```{r "p2", warning=FALSE,fig.height=2.75, fig.width=4}
+d1 |>
+  filter(!name %in% c("activity_at_age_19_full_time_higher_education","activity_at_age_19_sustained_further_education")) |>
+  mutate(name_long=str_wrap(name_long,24),
+         name_long=fct_inorder(name_long)) |>
+  ggplot(aes(x=value, y=size_flag)) +
+  stat_pointinterval() +
+  geom_richtext(data=. %>% group_by(size_flag, name_long) %>% summarise(value=median(value)) 
+,aes(label=scales::number(value, accuracy=1)),vjust=-.5, label.color=NA,fill="#fafafa",label.padding = grid::unit(rep(0, 4), "pt")) +
+  facet_wrap(~name_long, ncol=4) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        strip.text=element_text(hjust=0, margin=margin(t=5,b=10)),
+        panel.background = element_rect(fill="#fafafa"),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face="bold", size=rel(1.1)),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2),
+        plot.caption.position = "plot",
+        plot.caption=element_text(hjust=0, color="grey40"),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm")) +
+  labs(x="Value",
+       caption=caption,
+       title="Educational attainment of young people in the UK")
+
+ggsave("export/2024_04p2.png", height=5, width=8, bg="white")
+```
+
+
+```{r "p3", fig.height=3, fig.width=3.5}
+english_education |>
+  drop_na(rgn11nm) |>
+  filter(rgn11nm!="London", income_flag!="Cities") |>
+  mutate(income_flag=factor(income_flag, levels = c("Higher deprivation towns","Mid deprivation towns","Lower deprivation towns"))) |>
+  ggplot(aes(x=education_score, y=fct_rev(rgn11nm))) +
+  geom_dots(aes(fill=income_flag, color=after_scale(colorspace::lighten(fill,.01)),order=income_flag, group=NA)) +
+  PrettyCols::scale_fill_pretty_d("Fun") +
+  scale_y_discrete(expand=c(0,0)) +
+  cowplot::theme_minimal_grid(12) +
+  theme(text=element_text(family=f1),
+        legend.position = "top",
+        legend.margin=margin(l=-124),
+        legend.text=element_text(size=11),
+        plot.margin=margin(.4,.4,.4,.4,unit="cm"),
+        plot.title.position = "plot",
+        plot.title=element_text(family=f2),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=0, color="grey40"),
+        axis.title.y=element_blank()) +
+  labs(x="Education Score", fill="Income:",
+       caption=caption,
+       title="Educational attainment score for towns in the UK, by region and income")
+
+ggsave("export/2024_04p3.png", height=6, width=7, bg="white")
+```
+
+
+
+
+
+
+
+
+
